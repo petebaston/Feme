@@ -1,0 +1,264 @@
+import { useQuery } from "@tanstack/react-query";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Separator } from "@/components/ui/separator";
+
+export default function Company() {
+  const { data: company, isLoading: companyLoading } = useQuery<any>({
+    queryKey: ['/api/company'],
+    staleTime: 300000,
+  });
+
+  const { data: users, isLoading: usersLoading } = useQuery<any[]>({
+    queryKey: ['/api/company/users'],
+    staleTime: 300000,
+  });
+
+  const { data: addresses, isLoading: addressesLoading } = useQuery<any[]>({
+    queryKey: ['/api/company/addresses'],
+    staleTime: 300000,
+  });
+
+  const currentUser = JSON.parse(localStorage.getItem('b2b_user') || '{}');
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-foreground">Company Management</h1>
+          <p className="text-muted-foreground">Manage your company profile and team members</p>
+        </div>
+        <div className="flex gap-3">
+          <Button variant="outline" data-testid="button-edit-company">
+            Edit Company
+          </Button>
+          <Button data-testid="button-invite-user">
+            Invite User
+          </Button>
+        </div>
+      </div>
+
+      {/* Company Profile */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Company Profile</CardTitle>
+          <CardDescription>Your company information and settings</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {companyLoading ? (
+            <div className="space-y-4">
+              <div className="flex items-center space-x-4">
+                <Skeleton className="h-16 w-16 rounded-lg" />
+                <div className="space-y-2">
+                  <Skeleton className="h-6 w-48" />
+                  <Skeleton className="h-4 w-32" />
+                </div>
+              </div>
+              <Separator />
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Skeleton className="h-4 w-24" />
+                  <Skeleton className="h-4 w-36" />
+                </div>
+                <div className="space-y-2">
+                  <Skeleton className="h-4 w-24" />
+                  <Skeleton className="h-4 w-28" />
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              <div className="flex items-start space-x-4">
+                <div className="w-16 h-16 bg-primary/10 rounded-lg flex items-center justify-center">
+                  <svg className="w-8 h-8 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="text-xl font-semibold" data-testid="company-name">
+                    {company?.name || 'Your Company'}
+                  </h3>
+                  <p className="text-muted-foreground">{company?.industry || 'Business'}</p>
+                  <div className="flex items-center gap-2 mt-2">
+                    <Badge variant="outline" data-testid="company-status">
+                      {company?.status || 'Active'}
+                    </Badge>
+                    <Badge variant="secondary">
+                      {company?.tier || 'Standard'}
+                    </Badge>
+                  </div>
+                </div>
+              </div>
+
+              <Separator />
+
+              <div className="grid gap-6 md:grid-cols-2">
+                <div className="space-y-4">
+                  <div>
+                    <h4 className="text-sm font-medium text-muted-foreground">Company Email</h4>
+                    <p data-testid="company-email">{company?.email || 'contact@company.com'}</p>
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-medium text-muted-foreground">Phone Number</h4>
+                    <p data-testid="company-phone">{company?.phone || '+1 (555) 123-4567'}</p>
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-medium text-muted-foreground">Tax ID</h4>
+                    <p data-testid="company-tax-id">{company?.taxId || '***-***-***'}</p>
+                  </div>
+                </div>
+                
+                <div className="space-y-4">
+                  <div>
+                    <h4 className="text-sm font-medium text-muted-foreground">Account Manager</h4>
+                    <p data-testid="account-manager">{company?.accountManager || 'John Smith'}</p>
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-medium text-muted-foreground">Credit Limit</h4>
+                    <p data-testid="credit-limit">${company?.creditLimit?.toLocaleString() || '50,000'}</p>
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-medium text-muted-foreground">Payment Terms</h4>
+                    <p data-testid="payment-terms">{company?.paymentTerms || 'Net 30'}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Team Members */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>Team Members</CardTitle>
+              <CardDescription>Manage users and their permissions</CardDescription>
+            </div>
+            <Button size="sm" data-testid="button-manage-users">
+              Manage Users
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {usersLoading ? (
+              Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="flex items-center justify-between p-4 border border-border rounded-lg">
+                  <div className="flex items-center space-x-3">
+                    <Skeleton className="h-10 w-10 rounded-full" />
+                    <div className="space-y-1">
+                      <Skeleton className="h-4 w-32" />
+                      <Skeleton className="h-3 w-24" />
+                    </div>
+                  </div>
+                  <Skeleton className="h-6 w-16" />
+                </div>
+              ))
+            ) : users?.length ? (
+              users.map((user: any) => (
+                <div key={user.id} className="flex items-center justify-between p-4 border border-border rounded-lg" data-testid={`user-item-${user.id}`}>
+                  <div className="flex items-center space-x-3">
+                    <div className="w-10 h-10 bg-muted rounded-full flex items-center justify-center">
+                      <span className="text-sm font-medium">
+                        {user.name?.split(' ').map((n: string) => n[0]).join('') || user.email[0].toUpperCase()}
+                      </span>
+                    </div>
+                    <div>
+                      <p className="font-medium">{user.name || user.email}</p>
+                      <p className="text-sm text-muted-foreground">{user.email}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge variant={user.role === 'admin' ? 'default' : 'outline'}>
+                      {user.role || 'User'}
+                    </Badge>
+                    {user.id === currentUser.id && (
+                      <Badge variant="secondary">You</Badge>
+                    )}
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                <p>No team members found</p>
+                <Button variant="outline" size="sm" className="mt-2">
+                  Invite Your First Team Member
+                </Button>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Company Addresses */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>Company Addresses</CardTitle>
+              <CardDescription>Shipping and billing addresses</CardDescription>
+            </div>
+            <Button size="sm" variant="outline" data-testid="button-add-address">
+              Add Address
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-4 md:grid-cols-2">
+            {addressesLoading ? (
+              Array.from({ length: 2 }).map((_, i) => (
+                <Card key={i} className="border border-border">
+                  <CardContent className="p-4">
+                    <div className="space-y-2">
+                      <Skeleton className="h-4 w-24" />
+                      <Skeleton className="h-4 w-full" />
+                      <Skeleton className="h-4 w-3/4" />
+                      <Skeleton className="h-4 w-1/2" />
+                    </div>
+                  </CardContent>
+                </Card>
+              ))
+            ) : addresses?.length ? (
+              addresses.map((address: any) => (
+                <Card key={address.id} className="border border-border" data-testid={`address-item-${address.id}`}>
+                  <CardContent className="p-4">
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <h4 className="font-medium">{address.label || 'Address'}</h4>
+                        <div className="flex gap-2">
+                          {address.isDefault && (
+                            <Badge variant="secondary" className="text-xs">Default</Badge>
+                          )}
+                          <Badge variant="outline" className="text-xs">
+                            {address.type || 'Shipping'}
+                          </Badge>
+                        </div>
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        <p>{address.street1}</p>
+                        {address.street2 && <p>{address.street2}</p>}
+                        <p>{address.city}, {address.state} {address.postalCode}</p>
+                        <p>{address.country}</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))
+            ) : (
+              <div className="col-span-2 text-center py-8 text-muted-foreground">
+                <p>No addresses found</p>
+                <Button variant="outline" size="sm" className="mt-2">
+                  Add Your First Address
+                </Button>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}

@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
+    <title>BigCommerce B2B Buyer Portal</title>
+    <meta name="description" content="Comprehensive B2B portal for managing orders, quotes, and company operations with BigCommerce B2B Edition." />
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap" rel="stylesheet">
+    
+    <!-- BigCommerce B2B Configuration -->
+    <script>
+      // Initialize BigCommerce B2B settings
+      window.b3CheckoutConfig = {
+        routes: {
+          dashboard: '/account.php?action=order_status',
+        },
+      };
+      
+      window.B3 = {
+        setting: {
+          store_hash: import.meta.env.VITE_STORE_HASH || '',
+          channel_id: parseInt(import.meta.env.VITE_CHANNEL_ID || '1'),
+        },
+        'dom.checkoutRegisterParentElement': '#checkout-app',
+        'dom.registerElement': '[href^="/login.php"], #checkout-customer-login',
+        'dom.openB3Checkout': 'checkout-customer-continue',
+        before_login_goto_page: '/account.php?action=order_status',
+        checkout_super_clear_session: 'true',
+        'dom.navUserLoginElement': '.navUser-item.navUser-item--account',
+      };
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
