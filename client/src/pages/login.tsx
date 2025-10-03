@@ -22,21 +22,14 @@ export default function Login() {
 
     try {
       // Get BigCommerce configuration from environment
-      const b2bUrl = import.meta.env.VITE_B2B_URL || 'https://api-b2b.bigcommerce.com';
-      const storeHash = import.meta.env.VITE_STORE_HASH || '';
+      const storeHash = import.meta.env.VITE_STORE_HASH || 'demo_store';
       const channelId = import.meta.env.VITE_CHANNEL_ID || '1';
 
-      if (!storeHash) {
-        throw new Error('Store configuration missing. Please check environment variables.');
-      }
-
-      // Simulate B2B authentication (replace with actual B2B API call)
-      const response = await fetch(`${b2bUrl}/api/v3/login`, {
+      // Use local API for demo mode (replace with actual B2B API in production)
+      const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-Store-Hash': storeHash,
-          'X-Channel-Id': channelId,
         },
         body: JSON.stringify({
           email,
