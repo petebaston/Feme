@@ -57,8 +57,8 @@ export default function Login() {
         description: "Welcome to your B2B portal!",
       });
 
-      // Redirect to dashboard
-      setLocation("/dashboard");
+      // Redirect to dashboard - use window.location to trigger auth check
+      window.location.href = "/dashboard";
     } catch (err: any) {
       setError(err.message || 'An unexpected error occurred');
       toast({
