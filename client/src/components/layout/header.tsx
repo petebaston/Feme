@@ -28,13 +28,8 @@ export default function Header() {
     <header className="sticky top-0 z-40 w-full border-b border-gray-200 bg-white">
       <div className="flex h-16 items-center px-4 md:px-6">
         <div className="flex items-center space-x-4 md:ml-12">
-          <Link href="/" className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-black rounded-lg flex items-center justify-center">
-              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-              </svg>
-            </div>
-            <span className="font-semibold text-lg hidden sm:block">B2B Portal</span>
+          <Link href="/" className="flex items-center space-x-2" data-testid="link-logo">
+            <span className="font-bold text-2xl tracking-tight text-black">feme</span>
           </Link>
         </div>
 

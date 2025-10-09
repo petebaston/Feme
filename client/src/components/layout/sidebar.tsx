@@ -94,9 +94,9 @@ export default function Sidebar() {
 
           {/* Bottom section */}
           <div className="px-4 py-4 border-t border-gray-200">
-            <div className="text-xs text-gray-500">
-              <p className="font-medium text-black">B2B Portal</p>
-              <p>BigCommerce Edition</p>
+            <div className="flex flex-col gap-1">
+              <span className="font-bold text-xl tracking-tight text-black">feme</span>
+              <p className="text-xs text-gray-500">B2B Buyer Portal</p>
             </div>
           </div>
         </div>
@@ -136,9 +136,9 @@ export default function Sidebar() {
 
           {/* Bottom section */}
           <div className="px-4 py-4 border-t border-gray-200">
-            <div className="text-xs text-gray-500">
-              <p className="font-medium text-black">B2B Portal</p>
-              <p>BigCommerce Edition</p>
+            <div className="flex flex-col gap-1">
+              <span className="font-bold text-xl tracking-tight text-black">feme</span>
+              <p className="text-xs text-gray-500">B2B Buyer Portal</p>
             </div>
           </div>
         </div>

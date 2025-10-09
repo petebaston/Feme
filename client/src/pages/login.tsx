@@ -89,7 +89,7 @@ export default function Login() {
     <div className="min-h-screen flex items-center justify-center bg-white px-4 py-8">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <h1 className="text-4xl md:text-5xl font-semibold text-black mb-2">B2B Portal</h1>
+          <h1 className="text-5xl md:text-6xl font-bold tracking-tight text-black mb-3">feme</h1>
           <p className="text-sm md:text-base text-gray-600">Sign in to your business account</p>
         </div>
 
