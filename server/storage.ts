@@ -93,7 +93,8 @@ export class MemStorage implements IStorage {
     };
     this.users.set(user3.id, user3);
 
-    // Create demo orders
+    // Create demo orders with payment terms
+    const paymentTermsOptions = ["1-30 days", "30-60 days", "60-90 days", "90+ days", "Net 30", "Net 60"];
     for (let i = 1; i <= 8; i++) {
       const orderId = `ORDER_${i.toString().padStart(3, '0')}`;
       const order: Order = {
@@ -107,6 +108,7 @@ export class MemStorage implements IStorage {
         customerName: ["Demo Company Inc.", "Acme Corp", "Global Solutions"][Math.floor(Math.random() * 3)],
         shippingCity: ["New York", "Los Angeles", "Chicago", "Houston"][Math.floor(Math.random() * 4)],
         shippingState: ["NY", "CA", "IL", "TX"][Math.floor(Math.random() * 4)],
+        paymentTerms: paymentTermsOptions[i % paymentTermsOptions.length] as any,
         createdAt: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000) as any,
         updatedAt: new Date() as any,
       };
@@ -133,6 +135,7 @@ export class MemStorage implements IStorage {
         total: (Math.random() * 50000 + 5000).toFixed(2),
         itemCount: Math.floor(Math.random() * 20) + 1,
         notes: i % 3 === 0 ? "Requires custom packaging" : null,
+        paymentTerms: paymentTermsOptions[i % paymentTermsOptions.length] as any,
         expiresAt: new Date(Date.now() + Math.random() * 60 * 24 * 60 * 60 * 1000) as any,
         createdAt: new Date(Date.now() - Math.random() * 20 * 24 * 60 * 60 * 1000) as any,
         updatedAt: new Date() as any,

@@ -43,6 +43,7 @@ export const orders = pgTable("orders", {
   customerName: text("customer_name"),
   shippingCity: text("shipping_city"),
   shippingState: text("shipping_state"),
+  paymentTerms: text("payment_terms"),
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
 });
@@ -57,6 +58,7 @@ export const quotes = pgTable("quotes", {
   total: decimal("total", { precision: 10, scale: 2 }).notNull(),
   itemCount: integer("item_count"),
   notes: text("notes"),
+  paymentTerms: text("payment_terms"),
   expiresAt: timestamp("expires_at"),
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),

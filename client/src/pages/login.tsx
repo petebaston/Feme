@@ -77,42 +77,39 @@ export default function Login() {
     
     // Auto-fill demo credentials and login
     setTimeout(() => {
-      const event = new Event('submit');
-      Object.defineProperty(event, 'target', { value: document.querySelector('form') });
-      handleLogin(event as any);
+      const event = new Event('submit', { bubbles: true, cancelable: true });
+      const form = document.querySelector('form');
+      if (form) {
+        form.dispatchEvent(event);
+      }
     }, 100);
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-accent/5 p-4">
-      <div className="w-full max-w-md space-y-6">
-        <div className="text-center">
-          <div className="w-16 h-16 bg-primary rounded-xl flex items-center justify-center mx-auto mb-4">
-            <svg className="w-8 h-8 text-primary-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-            </svg>
-          </div>
-          <h1 className="text-3xl font-bold text-foreground">B2B Portal</h1>
-          <p className="text-muted-foreground mt-2">Sign in to your business account</p>
+    <div className="min-h-screen flex items-center justify-center bg-white px-4 py-8">
+      <div className="w-full max-w-md">
+        <div className="text-center mb-8">
+          <h1 className="text-4xl md:text-5xl font-semibold text-black mb-2">B2B Portal</h1>
+          <p className="text-sm md:text-base text-gray-600">Sign in to your business account</p>
         </div>
 
-        <Card className="shadow-lg border-border">
-          <CardHeader>
-            <CardTitle>Sign In</CardTitle>
-            <CardDescription>
-              Enter your credentials to access your B2B dashboard
+        <Card className="border border-gray-200 shadow-sm">
+          <CardHeader className="space-y-1">
+            <CardTitle className="text-2xl font-semibold">Sign In</CardTitle>
+            <CardDescription className="text-gray-600">
+              Enter your credentials to continue
             </CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleLogin} className="space-y-4">
               {error && (
-                <Alert variant="destructive">
-                  <AlertDescription>{error}</AlertDescription>
+                <Alert variant="destructive" className="bg-red-50 border-red-200">
+                  <AlertDescription className="text-red-800">{error}</AlertDescription>
                 </Alert>
               )}
 
               <div className="space-y-2">
-                <Label htmlFor="email">Email Address</Label>
+                <Label htmlFor="email" className="text-sm font-medium">Email</Label>
                 <Input
                   id="email"
                   type="email"
@@ -120,12 +117,13 @@ export default function Login() {
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="you@company.com"
                   required
+                  className="h-11 border-gray-300 focus:border-black focus:ring-black"
                   data-testid="input-email"
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
+                <Label htmlFor="password" className="text-sm font-medium">Password</Label>
                 <Input
                   id="password"
                   type="password"
@@ -133,13 +131,14 @@ export default function Login() {
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
                   required
+                  className="h-11 border-gray-300 focus:border-black focus:ring-black"
                   data-testid="input-password"
                 />
               </div>
 
               <Button
                 type="submit"
-                className="w-full"
+                className="w-full h-11 bg-black hover:bg-gray-800 text-white font-medium"
                 disabled={isLoading}
                 data-testid="button-login"
               >
@@ -156,7 +155,7 @@ export default function Login() {
               <Button
                 type="button"
                 variant="outline"
-                className="w-full"
+                className="w-full h-11 border-2 border-black text-black hover:bg-black hover:text-white font-medium transition-colors"
                 onClick={handleDemoLogin}
                 disabled={isLoading}
                 data-testid="button-demo"
@@ -167,7 +166,7 @@ export default function Login() {
           </CardContent>
         </Card>
 
-        <div className="text-center text-sm text-muted-foreground">
+        <div className="text-center mt-6 text-sm text-gray-500">
           <p>Powered by BigCommerce B2B Edition</p>
         </div>
       </div>

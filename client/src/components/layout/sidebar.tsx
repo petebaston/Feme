@@ -1,5 +1,7 @@
 import { Link, useLocation } from "wouter";
 import { cn } from "@/lib/utils";
+import { useState } from "react";
+import { Menu, X } from "lucide-react";
 
 const navigation = [
   {
@@ -43,41 +45,104 @@ const navigation = [
 
 export default function Sidebar() {
   const [location] = useLocation();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
-    <div className="hidden md:flex md:w-64 md:flex-col">
-      <div className="flex flex-col flex-grow pt-5 pb-4 overflow-y-auto bg-card border-r border-border">
-        <nav className="flex-1 px-4 space-y-1">
-          {navigation.map((item) => {
-            const isActive = location === item.href || (item.href !== '/dashboard' && location?.startsWith(item.href));
-            
-            return (
-              <Link
-                key={item.name}
-                href={item.href}
-                className={cn(
-                  "group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors",
-                  isActive
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-                )}
-                data-testid={`nav-${item.name.toLowerCase()}`}
-              >
-                {item.icon}
-                <span className="ml-3">{item.name}</span>
-              </Link>
-            );
-          })}
-        </nav>
+    <>
+      {/* Mobile Menu Button */}
+      <button
+        onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+        className="md:hidden fixed top-4 left-4 z-50 p-2 rounded-md bg-white border border-gray-200 shadow-sm"
+        data-testid="mobile-menu-button"
+      >
+        {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+      </button>
 
-        {/* Bottom section */}
-        <div className="px-4 py-4 border-t border-border">
-          <div className="text-xs text-muted-foreground">
-            <p className="font-medium">BigCommerce B2B Edition</p>
-            <p>Powered by Headless Portal</p>
+      {/* Mobile Overlay */}
+      {mobileMenuOpen && (
+        <div
+          className="md:hidden fixed inset-0 bg-black/50 z-30"
+          onClick={() => setMobileMenuOpen(false)}
+        />
+      )}
+
+      {/* Desktop Sidebar */}
+      <div className="hidden md:flex md:w-64 md:flex-col">
+        <div className="flex flex-col flex-grow pt-5 pb-4 overflow-y-auto bg-white border-r border-gray-200">
+          <nav className="flex-1 px-4 space-y-1">
+            {navigation.map((item) => {
+              const isActive = location === item.href || (item.href !== '/dashboard' && location?.startsWith(item.href));
+              
+              return (
+                <Link
+                  key={item.name}
+                  href={item.href}
+                  className={cn(
+                    "group flex items-center px-3 py-2.5 text-sm font-medium rounded-md transition-colors",
+                    isActive
+                      ? "bg-black text-white"
+                      : "text-gray-700 hover:bg-gray-100"
+                  )}
+                  data-testid={`nav-${item.name.toLowerCase()}`}
+                >
+                  {item.icon}
+                  <span className="ml-3">{item.name}</span>
+                </Link>
+              );
+            })}
+          </nav>
+
+          {/* Bottom section */}
+          <div className="px-4 py-4 border-t border-gray-200">
+            <div className="text-xs text-gray-500">
+              <p className="font-medium text-black">B2B Portal</p>
+              <p>BigCommerce Edition</p>
+            </div>
           </div>
         </div>
       </div>
-    </div>
+
+      {/* Mobile Sidebar */}
+      <div
+        className={cn(
+          "md:hidden fixed inset-y-0 left-0 z-40 w-64 bg-white border-r border-gray-200 transform transition-transform duration-300 ease-in-out",
+          mobileMenuOpen ? "translate-x-0" : "-translate-x-full"
+        )}
+      >
+        <div className="flex flex-col h-full pt-16 pb-4">
+          <nav className="flex-1 px-4 space-y-1">
+            {navigation.map((item) => {
+              const isActive = location === item.href || (item.href !== '/dashboard' && location?.startsWith(item.href));
+              
+              return (
+                <Link
+                  key={item.name}
+                  href={item.href}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={cn(
+                    "group flex items-center px-3 py-3 text-base font-medium rounded-md transition-colors",
+                    isActive
+                      ? "bg-black text-white"
+                      : "text-gray-700 hover:bg-gray-100"
+                  )}
+                  data-testid={`nav-mobile-${item.name.toLowerCase()}`}
+                >
+                  {item.icon}
+                  <span className="ml-3">{item.name}</span>
+                </Link>
+              );
+            })}
+          </nav>
+
+          {/* Bottom section */}
+          <div className="px-4 py-4 border-t border-gray-200">
+            <div className="text-xs text-gray-500">
+              <p className="font-medium text-black">B2B Portal</p>
+              <p>BigCommerce Edition</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </>
   );
 }

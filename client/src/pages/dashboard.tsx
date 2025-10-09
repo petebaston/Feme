@@ -1,14 +1,14 @@
 import { useQuery } from "@tanstack/react-query";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "wouter";
+import { DollarSign, Package, FileText, Clock } from "lucide-react";
 
 export default function Dashboard() {
   const { data: stats, isLoading: statsLoading } = useQuery<any>({
     queryKey: ['/api/dashboard/stats'],
-    staleTime: 300000, // 5 minutes
+    staleTime: 300000,
   });
 
   const { data: recentOrders, isLoading: ordersLoading } = useQuery<any[]>({
@@ -23,141 +23,153 @@ export default function Dashboard() {
 
   const user = JSON.parse(localStorage.getItem('b2b_user') || '{}');
 
+  const getStatusColor = (status: string) => {
+    const colors: Record<string, string> = {
+      pending: 'bg-yellow-100 text-yellow-800',
+      processing: 'bg-blue-100 text-blue-800',
+      completed: 'bg-green-100 text-green-800',
+      shipped: 'bg-purple-100 text-purple-800',
+      delivered: 'bg-green-100 text-green-800',
+      cancelled: 'bg-gray-100 text-gray-800',
+      draft: 'bg-gray-100 text-gray-800',
+      negotiating: 'bg-blue-100 text-blue-800',
+      approved: 'bg-green-100 text-green-800',
+      rejected: 'bg-red-100 text-red-800',
+    };
+    return colors[status?.toLowerCase()] || 'bg-gray-100 text-gray-800';
+  };
+
+  const getPaymentTermsColor = (terms: string) => {
+    if (terms?.includes('1-30')) return 'bg-green-50 text-green-700 border-green-200';
+    if (terms?.includes('30-60')) return 'bg-blue-50 text-blue-700 border-blue-200';
+    if (terms?.includes('60-90')) return 'bg-orange-50 text-orange-700 border-orange-200';
+    if (terms?.includes('90+')) return 'bg-red-50 text-red-700 border-red-200';
+    return 'bg-gray-50 text-gray-700 border-gray-200';
+  };
+
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">Welcome back, {user.name || 'User'}!</h1>
-          <p className="text-muted-foreground">Here's what's happening with your account today.</p>
-        </div>
-        <div className="flex gap-3">
-          <Button asChild data-testid="button-new-order">
-            <Link href="/orders/new">New Order</Link>
-          </Button>
-          <Button variant="outline" asChild data-testid="button-request-quote">
-            <Link href="/quotes/new">Request Quote</Link>
-          </Button>
-        </div>
+    <div className="space-y-6 md:space-y-8">
+      {/* Header */}
+      <div>
+        <h1 className="text-2xl md:text-3xl font-semibold text-black">Welcome back, {user.name || 'User'}</h1>
+        <p className="text-sm md:text-base text-gray-600 mt-1">Here's what's happening with your business</p>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Orders</CardTitle>
-            <svg className="h-4 w-4 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
-            </svg>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold" data-testid="stat-total-orders">
-              {statsLoading ? <Skeleton className="h-8 w-16" /> : stats?.totalOrders || 0}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              +{stats?.ordersThisMonth || 0} this month
-            </p>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+        <Card className="border border-gray-200">
+          <CardContent className="p-6">
+            {statsLoading ? (
+              <Skeleton className="h-20" />
+            ) : (
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-sm font-medium text-gray-600">Total Orders</p>
+                  <Package className="w-4 h-4 text-gray-400" />
+                </div>
+                <p className="text-3xl font-semibold text-black" data-testid="stat-total-orders">{stats?.totalOrders || 0}</p>
+                <p className="text-xs text-gray-500 mt-1">{stats?.ordersThisMonth || 0} this month</p>
+              </div>
+            )}
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Pending Quotes</CardTitle>
-            <svg className="h-4 w-4 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold" data-testid="stat-pending-quotes">
-              {statsLoading ? <Skeleton className="h-8 w-16" /> : stats?.pendingQuotes || 0}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {stats?.quotesNeedingAttention || 0} need attention
-            </p>
+        <Card className="border border-gray-200">
+          <CardContent className="p-6">
+            {statsLoading ? (
+              <Skeleton className="h-20" />
+            ) : (
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-sm font-medium text-gray-600">Monthly Spend</p>
+                  <DollarSign className="w-4 h-4 text-gray-400" />
+                </div>
+                <p className="text-3xl font-semibold text-black" data-testid="stat-monthly-spend">${stats?.monthlySpend?.toLocaleString() || 0}</p>
+                <p className="text-xs text-green-600 mt-1">↑ {stats?.spendChange || 0}% vs last month</p>
+              </div>
+            )}
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Monthly Spend</CardTitle>
-            <svg className="h-4 w-4 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
-            </svg>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold" data-testid="stat-monthly-spend">
-              {statsLoading ? <Skeleton className="h-8 w-20" /> : `$${stats?.monthlySpend?.toLocaleString() || '0'}`}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {stats?.spendChange > 0 ? '+' : ''}{stats?.spendChange || 0}% from last month
-            </p>
+        <Card className="border border-gray-200">
+          <CardContent className="p-6">
+            {statsLoading ? (
+              <Skeleton className="h-20" />
+            ) : (
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-sm font-medium text-gray-600">Pending Quotes</p>
+                  <FileText className="w-4 h-4 text-gray-400" />
+                </div>
+                <p className="text-3xl font-semibold text-black" data-testid="stat-pending-quotes">{stats?.pendingQuotes || 0}</p>
+                <p className="text-xs text-gray-500 mt-1">{stats?.quotesNeedingAttention || 0} need attention</p>
+              </div>
+            )}
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Credit</CardTitle>
-            <svg className="h-4 w-4 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-            </svg>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold" data-testid="stat-active-credit">
-              {statsLoading ? <Skeleton className="h-8 w-20" /> : `$${stats?.activeCredit?.toLocaleString() || '0'}`}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Available credit line
-            </p>
+        <Card className="border border-gray-200">
+          <CardContent className="p-6">
+            {statsLoading ? (
+              <Skeleton className="h-20" />
+            ) : (
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-sm font-medium text-gray-600">Active Credit</p>
+                  <Clock className="w-4 h-4 text-gray-400" />
+                </div>
+                <p className="text-3xl font-semibold text-black" data-testid="stat-active-credit">${stats?.activeCredit?.toLocaleString() || 0}</p>
+                <p className="text-xs text-gray-500 mt-1">Available credit</p>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
 
-      {/* Recent Activity */}
-      <div className="grid gap-6 md:grid-cols-2">
-        <Card>
+      {/* Recent Orders & Quotes */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8">
+        {/* Recent Orders */}
+        <Card className="border border-gray-200">
           <CardHeader>
-            <CardTitle>Recent Orders</CardTitle>
-            <CardDescription>Your latest order activity</CardDescription>
+            <CardTitle className="text-lg font-semibold">Recent Orders</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {ordersLoading ? (
-                Array.from({ length: 3 }).map((_, i) => (
-                  <div key={i} className="flex items-center justify-between">
-                    <div className="space-y-1">
-                      <Skeleton className="h-4 w-24" />
-                      <Skeleton className="h-3 w-16" />
+            {ordersLoading ? (
+              <div className="space-y-3">
+                {[1, 2, 3].map(i => <Skeleton key={i} className="h-20" />)}
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {recentOrders?.slice(0, 5).map((order: any) => (
+                  <div key={order.id} className="p-3 md:p-4 border border-gray-200 rounded-lg hover:border-gray-300 transition-colors" data-testid={`order-${order.id}`}>
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm truncate">{order.orderNumber}</p>
+                        <p className="text-xs text-gray-600 mt-0.5">{order.customerName}</p>
+                      </div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {order.paymentTerms && (
+                          <span className={`text-xs px-2 py-0.5 rounded-md border font-medium ${getPaymentTermsColor(order.paymentTerms)}`}>
+                            {order.paymentTerms}
+                          </span>
+                        )}
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${getStatusColor(order.status)}`}>
+                          {order.status}
+                        </span>
+                      </div>
                     </div>
-                    <Skeleton className="h-6 w-16" />
+                    <div className="flex items-center justify-between mt-2">
+                      <p className="text-sm font-semibold">${parseFloat(order.total).toLocaleString()}</p>
+                      <p className="text-xs text-gray-500">{new Date(order.createdAt).toLocaleDateString()}</p>
+                    </div>
                   </div>
-                ))
-              ) : recentOrders?.length ? (
-                recentOrders.map((order: any) => (
-                  <div key={order.id} className="flex items-center justify-between" data-testid={`order-item-${order.id}`}>
-                    <div>
-                      <p className="text-sm font-medium">Order #{order.id}</p>
-                      <p className="text-xs text-muted-foreground">{new Date(order.createdAt).toLocaleDateString()}</p>
-                    </div>
-                    <div className="text-right">
-                      <Badge variant={order.status === 'completed' ? 'default' : 'secondary'}>
-                        {order.status}
-                      </Badge>
-                      <p className="text-sm font-medium">${order.total?.toLocaleString()}</p>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <div className="text-center py-6">
-                  <p className="text-sm text-muted-foreground">No recent orders</p>
-                  <Button variant="outline" size="sm" asChild className="mt-2">
-                    <Link href="/orders/new">Place Your First Order</Link>
-                  </Button>
-                </div>
-              )}
-            </div>
-            
+                ))}
+              </div>
+            )}
+
             {(recentOrders?.length || 0) > 0 && (
-              <div className="mt-4 pt-4 border-t">
-                <Button variant="outline" size="sm" asChild className="w-full" data-testid="button-view-all-orders">
+              <div className="mt-4 pt-4 border-t border-gray-200">
+                <Button variant="outline" size="sm" asChild className="w-full border-2 border-black text-black hover:bg-black hover:text-white" data-testid="button-view-all-orders">
                   <Link href="/orders">View All Orders</Link>
                 </Button>
               </div>
@@ -165,51 +177,48 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        <Card>
+        {/* Recent Quotes */}
+        <Card className="border border-gray-200">
           <CardHeader>
-            <CardTitle>Recent Quotes</CardTitle>
-            <CardDescription>Your latest quote requests</CardDescription>
+            <CardTitle className="text-lg font-semibold">Recent Quotes</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {quotesLoading ? (
-                Array.from({ length: 3 }).map((_, i) => (
-                  <div key={i} className="flex items-center justify-between">
-                    <div className="space-y-1">
-                      <Skeleton className="h-4 w-24" />
-                      <Skeleton className="h-3 w-16" />
+            {quotesLoading ? (
+              <div className="space-y-3">
+                {[1, 2, 3].map(i => <Skeleton key={i} className="h-20" />)}
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {recentQuotes?.slice(0, 5).map((quote: any) => (
+                  <div key={quote.id} className="p-3 md:p-4 border border-gray-200 rounded-lg hover:border-gray-300 transition-colors" data-testid={`quote-${quote.id}`}>
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm truncate">{quote.quoteNumber}</p>
+                        <p className="text-xs text-gray-600 mt-0.5 truncate">{quote.title}</p>
+                      </div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {quote.paymentTerms && (
+                          <span className={`text-xs px-2 py-0.5 rounded-md border font-medium ${getPaymentTermsColor(quote.paymentTerms)}`}>
+                            {quote.paymentTerms}
+                          </span>
+                        )}
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${getStatusColor(quote.status)}`}>
+                          {quote.status}
+                        </span>
+                      </div>
                     </div>
-                    <Skeleton className="h-6 w-16" />
+                    <div className="flex items-center justify-between mt-2">
+                      <p className="text-sm font-semibold">${parseFloat(quote.total).toLocaleString()}</p>
+                      <p className="text-xs text-gray-500">{new Date(quote.createdAt).toLocaleDateString()}</p>
+                    </div>
                   </div>
-                ))
-              ) : recentQuotes?.length ? (
-                recentQuotes.map((quote: any) => (
-                  <div key={quote.id} className="flex items-center justify-between" data-testid={`quote-item-${quote.id}`}>
-                    <div>
-                      <p className="text-sm font-medium">Quote #{quote.id}</p>
-                      <p className="text-xs text-muted-foreground">{new Date(quote.createdAt).toLocaleDateString()}</p>
-                    </div>
-                    <div className="text-right">
-                      <Badge variant={quote.status === 'approved' ? 'default' : quote.status === 'pending' ? 'secondary' : 'outline'}>
-                        {quote.status}
-                      </Badge>
-                      <p className="text-sm font-medium">${quote.total?.toLocaleString()}</p>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <div className="text-center py-6">
-                  <p className="text-sm text-muted-foreground">No recent quotes</p>
-                  <Button variant="outline" size="sm" asChild className="mt-2">
-                    <Link href="/quotes/new">Request Your First Quote</Link>
-                  </Button>
-                </div>
-              )}
-            </div>
-            
+                ))}
+              </div>
+            )}
+
             {(recentQuotes?.length || 0) > 0 && (
-              <div className="mt-4 pt-4 border-t">
-                <Button variant="outline" size="sm" asChild className="w-full" data-testid="button-view-all-quotes">
+              <div className="mt-4 pt-4 border-t border-gray-200">
+                <Button variant="outline" size="sm" asChild className="w-full border-2 border-black text-black hover:bg-black hover:text-white" data-testid="button-view-all-quotes">
                   <Link href="/quotes">View All Quotes</Link>
                 </Button>
               </div>
