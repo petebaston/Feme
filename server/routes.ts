@@ -113,6 +113,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Invoices endpoints
+  app.get("/api/invoices", async (req, res) => {
+    try {
+      const { search, status, sortBy, limit, recent } = req.query;
+      
+      const invoices = await storage.getInvoices({
+        search: search as string,
+        status: status as string,
+        sortBy: sortBy as string,
+        limit: limit ? parseInt(limit as string) : undefined,
+        recent: recent === 'true',
+      });
+      
+      res.json(invoices);
+    } catch (error) {
+      console.error("Invoices fetch error:", error);
+      res.status(500).json({ message: "Failed to fetch invoices" });
+    }
+  });
+
+  app.get("/api/invoices/:id", async (req, res) => {
+    try {
+      const invoice = await storage.getInvoice(req.params.id);
+      if (!invoice) {
+        return res.status(404).json({ message: "Invoice not found" });
+      }
+      res.json(invoice);
+    } catch (error) {
+      console.error("Invoice fetch error:", error);
+      res.status(500).json({ message: "Failed to fetch invoice" });
+    }
+  });
+
   // Company endpoints
   app.get("/api/company", async (req, res) => {
     try {

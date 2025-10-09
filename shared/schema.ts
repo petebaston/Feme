@@ -64,6 +64,24 @@ export const quotes = pgTable("quotes", {
   updatedAt: timestamp("updated_at").default(sql`now()`),
 });
 
+export const invoices = pgTable("invoices", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  invoiceNumber: text("invoice_number").notNull(),
+  companyId: varchar("company_id").notNull(),
+  userId: varchar("user_id").notNull(),
+  orderId: varchar("order_id"),
+  status: text("status").default("pending"),
+  subtotal: decimal("subtotal", { precision: 10, scale: 2 }).notNull(),
+  tax: decimal("tax", { precision: 10, scale: 2 }),
+  total: decimal("total", { precision: 10, scale: 2 }).notNull(),
+  customerName: text("customer_name"),
+  paymentTerms: text("payment_terms"),
+  dueDate: timestamp("due_date"),
+  paidDate: timestamp("paid_date"),
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+});
+
 export const addresses = pgTable("addresses", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   companyId: varchar("company_id").notNull(),
@@ -105,6 +123,12 @@ export const insertQuoteSchema = createInsertSchema(quotes).omit({
   updatedAt: true,
 });
 
+export const insertInvoiceSchema = createInsertSchema(invoices).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 export const insertAddressSchema = createInsertSchema(addresses).omit({
   id: true,
   createdAt: true,
@@ -123,6 +147,9 @@ export type Order = typeof orders.$inferSelect;
 
 export type InsertQuote = z.infer<typeof insertQuoteSchema>;
 export type Quote = typeof quotes.$inferSelect;
+
+export type InsertInvoice = z.infer<typeof insertInvoiceSchema>;
+export type Invoice = typeof invoices.$inferSelect;
 
 export type InsertAddress = z.infer<typeof insertAddressSchema>;
 export type Address = typeof addresses.$inferSelect;

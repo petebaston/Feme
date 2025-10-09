@@ -1,4 +1,4 @@
-import { type User, type InsertUser, type Company, type Order, type Quote, type Address } from "@shared/schema";
+import { type User, type InsertUser, type Company, type Order, type Quote, type Invoice, type Address } from "@shared/schema";
 import { randomUUID } from "crypto";
 
 export interface IStorage {
@@ -18,6 +18,10 @@ export interface IStorage {
   getQuotes(params?: { search?: string; status?: string; sortBy?: string; limit?: number; recent?: boolean }): Promise<Quote[]>;
   getQuote(id: string): Promise<Quote | undefined>;
 
+  // Invoices
+  getInvoices(params?: { search?: string; status?: string; sortBy?: string; limit?: number; recent?: boolean }): Promise<Invoice[]>;
+  getInvoice(id: string): Promise<Invoice | undefined>;
+
   // Company
   getCompany(): Promise<Company>;
   getCompanyUsers(): Promise<User[]>;
@@ -28,6 +32,7 @@ export class MemStorage implements IStorage {
   private users: Map<string, User> = new Map();
   private orders: Map<string, Order> = new Map();
   private quotes: Map<string, Quote> = new Map();
+  private invoices: Map<string, Invoice> = new Map();
   private company!: Company;
   private addresses: Map<string, Address> = new Map();
 
@@ -141,6 +146,35 @@ export class MemStorage implements IStorage {
         updatedAt: new Date() as any,
       };
       this.quotes.set(quoteId, quote);
+    }
+
+    // Create demo invoices with payment terms
+    for (let i = 1; i <= 10; i++) {
+      const invoiceId = `INV_${i.toString().padStart(3, '0')}`;
+      const subtotal = Math.random() * 8000 + 2000;
+      const tax = subtotal * 0.08;
+      const total = subtotal + tax;
+      const createdDate = new Date(Date.now() - Math.random() * 60 * 24 * 60 * 60 * 1000);
+      const daysToAdd = i === 1 || i === 2 ? 7 : i === 3 || i === 4 ? 30 : i === 5 || i === 6 ? 60 : 90;
+      
+      const invoice: Invoice = {
+        id: invoiceId,
+        invoiceNumber: `INV-${3000 + i}`,
+        companyId,
+        userId: demoUser.id,
+        orderId: i <= 8 ? `ORDER_${i.toString().padStart(3, '0')}` : null,
+        status: ["paid", "pending", "overdue", "pending"][i % 4],
+        subtotal: subtotal.toFixed(2),
+        tax: tax.toFixed(2),
+        total: total.toFixed(2),
+        customerName: ["Demo Company Inc.", "Acme Corp", "Global Solutions"][Math.floor(Math.random() * 3)],
+        paymentTerms: paymentTermsOptions[i % paymentTermsOptions.length] as any,
+        dueDate: new Date(createdDate.getTime() + daysToAdd * 24 * 60 * 60 * 1000) as any,
+        paidDate: i % 4 === 0 ? new Date(createdDate.getTime() + (daysToAdd - 2) * 24 * 60 * 60 * 1000) as any : null,
+        createdAt: createdDate as any,
+        updatedAt: new Date() as any,
+      };
+      this.invoices.set(invoiceId, invoice);
     }
 
     // Create demo addresses
@@ -311,6 +345,50 @@ export class MemStorage implements IStorage {
 
   async getQuote(id: string): Promise<Quote | undefined> {
     return this.quotes.get(id);
+  }
+
+  async getInvoices(params?: { search?: string; status?: string; sortBy?: string; limit?: number; recent?: boolean }): Promise<Invoice[]> {
+    let invoices = Array.from(this.invoices.values());
+
+    if (params?.search) {
+      const search = params.search.toLowerCase();
+      invoices = invoices.filter(invoice => 
+        invoice.invoiceNumber.toLowerCase().includes(search) ||
+        invoice.customerName?.toLowerCase().includes(search)
+      );
+    }
+
+    if (params?.status && params.status !== 'all') {
+      invoices = invoices.filter(invoice => invoice.status === params.status);
+    }
+
+    // Sort invoices
+    invoices.sort((a, b) => {
+      switch (params?.sortBy) {
+        case 'date_asc':
+          return (a.createdAt ? new Date(a.createdAt).getTime() : 0) - (b.createdAt ? new Date(b.createdAt).getTime() : 0);
+        case 'total':
+          return parseFloat(b.total as string) - parseFloat(a.total as string);
+        case 'status':
+          return (a.status || '').localeCompare(b.status || '');
+        case 'due_date':
+          const aDue = a.dueDate ? new Date(a.dueDate).getTime() : Infinity;
+          const bDue = b.dueDate ? new Date(b.dueDate).getTime() : Infinity;
+          return aDue - bDue;
+        default: // 'date' - newest first
+          return (b.createdAt ? new Date(b.createdAt).getTime() : 0) - (a.createdAt ? new Date(a.createdAt).getTime() : 0);
+      }
+    });
+
+    if (params?.limit) {
+      invoices = invoices.slice(0, params.limit);
+    }
+
+    return invoices;
+  }
+
+  async getInvoice(id: string): Promise<Invoice | undefined> {
+    return this.invoices.get(id);
   }
 
   async getCompany(): Promise<Company> {
