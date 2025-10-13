@@ -98,6 +98,31 @@ export const addresses = pgTable("addresses", {
   updatedAt: timestamp("updated_at").default(sql`now()`),
 });
 
+export const shoppingLists = pgTable("shopping_lists", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  description: text("description"),
+  companyId: varchar("company_id").notNull(),
+  userId: varchar("user_id").notNull(),
+  status: text("status").default("active"),
+  isShared: boolean("is_shared").default(false),
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+});
+
+export const shoppingListItems = pgTable("shopping_list_items", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  listId: varchar("list_id").notNull(),
+  productId: text("product_id").notNull(),
+  productName: text("product_name").notNull(),
+  sku: text("sku"),
+  quantity: integer("quantity").default(1),
+  price: decimal("price", { precision: 10, scale: 2 }),
+  imageUrl: text("image_url"),
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+});
+
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
@@ -135,6 +160,18 @@ export const insertAddressSchema = createInsertSchema(addresses).omit({
   updatedAt: true,
 });
 
+export const insertShoppingListSchema = createInsertSchema(shoppingLists).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertShoppingListItemSchema = createInsertSchema(shoppingListItems).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 // Types
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
@@ -153,3 +190,9 @@ export type Invoice = typeof invoices.$inferSelect;
 
 export type InsertAddress = z.infer<typeof insertAddressSchema>;
 export type Address = typeof addresses.$inferSelect;
+
+export type InsertShoppingList = z.infer<typeof insertShoppingListSchema>;
+export type ShoppingList = typeof shoppingLists.$inferSelect;
+
+export type InsertShoppingListItem = z.infer<typeof insertShoppingListItemSchema>;
+export type ShoppingListItem = typeof shoppingListItems.$inferSelect;

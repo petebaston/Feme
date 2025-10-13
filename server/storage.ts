@@ -1,4 +1,4 @@
-import { type User, type InsertUser, type Company, type Order, type Quote, type Invoice, type Address } from "@shared/schema";
+import { type User, type InsertUser, type Company, type Order, type Quote, type Invoice, type Address, type ShoppingList, type InsertShoppingList, type ShoppingListItem, type InsertShoppingListItem } from "@shared/schema";
 import { randomUUID } from "crypto";
 
 export interface IStorage {
@@ -26,6 +26,19 @@ export interface IStorage {
   getCompany(): Promise<Company>;
   getCompanyUsers(): Promise<User[]>;
   getCompanyAddresses(): Promise<Address[]>;
+
+  // Shopping Lists
+  getShoppingLists(): Promise<ShoppingList[]>;
+  getShoppingList(id: string): Promise<ShoppingList | undefined>;
+  createShoppingList(list: InsertShoppingList): Promise<ShoppingList>;
+  updateShoppingList(id: string, list: Partial<ShoppingList>): Promise<ShoppingList | undefined>;
+  deleteShoppingList(id: string): Promise<boolean>;
+  
+  // Shopping List Items
+  getShoppingListItems(listId: string): Promise<ShoppingListItem[]>;
+  addShoppingListItem(item: InsertShoppingListItem): Promise<ShoppingListItem>;
+  updateShoppingListItem(id: string, item: Partial<ShoppingListItem>): Promise<ShoppingListItem | undefined>;
+  deleteShoppingListItem(id: string): Promise<boolean>;
 }
 
 export class MemStorage implements IStorage {
@@ -35,6 +48,8 @@ export class MemStorage implements IStorage {
   private invoices: Map<string, Invoice> = new Map();
   private company!: Company;
   private addresses: Map<string, Address> = new Map();
+  private shoppingLists: Map<string, ShoppingList> = new Map();
+  private shoppingListItems: Map<string, ShoppingListItem> = new Map();
 
   constructor() {
     this.initializeDemoData();
@@ -401,6 +416,85 @@ export class MemStorage implements IStorage {
 
   async getCompanyAddresses(): Promise<Address[]> {
     return Array.from(this.addresses.values()).filter(address => address.companyId === this.company.id);
+  }
+
+  async getShoppingLists(): Promise<ShoppingList[]> {
+    return Array.from(this.shoppingLists.values());
+  }
+
+  async getShoppingList(id: string): Promise<ShoppingList | undefined> {
+    return this.shoppingLists.get(id);
+  }
+
+  async createShoppingList(list: InsertShoppingList): Promise<ShoppingList> {
+    const newList: ShoppingList = {
+      id: randomUUID(),
+      name: list.name,
+      description: list.description || null,
+      companyId: list.companyId,
+      userId: list.userId,
+      status: list.status || "active",
+      isShared: list.isShared || false,
+      createdAt: new Date() as any,
+      updatedAt: new Date() as any,
+    };
+    this.shoppingLists.set(newList.id, newList);
+    return newList;
+  }
+
+  async updateShoppingList(id: string, list: Partial<ShoppingList>): Promise<ShoppingList | undefined> {
+    const existing = this.shoppingLists.get(id);
+    if (!existing) return undefined;
+    
+    const updated: ShoppingList = {
+      ...existing,
+      ...list,
+      updatedAt: new Date() as any,
+    };
+    this.shoppingLists.set(id, updated);
+    return updated;
+  }
+
+  async deleteShoppingList(id: string): Promise<boolean> {
+    return this.shoppingLists.delete(id);
+  }
+
+  async getShoppingListItems(listId: string): Promise<ShoppingListItem[]> {
+    return Array.from(this.shoppingListItems.values()).filter(item => item.listId === listId);
+  }
+
+  async addShoppingListItem(item: InsertShoppingListItem): Promise<ShoppingListItem> {
+    const newItem: ShoppingListItem = {
+      id: randomUUID(),
+      listId: item.listId,
+      productId: item.productId,
+      productName: item.productName,
+      sku: item.sku || null,
+      quantity: item.quantity || 1,
+      price: item.price || null,
+      imageUrl: item.imageUrl || null,
+      createdAt: new Date() as any,
+      updatedAt: new Date() as any,
+    };
+    this.shoppingListItems.set(newItem.id, newItem);
+    return newItem;
+  }
+
+  async updateShoppingListItem(id: string, item: Partial<ShoppingListItem>): Promise<ShoppingListItem | undefined> {
+    const existing = this.shoppingListItems.get(id);
+    if (!existing) return undefined;
+    
+    const updated: ShoppingListItem = {
+      ...existing,
+      ...item,
+      updatedAt: new Date() as any,
+    };
+    this.shoppingListItems.set(id, updated);
+    return updated;
+  }
+
+  async deleteShoppingListItem(id: string): Promise<boolean> {
+    return this.shoppingListItems.delete(id);
   }
 }
 

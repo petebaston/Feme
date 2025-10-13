@@ -198,6 +198,116 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Shopping Lists endpoints
+  app.get("/api/shopping-lists", async (req, res) => {
+    try {
+      const lists = await storage.getShoppingLists();
+      res.json(lists);
+    } catch (error) {
+      console.error("Shopping lists fetch error:", error);
+      res.status(500).json({ message: "Failed to fetch shopping lists" });
+    }
+  });
+
+  app.get("/api/shopping-lists/:id", async (req, res) => {
+    try {
+      const list = await storage.getShoppingList(req.params.id);
+      if (!list) {
+        return res.status(404).json({ message: "Shopping list not found" });
+      }
+      res.json(list);
+    } catch (error) {
+      console.error("Shopping list fetch error:", error);
+      res.status(500).json({ message: "Failed to fetch shopping list" });
+    }
+  });
+
+  app.post("/api/shopping-lists", async (req, res) => {
+    try {
+      const list = await storage.createShoppingList(req.body);
+      res.status(201).json(list);
+    } catch (error) {
+      console.error("Shopping list create error:", error);
+      res.status(500).json({ message: "Failed to create shopping list" });
+    }
+  });
+
+  app.patch("/api/shopping-lists/:id", async (req, res) => {
+    try {
+      const list = await storage.updateShoppingList(req.params.id, req.body);
+      if (!list) {
+        return res.status(404).json({ message: "Shopping list not found" });
+      }
+      res.json(list);
+    } catch (error) {
+      console.error("Shopping list update error:", error);
+      res.status(500).json({ message: "Failed to update shopping list" });
+    }
+  });
+
+  app.delete("/api/shopping-lists/:id", async (req, res) => {
+    try {
+      const success = await storage.deleteShoppingList(req.params.id);
+      if (!success) {
+        return res.status(404).json({ message: "Shopping list not found" });
+      }
+      res.status(204).send();
+    } catch (error) {
+      console.error("Shopping list delete error:", error);
+      res.status(500).json({ message: "Failed to delete shopping list" });
+    }
+  });
+
+  // Shopping List Items endpoints
+  app.get("/api/shopping-lists/:id/items", async (req, res) => {
+    try {
+      const items = await storage.getShoppingListItems(req.params.id);
+      res.json(items);
+    } catch (error) {
+      console.error("Shopping list items fetch error:", error);
+      res.status(500).json({ message: "Failed to fetch shopping list items" });
+    }
+  });
+
+  app.post("/api/shopping-lists/:id/items", async (req, res) => {
+    try {
+      const item = await storage.addShoppingListItem({
+        ...req.body,
+        listId: req.params.id,
+      });
+      res.status(201).json(item);
+    } catch (error) {
+      console.error("Shopping list item add error:", error);
+      res.status(500).json({ message: "Failed to add item to shopping list" });
+    }
+  });
+
+  app.patch("/api/shopping-list-items/:id", async (req, res) => {
+    try {
+      const item = await storage.updateShoppingListItem(req.params.id, req.body);
+      if (!item) {
+        return res.status(404).json({ message: "Shopping list item not found" });
+      }
+      res.json(item);
+    } catch (error) {
+      console.error("Shopping list item update error:", error);
+      res.status(500).json({ message: "Failed to update shopping list item" });
+    }
+  });
+
+  app.delete("/api/shopping-list-items/:id", async (req, res) => {
+    try {
+      const success = await storage.deleteShoppingListItem(req.params.id);
+      if (!success) {
+        return res.status(404).json({ message: "Shopping list item not found" });
+      }
+      res.status(204).send();
+    } catch (error) {
+      console.error("Shopping list item delete error:", error);
+      res.status(500).json({ message: "Failed to delete shopping list item" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
