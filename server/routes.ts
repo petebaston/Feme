@@ -224,6 +224,94 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // User management endpoints
+  app.post("/api/users", async (req, res) => {
+    try {
+      const user = await storage.createUser(req.body);
+      res.status(201).json(user);
+    } catch (error) {
+      console.error("User create error:", error);
+      res.status(500).json({ message: "Failed to create user" });
+    }
+  });
+
+  app.patch("/api/users/:id", async (req, res) => {
+    try {
+      const user = await storage.updateUser(req.params.id, req.body);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      res.json(user);
+    } catch (error) {
+      console.error("User update error:", error);
+      res.status(500).json({ message: "Failed to update user" });
+    }
+  });
+
+  app.delete("/api/users/:id", async (req, res) => {
+    try {
+      const success = await storage.deleteUser(req.params.id);
+      if (!success) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      res.status(204).send();
+    } catch (error) {
+      console.error("User delete error:", error);
+      res.status(500).json({ message: "Failed to delete user" });
+    }
+  });
+
+  // Address management endpoints
+  app.post("/api/addresses", async (req, res) => {
+    try {
+      const address = await storage.createAddress(req.body);
+      res.status(201).json(address);
+    } catch (error) {
+      console.error("Address create error:", error);
+      res.status(500).json({ message: "Failed to create address" });
+    }
+  });
+
+  app.patch("/api/addresses/:id", async (req, res) => {
+    try {
+      const address = await storage.updateAddress(req.params.id, req.body);
+      if (!address) {
+        return res.status(404).json({ message: "Address not found" });
+      }
+      res.json(address);
+    } catch (error) {
+      console.error("Address update error:", error);
+      res.status(500).json({ message: "Failed to update address" });
+    }
+  });
+
+  app.delete("/api/addresses/:id", async (req, res) => {
+    try {
+      const success = await storage.deleteAddress(req.params.id);
+      if (!success) {
+        return res.status(404).json({ message: "Address not found" });
+      }
+      res.status(204).send();
+    } catch (error) {
+      console.error("Address delete error:", error);
+      res.status(500).json({ message: "Failed to delete address" });
+    }
+  });
+
+  app.patch("/api/addresses/:id/set-default", async (req, res) => {
+    try {
+      const { type } = req.body;
+      const success = await storage.setDefaultAddress(req.params.id, type);
+      if (!success) {
+        return res.status(404).json({ message: "Address not found" });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Set default address error:", error);
+      res.status(500).json({ message: "Failed to set default address" });
+    }
+  });
+
   // Shopping Lists endpoints
   app.get("/api/shopping-lists", async (req, res) => {
     try {

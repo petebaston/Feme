@@ -10,6 +10,10 @@ export const users = pgTable("users", {
   password: text("password").notNull(),
   role: text("role").default("user"),
   companyId: varchar("company_id"),
+  status: text("status").default("active"), // active, inactive, pending
+  phoneNumber: text("phone_number"),
+  jobTitle: text("job_title"),
+  lastLoginAt: timestamp("last_login_at"),
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
 });
@@ -28,6 +32,8 @@ export const companies = pgTable("companies", {
   paymentTerms: text("payment_terms").default("Net 30"),
   storeHash: text("store_hash").notNull(),
   channelId: text("channel_id").notNull(),
+  parentCompanyId: varchar("parent_company_id"), // For company hierarchy
+  hierarchyLevel: integer("hierarchy_level").default(0), // 0 = parent, 1+ = subsidiary
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
 });
@@ -127,6 +133,28 @@ export const shoppingListItems = pgTable("shopping_list_items", {
   updatedAt: timestamp("updated_at").default(sql`now()`),
 });
 
+export const rolePermissions = pgTable("role_permissions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  roleName: text("role_name").notNull(), // admin, manager, buyer, etc.
+  companyId: varchar("company_id").notNull(),
+  // Feature permissions
+  canViewOrders: boolean("can_view_orders").default(true),
+  canPlaceOrders: boolean("can_place_orders").default(true),
+  canApproveOrders: boolean("can_approve_orders").default(false),
+  canViewQuotes: boolean("can_view_quotes").default(true),
+  canCreateQuotes: boolean("can_create_quotes").default(true),
+  canApproveQuotes: boolean("can_approve_quotes").default(false),
+  canViewInvoices: boolean("can_view_invoices").default(true),
+  canManageUsers: boolean("can_manage_users").default(false),
+  canManageAddresses: boolean("can_manage_addresses").default(false),
+  canManageCompany: boolean("can_manage_company").default(false),
+  canViewShoppingLists: boolean("can_view_shopping_lists").default(true),
+  canManageShoppingLists: boolean("can_manage_shopping_lists").default(true),
+  canSwitchCompany: boolean("can_switch_company").default(false), // For hierarchy
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+});
+
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
@@ -176,6 +204,12 @@ export const insertShoppingListItemSchema = createInsertSchema(shoppingListItems
   updatedAt: true,
 });
 
+export const insertRolePermissionSchema = createInsertSchema(rolePermissions).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 // Types
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
@@ -200,3 +234,6 @@ export type ShoppingList = typeof shoppingLists.$inferSelect;
 
 export type InsertShoppingListItem = z.infer<typeof insertShoppingListItemSchema>;
 export type ShoppingListItem = typeof shoppingListItems.$inferSelect;
+
+export type InsertRolePermission = z.infer<typeof insertRolePermissionSchema>;
+export type RolePermission = typeof rolePermissions.$inferSelect;

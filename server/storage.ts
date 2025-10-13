@@ -6,6 +6,8 @@ export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
+  updateUser(id: string, user: Partial<User>): Promise<User | undefined>;
+  deleteUser(id: string): Promise<boolean>;
 
   // Dashboard
   getDashboardStats(): Promise<any>;
@@ -28,6 +30,12 @@ export interface IStorage {
   getCompany(): Promise<Company>;
   getCompanyUsers(): Promise<User[]>;
   getCompanyAddresses(): Promise<Address[]>;
+  
+  // Addresses
+  createAddress(address: Partial<Address>): Promise<Address>;
+  updateAddress(id: string, address: Partial<Address>): Promise<Address | undefined>;
+  deleteAddress(id: string): Promise<boolean>;
+  setDefaultAddress(id: string, type: string): Promise<boolean>;
 
   // Shopping Lists
   getShoppingLists(): Promise<ShoppingList[]>;
@@ -74,6 +82,8 @@ export class MemStorage implements IStorage {
       paymentTerms: "Net 30",
       storeHash: "demo_store_hash",
       channelId: "1",
+      parentCompanyId: null,
+      hierarchyLevel: 0,
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -86,6 +96,10 @@ export class MemStorage implements IStorage {
       password: "demo123",
       role: "admin",
       companyId,
+      status: "active",
+      phoneNumber: "+1 (555) 100-0001",
+      jobTitle: "Administrator",
+      lastLoginAt: new Date() as any,
       createdAt: new Date() as any,
       updatedAt: new Date() as any,
     };
@@ -98,6 +112,10 @@ export class MemStorage implements IStorage {
       password: "password",
       role: "user",
       companyId,
+      status: "active",
+      phoneNumber: "+1 (555) 100-0002",
+      jobTitle: "Buyer",
+      lastLoginAt: null,
       createdAt: new Date() as any,
       updatedAt: new Date() as any,
     };
@@ -110,6 +128,10 @@ export class MemStorage implements IStorage {
       password: "password",
       role: "manager",
       companyId,
+      status: "active",
+      phoneNumber: "+1 (555) 100-0003",
+      jobTitle: "Procurement Manager",
+      lastLoginAt: new Date() as any,
       createdAt: new Date() as any,
       updatedAt: new Date() as any,
     };
@@ -254,11 +276,32 @@ export class MemStorage implements IStorage {
       name: insertUser.name || null,
       role: insertUser.role || null,
       companyId: insertUser.companyId || null,
+      status: insertUser.status || "active",
+      phoneNumber: insertUser.phoneNumber || null,
+      jobTitle: insertUser.jobTitle || null,
+      lastLoginAt: null,
       createdAt: new Date() as any,
       updatedAt: new Date() as any,
     };
     this.users.set(id, user);
     return user;
+  }
+
+  async updateUser(id: string, updateData: Partial<User>): Promise<User | undefined> {
+    const existing = this.users.get(id);
+    if (!existing) return undefined;
+    
+    const updated: User = {
+      ...existing,
+      ...updateData,
+      updatedAt: new Date() as any,
+    };
+    this.users.set(id, updated);
+    return updated;
+  }
+
+  async deleteUser(id: string): Promise<boolean> {
+    return this.users.delete(id);
   }
 
   async getDashboardStats(): Promise<any> {
@@ -451,6 +494,61 @@ export class MemStorage implements IStorage {
 
   async getCompanyAddresses(): Promise<Address[]> {
     return Array.from(this.addresses.values()).filter(address => address.companyId === this.company.id);
+  }
+
+  async createAddress(address: Partial<Address>): Promise<Address> {
+    const newAddress: Address = {
+      id: randomUUID(),
+      companyId: address.companyId || this.company.id,
+      label: address.label || null,
+      type: address.type || "shipping",
+      isDefault: address.isDefault || false,
+      street1: address.street1 || "",
+      street2: address.street2 || null,
+      city: address.city || "",
+      state: address.state || "",
+      postalCode: address.postalCode || "",
+      country: address.country || "US",
+      createdAt: new Date() as any,
+      updatedAt: new Date() as any,
+    };
+    this.addresses.set(newAddress.id, newAddress);
+    return newAddress;
+  }
+
+  async updateAddress(id: string, updateData: Partial<Address>): Promise<Address | undefined> {
+    const existing = this.addresses.get(id);
+    if (!existing) return undefined;
+    
+    const updated: Address = {
+      ...existing,
+      ...updateData,
+      updatedAt: new Date() as any,
+    };
+    this.addresses.set(id, updated);
+    return updated;
+  }
+
+  async deleteAddress(id: string): Promise<boolean> {
+    return this.addresses.delete(id);
+  }
+
+  async setDefaultAddress(id: string, type: string): Promise<boolean> {
+    const address = this.addresses.get(id);
+    if (!address) return false;
+    
+    // Remove default from all addresses of this type
+    Array.from(this.addresses.values())
+      .filter(a => a.type === type && a.companyId === address.companyId)
+      .forEach(a => {
+        a.isDefault = false;
+        this.addresses.set(a.id, a);
+      });
+    
+    // Set this address as default
+    address.isDefault = true;
+    this.addresses.set(id, address);
+    return true;
   }
 
   async getShoppingLists(): Promise<ShoppingList[]> {
