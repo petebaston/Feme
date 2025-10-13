@@ -44,12 +44,96 @@ export default function Invoices() {
     return 'bg-gray-50 text-gray-700 border-gray-200';
   };
 
+  const calculatePaymentTermTotals = () => {
+    if (!invoices) return { total: 0, days1_30: 0, days30_60: 0, days60_90: 0, days90Plus: 0, net30: 0, net60: 0 };
+
+    const totals = {
+      total: 0,
+      days1_30: 0,
+      days30_60: 0,
+      days60_90: 0,
+      days90Plus: 0,
+      net30: 0,
+      net60: 0,
+    };
+
+    invoices.forEach((invoice: any) => {
+      const amount = parseFloat(invoice.total) || 0;
+      if (invoice.status !== 'paid' && invoice.status !== 'cancelled') {
+        totals.total += amount;
+        
+        if (invoice.paymentTerms?.includes('1-30')) totals.days1_30 += amount;
+        else if (invoice.paymentTerms?.includes('30-60')) totals.days30_60 += amount;
+        else if (invoice.paymentTerms?.includes('60-90')) totals.days60_90 += amount;
+        else if (invoice.paymentTerms?.includes('90+')) totals.days90Plus += amount;
+        else if (invoice.paymentTerms?.includes('Net 30')) totals.net30 += amount;
+        else if (invoice.paymentTerms?.includes('Net 60')) totals.net60 += amount;
+      }
+    });
+
+    return totals;
+  };
+
+  const paymentTermTotals = calculatePaymentTermTotals();
+
   return (
     <div className="space-y-6 md:space-y-8">
       {/* Header */}
       <div>
         <h1 className="text-2xl md:text-3xl font-semibold text-black">Invoices</h1>
         <p className="text-sm md:text-base text-gray-600 mt-1">Track and manage your invoices with custom payment terms</p>
+      </div>
+
+      {/* Custom Fields - Payment Term Totals */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
+        <Card className="border border-black bg-black">
+          <CardContent className="p-4 md:p-6">
+            <p className="text-xs md:text-sm text-gray-400 mb-1">Total Owed</p>
+            <p className="text-xl md:text-2xl font-bold text-white" data-testid="total-owed">${paymentTermTotals.total.toLocaleString()}</p>
+          </CardContent>
+        </Card>
+
+        <Card className="border border-green-200 bg-green-50">
+          <CardContent className="p-4 md:p-6">
+            <p className="text-xs md:text-sm text-green-700 mb-1">1-30 Days</p>
+            <p className="text-xl md:text-2xl font-bold text-green-800" data-testid="total-1-30-days">${paymentTermTotals.days1_30.toLocaleString()}</p>
+          </CardContent>
+        </Card>
+
+        <Card className="border border-blue-200 bg-blue-50">
+          <CardContent className="p-4 md:p-6">
+            <p className="text-xs md:text-sm text-blue-700 mb-1">30-60 Days</p>
+            <p className="text-xl md:text-2xl font-bold text-blue-800" data-testid="total-30-60-days">${paymentTermTotals.days30_60.toLocaleString()}</p>
+          </CardContent>
+        </Card>
+
+        <Card className="border border-orange-200 bg-orange-50">
+          <CardContent className="p-4 md:p-6">
+            <p className="text-xs md:text-sm text-orange-700 mb-1">60-90 Days</p>
+            <p className="text-xl md:text-2xl font-bold text-orange-800" data-testid="total-60-90-days">${paymentTermTotals.days60_90.toLocaleString()}</p>
+          </CardContent>
+        </Card>
+
+        <Card className="border border-red-200 bg-red-50">
+          <CardContent className="p-4 md:p-6">
+            <p className="text-xs md:text-sm text-red-700 mb-1">90+ Days</p>
+            <p className="text-xl md:text-2xl font-bold text-red-800" data-testid="total-90-plus-days">${paymentTermTotals.days90Plus.toLocaleString()}</p>
+          </CardContent>
+        </Card>
+
+        <Card className="border border-gray-200 bg-gray-50">
+          <CardContent className="p-4 md:p-6">
+            <p className="text-xs md:text-sm text-gray-700 mb-1">Net 30</p>
+            <p className="text-xl md:text-2xl font-bold text-gray-800" data-testid="total-net-30">${paymentTermTotals.net30.toLocaleString()}</p>
+          </CardContent>
+        </Card>
+
+        <Card className="border border-gray-200 bg-gray-50">
+          <CardContent className="p-4 md:p-6">
+            <p className="text-xs md:text-sm text-gray-700 mb-1">Net 60</p>
+            <p className="text-xl md:text-2xl font-bold text-gray-800" data-testid="total-net-60">${paymentTermTotals.net60.toLocaleString()}</p>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Filters */}
