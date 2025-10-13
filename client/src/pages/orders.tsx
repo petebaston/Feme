@@ -12,7 +12,7 @@ export default function Orders() {
   const [sortBy, setSortBy] = useState("date");
 
   const { data: orders, isLoading } = useQuery<any[]>({
-    queryKey: ['/api/orders', { search: searchTerm, status: statusFilter, sortBy }],
+    queryKey: ['/api/orders'],
     staleTime: 300000,
   });
 

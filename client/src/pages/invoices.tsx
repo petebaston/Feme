@@ -12,7 +12,7 @@ export default function Invoices() {
   const [sortBy, setSortBy] = useState("date");
 
   const { data: invoices, isLoading } = useQuery<any[]>({
-    queryKey: ['/api/invoices', { search: searchTerm, status: statusFilter, sortBy }],
+    queryKey: ['/api/invoices'],
     staleTime: 300000,
   });
 

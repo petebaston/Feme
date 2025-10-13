@@ -12,7 +12,7 @@ export default function Quotes() {
   const [sortBy, setSortBy] = useState("date");
 
   const { data: quotes, isLoading } = useQuery<any[]>({
-    queryKey: ['/api/quotes', { search: searchTerm, status: statusFilter, sortBy }],
+    queryKey: ['/api/quotes'],
     staleTime: 300000,
   });
 
