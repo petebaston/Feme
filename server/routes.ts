@@ -1,6 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
+import { authenticate, authorize } from "./middleware/auth";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Authentication endpoints
@@ -37,7 +38,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Dashboard stats
-  app.get("/api/dashboard/stats", async (req, res) => {
+  app.get("/api/dashboard/stats", authenticate, authorize('view_orders'), async (req, res) => {
     try {
       const stats = await storage.getDashboardStats();
       res.json(stats);
@@ -48,7 +49,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Orders endpoints
-  app.get("/api/orders", async (req, res) => {
+  app.get("/api/orders", authenticate, authorize('view_orders'), async (req, res) => {
     try {
       const { search, status, sortBy, limit, recent } = req.query;
       
@@ -67,7 +68,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/orders/:id", async (req, res) => {
+  app.get("/api/orders/:id", authenticate, authorize('view_orders'), async (req, res) => {
     try {
       const order = await storage.getOrder(req.params.id);
       if (!order) {
@@ -80,7 +81,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/orders/:id", async (req, res) => {
+  app.patch("/api/orders/:id", authenticate, authorize('create_orders'), async (req, res) => {
     try {
       const order = await storage.updateOrder(req.params.id, req.body);
       if (!order) {
@@ -94,7 +95,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Quotes endpoints
-  app.get("/api/quotes", async (req, res) => {
+  app.get("/api/quotes", authenticate, authorize('view_quotes'), async (req, res) => {
     try {
       const { search, status, sortBy, limit, recent } = req.query;
       
@@ -113,7 +114,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/quotes/:id", async (req, res) => {
+  app.get("/api/quotes/:id", authenticate, authorize('view_quotes'), async (req, res) => {
     try {
       const quote = await storage.getQuote(req.params.id);
       if (!quote) {
@@ -126,7 +127,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/quotes/:id", async (req, res) => {
+  app.patch("/api/quotes/:id", authenticate, authorize('manage_quotes'), async (req, res) => {
     try {
       const quote = await storage.updateQuote(req.params.id, req.body);
       if (!quote) {
@@ -140,7 +141,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Invoices endpoints
-  app.get("/api/invoices", async (req, res) => {
+  app.get("/api/invoices", authenticate, authorize('view_invoices'), async (req, res) => {
     try {
       const { search, status, sortBy, limit, recent } = req.query;
       
@@ -159,7 +160,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/invoices/:id", async (req, res) => {
+  app.get("/api/invoices/:id", authenticate, authorize('view_invoices'), async (req, res) => {
     try {
       const invoice = await storage.getInvoice(req.params.id);
       if (!invoice) {
@@ -172,7 +173,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/invoices/:id/pdf", async (req, res) => {
+  app.get("/api/invoices/:id/pdf", authenticate, authorize('view_invoices'), async (req, res) => {
     try {
       const invoice = await storage.getInvoice(req.params.id);
       if (!invoice) {
@@ -194,7 +195,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Company endpoints
-  app.get("/api/company", async (req, res) => {
+  app.get("/api/company", authenticate, authorize('view_company'), async (req, res) => {
     try {
       const company = await storage.getCompany();
       res.json(company);
@@ -204,7 +205,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/company/users", async (req, res) => {
+  app.get("/api/company/users", authenticate, authorize('view_company'), async (req, res) => {
     try {
       const users = await storage.getCompanyUsers();
       res.json(users);
@@ -214,7 +215,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/company/addresses", async (req, res) => {
+  app.get("/api/company/addresses", authenticate, authorize('view_company'), async (req, res) => {
     try {
       const addresses = await storage.getCompanyAddresses();
       res.json(addresses);
@@ -224,8 +225,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/company/accessible", authenticate, authorize('switch_companies'), async (req, res) => {
+    try {
+      // Use authenticated user's ID instead of query parameter
+      const userId = req.user!.id;
+      const companies = await storage.getAccessibleCompanies(userId);
+      res.json(companies);
+    } catch (error) {
+      console.error("Accessible companies fetch error:", error);
+      res.status(500).json({ message: "Failed to fetch accessible companies" });
+    }
+  });
+
+  app.get("/api/company/hierarchy", authenticate, async (req, res) => {
+    try {
+      // Use authenticated user's company ID or allow override for admins
+      const companyId = (req.query.companyId as string) || req.user!.companyId;
+      if (!companyId) {
+        return res.status(400).json({ message: "Company ID not found" });
+      }
+      
+      // Verify user has access to this company
+      const accessibleCompanies = await storage.getAccessibleCompanies(req.user!.id);
+      const hasAccess = accessibleCompanies.some(c => c.id === companyId);
+      
+      if (!hasAccess) {
+        return res.status(403).json({ message: "Access denied to this company" });
+      }
+      
+      const hierarchy = await storage.getCompanyHierarchy(companyId);
+      res.json(hierarchy);
+    } catch (error) {
+      console.error("Company hierarchy fetch error:", error);
+      res.status(500).json({ message: "Failed to fetch company hierarchy" });
+    }
+  });
+
   // User management endpoints
-  app.post("/api/users", async (req, res) => {
+  app.post("/api/users", authenticate, authorize('manage_users'), async (req, res) => {
     try {
       const user = await storage.createUser(req.body);
       res.status(201).json(user);
@@ -235,7 +272,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/users/:id", async (req, res) => {
+  app.patch("/api/users/:id", authenticate, authorize('manage_users'), async (req, res) => {
     try {
       const user = await storage.updateUser(req.params.id, req.body);
       if (!user) {
@@ -248,7 +285,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/users/:id", async (req, res) => {
+  app.delete("/api/users/:id", authenticate, authorize('manage_users'), async (req, res) => {
     try {
       const success = await storage.deleteUser(req.params.id);
       if (!success) {
@@ -262,7 +299,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Address management endpoints
-  app.post("/api/addresses", async (req, res) => {
+  app.post("/api/addresses", authenticate, authorize('manage_addresses'), async (req, res) => {
     try {
       const address = await storage.createAddress(req.body);
       res.status(201).json(address);
@@ -272,7 +309,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/addresses/:id", async (req, res) => {
+  app.patch("/api/addresses/:id", authenticate, authorize('manage_addresses'), async (req, res) => {
     try {
       const address = await storage.updateAddress(req.params.id, req.body);
       if (!address) {
@@ -285,7 +322,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/addresses/:id", async (req, res) => {
+  app.delete("/api/addresses/:id", authenticate, authorize('manage_addresses'), async (req, res) => {
     try {
       const success = await storage.deleteAddress(req.params.id);
       if (!success) {
@@ -298,7 +335,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/addresses/:id/set-default", async (req, res) => {
+  app.patch("/api/addresses/:id/set-default", authenticate, authorize('manage_addresses'), async (req, res) => {
     try {
       const { type } = req.body;
       const success = await storage.setDefaultAddress(req.params.id, type);
@@ -313,7 +350,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Shopping Lists endpoints
-  app.get("/api/shopping-lists", async (req, res) => {
+  app.get("/api/shopping-lists", authenticate, authorize('view_shopping_lists'), async (req, res) => {
     try {
       const lists = await storage.getShoppingLists();
       res.json(lists);
@@ -323,7 +360,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/shopping-lists/:id", async (req, res) => {
+  app.get("/api/shopping-lists/:id", authenticate, authorize('view_shopping_lists'), async (req, res) => {
     try {
       const list = await storage.getShoppingList(req.params.id);
       if (!list) {
@@ -336,7 +373,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/shopping-lists", async (req, res) => {
+  app.post("/api/shopping-lists", authenticate, authorize('manage_shopping_lists'), async (req, res) => {
     try {
       const list = await storage.createShoppingList(req.body);
       res.status(201).json(list);
@@ -346,7 +383,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/shopping-lists/:id", async (req, res) => {
+  app.patch("/api/shopping-lists/:id", authenticate, authorize('manage_shopping_lists'), async (req, res) => {
     try {
       const list = await storage.updateShoppingList(req.params.id, req.body);
       if (!list) {
@@ -359,7 +396,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/shopping-lists/:id", async (req, res) => {
+  app.delete("/api/shopping-lists/:id", authenticate, authorize('manage_shopping_lists'), async (req, res) => {
     try {
       const success = await storage.deleteShoppingList(req.params.id);
       if (!success) {
@@ -373,7 +410,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Shopping List Items endpoints
-  app.get("/api/shopping-lists/:id/items", async (req, res) => {
+  app.get("/api/shopping-lists/:id/items", authenticate, authorize('view_shopping_lists'), async (req, res) => {
     try {
       const items = await storage.getShoppingListItems(req.params.id);
       res.json(items);
@@ -383,7 +420,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/shopping-lists/:id/items", async (req, res) => {
+  app.post("/api/shopping-lists/:id/items", authenticate, authorize('manage_shopping_lists'), async (req, res) => {
     try {
       const item = await storage.addShoppingListItem({
         ...req.body,
@@ -396,7 +433,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/shopping-list-items/:id", async (req, res) => {
+  app.patch("/api/shopping-list-items/:id", authenticate, authorize('manage_shopping_lists'), async (req, res) => {
     try {
       const item = await storage.updateShoppingListItem(req.params.id, req.body);
       if (!item) {
@@ -409,7 +446,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/shopping-list-items/:id", async (req, res) => {
+  app.delete("/api/shopping-list-items/:id", authenticate, authorize('manage_shopping_lists'), async (req, res) => {
     try {
       const success = await storage.deleteShoppingListItem(req.params.id);
       if (!success) {

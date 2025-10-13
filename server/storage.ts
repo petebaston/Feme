@@ -1,5 +1,16 @@
-import { type User, type InsertUser, type Company, type Order, type Quote, type Invoice, type Address, type ShoppingList, type InsertShoppingList, type ShoppingListItem, type InsertShoppingListItem } from "@shared/schema";
-import { randomUUID } from "crypto";
+import { db } from "./db";
+import { eq, and, desc, asc, sql, or, like } from "drizzle-orm";
+import { 
+  users, companies, orders, quotes, invoices, addresses, shoppingLists, shoppingListItems,
+  type User, type InsertUser, 
+  type Company, 
+  type Order, 
+  type Quote, 
+  type Invoice, 
+  type Address, 
+  type ShoppingList, type InsertShoppingList, 
+  type ShoppingListItem, type InsertShoppingListItem 
+} from "@shared/schema";
 
 export interface IStorage {
   // Users
@@ -30,6 +41,8 @@ export interface IStorage {
   getCompany(): Promise<Company>;
   getCompanyUsers(): Promise<User[]>;
   getCompanyAddresses(): Promise<Address[]>;
+  getAccessibleCompanies(userId: string): Promise<Company[]>;
+  getCompanyHierarchy(companyId: string): Promise<{ parent: Company | null; children: Company[] }>;
   
   // Addresses
   createAddress(address: Partial<Address>): Promise<Address>;
@@ -51,455 +64,530 @@ export interface IStorage {
   deleteShoppingListItem(id: string): Promise<boolean>;
 }
 
-export class MemStorage implements IStorage {
-  private users: Map<string, User> = new Map();
-  private orders: Map<string, Order> = new Map();
-  private quotes: Map<string, Quote> = new Map();
-  private invoices: Map<string, Invoice> = new Map();
-  private company!: Company;
-  private addresses: Map<string, Address> = new Map();
-  private shoppingLists: Map<string, ShoppingList> = new Map();
-  private shoppingListItems: Map<string, ShoppingListItem> = new Map();
+export class DatabaseStorage implements IStorage {
+  private companyCache: Company | null = null;
 
   constructor() {
     this.initializeDemoData();
   }
 
-  private initializeDemoData() {
-    // Create demo company
-    const companyId = randomUUID();
-    this.company = {
-      id: companyId,
-      name: "Demo Company Inc.",
-      email: "contact@democompany.com",
-      phone: "+1 (555) 123-4567",
-      industry: "Technology",
-      status: "active",
-      tier: "premium",
-      taxId: "12-3456789",
-      accountManager: "Sarah Johnson",
-      creditLimit: "100000.00",
-      paymentTerms: "Net 30",
-      storeHash: "demo_store_hash",
-      channelId: "1",
-      parentCompanyId: null,
-      hierarchyLevel: 0,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
+  private async initializeDemoData() {
+    try {
+      const existingCompanies = await db.select().from(companies).limit(1);
+      if (existingCompanies.length > 0) {
+        return;
+      }
+      const [parentCompany] = await db.insert(companies).values({
+        name: "Demo Company Inc.",
+        email: "contact@democompany.com",
+        phone: "+1 (555) 123-4567",
+        industry: "Technology",
+        status: "active",
+        tier: "premium",
+        taxId: "12-3456789",
+        accountManager: "Sarah Johnson",
+        creditLimit: "100000.00",
+        paymentTerms: "Net 30",
+        storeHash: "demo_store_hash",
+        channelId: "1",
+        parentCompanyId: null,
+        hierarchyLevel: 0,
+      }).returning();
 
-    // Create demo users
-    const demoUser: User = {
-      id: randomUUID(),
-      email: "demo@company.com",
-      name: "Demo User",
-      password: "demo123",
-      role: "admin",
-      companyId,
-      status: "active",
-      phoneNumber: "+1 (555) 100-0001",
-      jobTitle: "Administrator",
-      lastLoginAt: new Date() as any,
-      createdAt: new Date() as any,
-      updatedAt: new Date() as any,
-    };
-    this.users.set(demoUser.id, demoUser);
+      const [subsidiary1] = await db.insert(companies).values({
+        name: "Demo Subsidiary A",
+        email: "contact@subsidiary-a.com",
+        phone: "+1 (555) 123-4568",
+        industry: "Technology",
+        status: "active",
+        tier: "standard",
+        storeHash: "subsidiary_a_hash",
+        channelId: "1",
+        parentCompanyId: parentCompany.id,
+        hierarchyLevel: 1,
+      }).returning();
 
-    const user2: User = {
-      id: randomUUID(),
-      email: "john@company.com",
-      name: "John Smith",
-      password: "password",
-      role: "user",
-      companyId,
-      status: "active",
-      phoneNumber: "+1 (555) 100-0002",
-      jobTitle: "Buyer",
-      lastLoginAt: null,
-      createdAt: new Date() as any,
-      updatedAt: new Date() as any,
-    };
-    this.users.set(user2.id, user2);
+      const [subsidiary2] = await db.insert(companies).values({
+        name: "Demo Subsidiary B",
+        email: "contact@subsidiary-b.com",
+        phone: "+1 (555) 123-4569",
+        industry: "Technology",
+        status: "active",
+        tier: "standard",
+        storeHash: "subsidiary_b_hash",
+        channelId: "1",
+        parentCompanyId: parentCompany.id,
+        hierarchyLevel: 1,
+      }).returning();
 
-    const user3: User = {
-      id: randomUUID(),
-      email: "jane@company.com",
-      name: "Jane Doe",
-      password: "password",
-      role: "manager",
-      companyId,
-      status: "active",
-      phoneNumber: "+1 (555) 100-0003",
-      jobTitle: "Procurement Manager",
-      lastLoginAt: new Date() as any,
-      createdAt: new Date() as any,
-      updatedAt: new Date() as any,
-    };
-    this.users.set(user3.id, user3);
+      const [demoUser] = await db.insert(users).values({
+        email: "demo@company.com",
+        name: "Demo User",
+        password: "demo123",
+        role: "admin",
+        companyId: parentCompany.id,
+        status: "active",
+        phoneNumber: "+1 (555) 100-0001",
+        jobTitle: "Administrator",
+        lastLoginAt: new Date(),
+      }).returning();
 
-    // Create demo orders with payment terms and PO numbers
-    const paymentTermsOptions = ["1-30 days", "30-60 days", "60-90 days", "90+ days", "Net 30", "Net 60"];
-    const poStatusOptions = ["approved", "pending", "rejected", null];
-    for (let i = 1; i <= 8; i++) {
-      const orderId = `ORDER_${i.toString().padStart(3, '0')}`;
-      const hasPO = i % 3 !== 0; // Some orders have PO, some don't
-      const poStatus = hasPO ? poStatusOptions[i % poStatusOptions.length] : null;
-      const order: Order = {
-        id: orderId,
-        orderNumber: `BC-${1000 + i}`,
-        companyId,
-        userId: demoUser.id,
-        status: ["completed", "processing", "pending", "cancelled"][i % 4],
-        total: (Math.random() * 10000 + 1000).toFixed(2),
-        itemCount: Math.floor(Math.random() * 10) + 1,
-        customerName: ["Demo Company Inc.", "Acme Corp", "Global Solutions"][Math.floor(Math.random() * 3)],
-        shippingCity: ["New York", "Los Angeles", "Chicago", "Houston"][Math.floor(Math.random() * 4)],
-        shippingState: ["NY", "CA", "IL", "TX"][Math.floor(Math.random() * 4)],
-        paymentTerms: paymentTermsOptions[i % paymentTermsOptions.length] as any,
-        poNumber: hasPO ? `PO-${2024000 + i}` : null,
-        poStatus: poStatus as any,
-        poApprovedAt: poStatus === 'approved' ? new Date(Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000) as any : null,
-        poApprovedBy: poStatus === 'approved' ? user3.id : null,
-        createdAt: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000) as any,
-        updatedAt: new Date() as any,
-      };
-      this.orders.set(orderId, order);
-    }
+      await db.insert(users).values([
+        {
+          email: "john@company.com",
+          name: "John Smith",
+          password: "password",
+          role: "user",
+          companyId: parentCompany.id,
+          status: "active",
+          phoneNumber: "+1 (555) 100-0002",
+          jobTitle: "Buyer",
+        },
+        {
+          email: "jane@company.com",
+          name: "Jane Doe",
+          password: "password",
+          role: "manager",
+          companyId: parentCompany.id,
+          status: "active",
+          phoneNumber: "+1 (555) 100-0003",
+          jobTitle: "Procurement Manager",
+          lastLoginAt: new Date(),
+        },
+        {
+          email: "user@subsidiary-a.com",
+          name: "Alice Johnson",
+          password: "password",
+          role: "user",
+          companyId: subsidiary1.id,
+          status: "active",
+          phoneNumber: "+1 (555) 100-0004",
+          jobTitle: "Buyer",
+        },
+        {
+          email: "user@subsidiary-b.com",
+          name: "Bob Wilson",
+          password: "password",
+          role: "user",
+          companyId: subsidiary2.id,
+          status: "active",
+          phoneNumber: "+1 (555) 100-0005",
+          jobTitle: "Buyer",
+        },
+      ]);
 
-    // Create demo quotes
-    for (let i = 1; i <= 6; i++) {
-      const quoteId = `QUOTE_${i.toString().padStart(3, '0')}`;
-      const quote: Quote = {
-        id: quoteId,
-        quoteNumber: `QT-${2000 + i}`,
-        companyId,
-        userId: demoUser.id,
-        title: [
-          "Bulk Order Discount Request",
-          "Annual Supply Agreement",
-          "Custom Product Quote",
-          "Volume Pricing Inquiry",
-          "Partnership Proposal",
-          "Seasonal Order Quote"
-        ][i - 1],
-        status: ["draft", "pending", "negotiating", "approved", "rejected", "expired"][i % 6],
-        total: (Math.random() * 50000 + 5000).toFixed(2),
-        itemCount: Math.floor(Math.random() * 20) + 1,
-        notes: i % 3 === 0 ? "Requires custom packaging" : null,
-        paymentTerms: paymentTermsOptions[i % paymentTermsOptions.length] as any,
-        expiresAt: new Date(Date.now() + Math.random() * 60 * 24 * 60 * 60 * 1000) as any,
-        createdAt: new Date(Date.now() - Math.random() * 20 * 24 * 60 * 60 * 1000) as any,
-        updatedAt: new Date() as any,
-      };
-      this.quotes.set(quoteId, quote);
-    }
+      const manager = await db.select().from(users).where(eq(users.email, "jane@company.com")).then(r => r[0]);
 
-    // Create demo invoices with payment terms
-    for (let i = 1; i <= 10; i++) {
-      const invoiceId = `INV_${i.toString().padStart(3, '0')}`;
-      const subtotal = Math.random() * 8000 + 2000;
-      const tax = subtotal * 0.08;
-      const total = subtotal + tax;
-      const createdDate = new Date(Date.now() - Math.random() * 60 * 24 * 60 * 60 * 1000);
-      const daysToAdd = i === 1 || i === 2 ? 7 : i === 3 || i === 4 ? 30 : i === 5 || i === 6 ? 60 : 90;
+      const paymentTermsOptions = ["1-30 days", "30-60 days", "60-90 days", "90+ days", "Net 30", "Net 60"];
+      const poStatusOptions = ["approved", "pending", "rejected", null];
       
-      const invoice: Invoice = {
-        id: invoiceId,
-        invoiceNumber: `INV-${3000 + i}`,
-        companyId,
-        userId: demoUser.id,
-        orderId: i <= 8 ? `ORDER_${i.toString().padStart(3, '0')}` : null,
-        status: ["paid", "pending", "overdue", "pending"][i % 4],
-        subtotal: subtotal.toFixed(2),
-        tax: tax.toFixed(2),
-        total: total.toFixed(2),
-        customerName: ["Demo Company Inc.", "Acme Corp", "Global Solutions"][Math.floor(Math.random() * 3)],
-        paymentTerms: paymentTermsOptions[i % paymentTermsOptions.length] as any,
-        dueDate: new Date(createdDate.getTime() + daysToAdd * 24 * 60 * 60 * 1000) as any,
-        paidDate: i % 4 === 0 ? new Date(createdDate.getTime() + (daysToAdd - 2) * 24 * 60 * 60 * 1000) as any : null,
-        createdAt: createdDate as any,
-        updatedAt: new Date() as any,
-      };
-      this.invoices.set(invoiceId, invoice);
+      for (let i = 1; i <= 8; i++) {
+        const hasPO = i % 3 !== 0;
+        const poStatus = hasPO ? poStatusOptions[i % poStatusOptions.length] : null;
+        await db.insert(orders).values({
+          orderNumber: `BC-${1000 + i}`,
+          companyId: parentCompany.id,
+          userId: demoUser.id,
+          status: ["completed", "processing", "pending", "cancelled"][i % 4],
+          total: (Math.random() * 10000 + 1000).toFixed(2),
+          itemCount: Math.floor(Math.random() * 10) + 1,
+          customerName: ["Demo Company Inc.", "Acme Corp", "Global Solutions"][Math.floor(Math.random() * 3)],
+          shippingCity: ["New York", "Los Angeles", "Chicago", "Houston"][Math.floor(Math.random() * 4)],
+          shippingState: ["NY", "CA", "IL", "TX"][Math.floor(Math.random() * 4)],
+          paymentTerms: paymentTermsOptions[i % paymentTermsOptions.length],
+          poNumber: hasPO ? `PO-${2024000 + i}` : null,
+          poStatus: poStatus as any,
+          poApprovedAt: poStatus === 'approved' ? new Date(Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000) : null,
+          poApprovedBy: poStatus === 'approved' ? manager?.id : null,
+        });
+      }
+
+      for (let i = 1; i <= 6; i++) {
+        await db.insert(quotes).values({
+          quoteNumber: `QT-${2000 + i}`,
+          companyId: parentCompany.id,
+          userId: demoUser.id,
+          title: [
+            "Bulk Order Discount Request",
+            "Annual Supply Agreement",
+            "Custom Product Quote",
+            "Volume Pricing Inquiry",
+            "Partnership Proposal",
+            "Seasonal Order Quote"
+          ][i - 1],
+          status: ["draft", "pending", "negotiating", "approved", "rejected", "expired"][i % 6],
+          total: (Math.random() * 50000 + 5000).toFixed(2),
+          itemCount: Math.floor(Math.random() * 20) + 1,
+          notes: i % 3 === 0 ? "Requires custom packaging" : null,
+          paymentTerms: paymentTermsOptions[i % paymentTermsOptions.length],
+          expiresAt: new Date(Date.now() + Math.random() * 60 * 24 * 60 * 60 * 1000),
+        });
+      }
+
+      const ordersForInvoices = await db.select().from(orders).limit(8);
+
+      for (let i = 1; i <= 10; i++) {
+        const subtotal = Math.random() * 8000 + 2000;
+        const tax = subtotal * 0.08;
+        const total = subtotal + tax;
+        const createdDate = new Date(Date.now() - Math.random() * 60 * 24 * 60 * 60 * 1000);
+        const daysToAdd = i === 1 || i === 2 ? 7 : i === 3 || i === 4 ? 30 : i === 5 || i === 6 ? 60 : 90;
+        
+        await db.insert(invoices).values({
+          invoiceNumber: `INV-${3000 + i}`,
+          companyId: parentCompany.id,
+          userId: demoUser.id,
+          orderId: i <= 8 ? ordersForInvoices[i - 1]?.id : null,
+          status: ["paid", "pending", "overdue", "pending"][i % 4],
+          subtotal: subtotal.toFixed(2),
+          tax: tax.toFixed(2),
+          total: total.toFixed(2),
+          customerName: ["Demo Company Inc.", "Acme Corp", "Global Solutions"][Math.floor(Math.random() * 3)],
+          paymentTerms: paymentTermsOptions[i % paymentTermsOptions.length],
+          dueDate: new Date(createdDate.getTime() + daysToAdd * 24 * 60 * 60 * 1000),
+          paidDate: i % 4 === 0 ? new Date(createdDate.getTime() + (daysToAdd - 2) * 24 * 60 * 60 * 1000) : null,
+        });
+      }
+
+      await db.insert(addresses).values([
+        {
+          companyId: parentCompany.id,
+          label: "Main Office",
+          type: "billing",
+          isDefault: true,
+          street1: "123 Business Blvd",
+          street2: "Suite 100",
+          city: "New York",
+          state: "NY",
+          postalCode: "10001",
+          country: "US",
+        },
+        {
+          companyId: parentCompany.id,
+          label: "Warehouse",
+          type: "shipping",
+          isDefault: false,
+          street1: "456 Industrial Drive",
+          street2: "",
+          city: "Newark",
+          state: "NJ",
+          postalCode: "07102",
+          country: "US",
+        },
+      ]);
+
+      console.log("Demo data initialized successfully");
+    } catch (error) {
+      console.error("Error initializing demo data:", error);
     }
-
-    // Create demo addresses
-    const address1: Address = {
-      id: randomUUID(),
-      companyId,
-      label: "Main Office",
-      type: "billing",
-      isDefault: true,
-      street1: "123 Business Blvd",
-      street2: "Suite 100",
-      city: "New York",
-      state: "NY",
-      postalCode: "10001",
-      country: "US",
-      createdAt: new Date() as any,
-      updatedAt: new Date() as any,
-    };
-    this.addresses.set(address1.id, address1);
-
-    const address2: Address = {
-      id: randomUUID(),
-      companyId,
-      label: "Warehouse",
-      type: "shipping",
-      isDefault: false,
-      street1: "456 Industrial Drive",
-      street2: "",
-      city: "Newark",
-      state: "NJ",
-      postalCode: "07102",
-      country: "US",
-      createdAt: new Date() as any,
-      updatedAt: new Date() as any,
-    };
-    this.addresses.set(address2.id, address2);
   }
 
   async getUser(id: string): Promise<User | undefined> {
-    return this.users.get(id);
+    const result = await db.select().from(users).where(eq(users.id, id));
+    return result[0];
   }
 
   async getUserByEmail(email: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(user => user.email === email);
+    const result = await db.select().from(users).where(eq(users.email, email));
+    return result[0];
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
-    const id = randomUUID();
-    const user: User = {
-      id,
-      email: insertUser.email,
-      password: insertUser.password,
-      name: insertUser.name || null,
-      role: insertUser.role || null,
-      companyId: insertUser.companyId || null,
-      status: insertUser.status || "active",
-      phoneNumber: insertUser.phoneNumber || null,
-      jobTitle: insertUser.jobTitle || null,
-      lastLoginAt: null,
-      createdAt: new Date() as any,
-      updatedAt: new Date() as any,
-    };
-    this.users.set(id, user);
+    const [user] = await db.insert(users).values(insertUser).returning();
     return user;
   }
 
   async updateUser(id: string, updateData: Partial<User>): Promise<User | undefined> {
-    const existing = this.users.get(id);
-    if (!existing) return undefined;
-    
-    const updated: User = {
-      ...existing,
-      ...updateData,
-      updatedAt: new Date() as any,
-    };
-    this.users.set(id, updated);
+    const [updated] = await db.update(users)
+      .set({ ...updateData, updatedAt: new Date() })
+      .where(eq(users.id, id))
+      .returning();
     return updated;
   }
 
   async deleteUser(id: string): Promise<boolean> {
-    return this.users.delete(id);
+    const result = await db.delete(users).where(eq(users.id, id));
+    return result.rowCount ? result.rowCount > 0 : false;
   }
 
   async getDashboardStats(): Promise<any> {
-    const orders = Array.from(this.orders.values());
-    const quotes = Array.from(this.quotes.values());
+    const allOrders = await db.select().from(orders);
+    const allQuotes = await db.select().from(quotes);
     
     const now = new Date();
     const thisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     
-    const ordersThisMonth = orders.filter(order => 
+    const ordersThisMonth = allOrders.filter(order => 
       order.createdAt && new Date(order.createdAt) >= thisMonth
     ).length;
     
-    const monthlySpend = orders
+    const monthlySpend = allOrders
       .filter(order => order.createdAt && new Date(order.createdAt) >= thisMonth)
       .reduce((sum, order) => sum + parseFloat(order.total as string), 0);
 
     return {
-      totalOrders: orders.length,
+      totalOrders: allOrders.length,
       ordersThisMonth,
-      pendingQuotes: quotes.filter(q => q.status === 'pending').length,
-      quotesNeedingAttention: quotes.filter(q => q.status && ['pending', 'negotiating'].includes(q.status)).length,
+      pendingQuotes: allQuotes.filter(q => q.status === 'pending').length,
+      quotesNeedingAttention: allQuotes.filter(q => q.status && ['pending', 'negotiating'].includes(q.status)).length,
       monthlySpend: Math.round(monthlySpend),
-      spendChange: Math.floor(Math.random() * 20) - 10, // Mock change percentage
+      spendChange: Math.floor(Math.random() * 20) - 10,
       activeCredit: 75000,
     };
   }
 
   async getOrders(params?: { search?: string; status?: string; sortBy?: string; limit?: number; recent?: boolean }): Promise<Order[]> {
-    let orders = Array.from(this.orders.values());
+    let query = db.select().from(orders);
 
+    const conditions = [];
+    
     if (params?.search) {
-      const search = params.search.toLowerCase();
-      orders = orders.filter(order => 
-        order.orderNumber.toLowerCase().includes(search) ||
-        order.customerName?.toLowerCase().includes(search)
+      const searchTerm = `%${params.search.toLowerCase()}%`;
+      conditions.push(
+        or(
+          like(sql`LOWER(${orders.orderNumber})`, searchTerm),
+          like(sql`LOWER(${orders.customerName})`, searchTerm)
+        )
       );
     }
 
     if (params?.status && params.status !== 'all') {
-      orders = orders.filter(order => order.status === params.status);
+      conditions.push(eq(orders.status, params.status));
     }
 
-    // Sort orders
-    orders.sort((a, b) => {
-      switch (params?.sortBy) {
-        case 'date_asc':
-          return (a.createdAt ? new Date(a.createdAt).getTime() : 0) - (b.createdAt ? new Date(b.createdAt).getTime() : 0);
-        case 'total':
-          return parseFloat(b.total as string) - parseFloat(a.total as string);
-        case 'status':
-          return (a.status || '').localeCompare(b.status || '');
-        default: // 'date' - newest first
-          return (b.createdAt ? new Date(b.createdAt).getTime() : 0) - (a.createdAt ? new Date(a.createdAt).getTime() : 0);
-      }
-    });
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions)) as any;
+    }
+
+    switch (params?.sortBy) {
+      case 'date_asc':
+        query = query.orderBy(asc(orders.createdAt)) as any;
+        break;
+      case 'total':
+        query = query.orderBy(desc(orders.total)) as any;
+        break;
+      case 'status':
+        query = query.orderBy(asc(orders.status)) as any;
+        break;
+      default:
+        query = query.orderBy(desc(orders.createdAt)) as any;
+    }
 
     if (params?.limit) {
-      orders = orders.slice(0, params.limit);
+      query = query.limit(params.limit) as any;
     }
 
-    return orders;
+    return await query;
   }
 
   async getOrder(id: string): Promise<Order | undefined> {
-    return this.orders.get(id);
+    const result = await db.select().from(orders).where(eq(orders.id, id));
+    return result[0];
   }
 
   async updateOrder(id: string, order: Partial<Order>): Promise<Order | undefined> {
-    const existing = this.orders.get(id);
-    if (!existing) return undefined;
-    
-    const updated: Order = {
-      ...existing,
-      ...order,
-      updatedAt: new Date() as any,
-    };
-    this.orders.set(id, updated);
+    const [updated] = await db.update(orders)
+      .set({ ...order, updatedAt: new Date() })
+      .where(eq(orders.id, id))
+      .returning();
     return updated;
   }
 
   async getQuotes(params?: { search?: string; status?: string; sortBy?: string; limit?: number; recent?: boolean }): Promise<Quote[]> {
-    let quotes = Array.from(this.quotes.values());
+    let query = db.select().from(quotes);
 
+    const conditions = [];
+    
     if (params?.search) {
-      const search = params.search.toLowerCase();
-      quotes = quotes.filter(quote => 
-        quote.quoteNumber.toLowerCase().includes(search) ||
-        quote.title?.toLowerCase().includes(search)
+      const searchTerm = `%${params.search.toLowerCase()}%`;
+      conditions.push(
+        or(
+          like(sql`LOWER(${quotes.quoteNumber})`, searchTerm),
+          like(sql`LOWER(${quotes.title})`, searchTerm)
+        )
       );
     }
 
     if (params?.status && params.status !== 'all') {
-      quotes = quotes.filter(quote => quote.status === params.status);
+      conditions.push(eq(quotes.status, params.status));
     }
 
-    // Sort quotes
-    quotes.sort((a, b) => {
-      switch (params?.sortBy) {
-        case 'date_asc':
-          return (a.createdAt ? new Date(a.createdAt).getTime() : 0) - (b.createdAt ? new Date(b.createdAt).getTime() : 0);
-        case 'total':
-          return parseFloat(b.total as string) - parseFloat(a.total as string);
-        case 'status':
-          return (a.status || '').localeCompare(b.status || '');
-        case 'expiry':
-          const aExpiry = a.expiresAt ? new Date(a.expiresAt).getTime() : Infinity;
-          const bExpiry = b.expiresAt ? new Date(b.expiresAt).getTime() : Infinity;
-          return aExpiry - bExpiry;
-        default: // 'date' - newest first
-          return (b.createdAt ? new Date(b.createdAt).getTime() : 0) - (a.createdAt ? new Date(a.createdAt).getTime() : 0);
-      }
-    });
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions)) as any;
+    }
+
+    switch (params?.sortBy) {
+      case 'date_asc':
+        query = query.orderBy(asc(quotes.createdAt)) as any;
+        break;
+      case 'total':
+        query = query.orderBy(desc(quotes.total)) as any;
+        break;
+      case 'status':
+        query = query.orderBy(asc(quotes.status)) as any;
+        break;
+      case 'expiry':
+        query = query.orderBy(asc(quotes.expiresAt)) as any;
+        break;
+      default:
+        query = query.orderBy(desc(quotes.createdAt)) as any;
+    }
 
     if (params?.limit) {
-      quotes = quotes.slice(0, params.limit);
+      query = query.limit(params.limit) as any;
     }
 
-    return quotes;
+    return await query;
   }
 
   async getQuote(id: string): Promise<Quote | undefined> {
-    return this.quotes.get(id);
+    const result = await db.select().from(quotes).where(eq(quotes.id, id));
+    return result[0];
   }
 
   async updateQuote(id: string, quote: Partial<Quote>): Promise<Quote | undefined> {
-    const existing = this.quotes.get(id);
-    if (!existing) return undefined;
-    
-    const updated: Quote = {
-      ...existing,
-      ...quote,
-      updatedAt: new Date() as any,
-    };
-    this.quotes.set(id, updated);
+    const [updated] = await db.update(quotes)
+      .set({ ...quote, updatedAt: new Date() })
+      .where(eq(quotes.id, id))
+      .returning();
     return updated;
   }
 
   async getInvoices(params?: { search?: string; status?: string; sortBy?: string; limit?: number; recent?: boolean }): Promise<Invoice[]> {
-    let invoices = Array.from(this.invoices.values());
+    let query = db.select().from(invoices);
 
+    const conditions = [];
+    
     if (params?.search) {
-      const search = params.search.toLowerCase();
-      invoices = invoices.filter(invoice => 
-        invoice.invoiceNumber.toLowerCase().includes(search) ||
-        invoice.customerName?.toLowerCase().includes(search)
+      const searchTerm = `%${params.search.toLowerCase()}%`;
+      conditions.push(
+        or(
+          like(sql`LOWER(${invoices.invoiceNumber})`, searchTerm),
+          like(sql`LOWER(${invoices.customerName})`, searchTerm)
+        )
       );
     }
 
     if (params?.status && params.status !== 'all') {
-      invoices = invoices.filter(invoice => invoice.status === params.status);
+      conditions.push(eq(invoices.status, params.status));
     }
 
-    // Sort invoices
-    invoices.sort((a, b) => {
-      switch (params?.sortBy) {
-        case 'date_asc':
-          return (a.createdAt ? new Date(a.createdAt).getTime() : 0) - (b.createdAt ? new Date(b.createdAt).getTime() : 0);
-        case 'total':
-          return parseFloat(b.total as string) - parseFloat(a.total as string);
-        case 'status':
-          return (a.status || '').localeCompare(b.status || '');
-        case 'due_date':
-          const aDue = a.dueDate ? new Date(a.dueDate).getTime() : Infinity;
-          const bDue = b.dueDate ? new Date(b.dueDate).getTime() : Infinity;
-          return aDue - bDue;
-        default: // 'date' - newest first
-          return (b.createdAt ? new Date(b.createdAt).getTime() : 0) - (a.createdAt ? new Date(a.createdAt).getTime() : 0);
-      }
-    });
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions)) as any;
+    }
+
+    switch (params?.sortBy) {
+      case 'date_asc':
+        query = query.orderBy(asc(invoices.createdAt)) as any;
+        break;
+      case 'total':
+        query = query.orderBy(desc(invoices.total)) as any;
+        break;
+      case 'status':
+        query = query.orderBy(asc(invoices.status)) as any;
+        break;
+      case 'due_date':
+        query = query.orderBy(asc(invoices.dueDate)) as any;
+        break;
+      default:
+        query = query.orderBy(desc(invoices.createdAt)) as any;
+    }
 
     if (params?.limit) {
-      invoices = invoices.slice(0, params.limit);
+      query = query.limit(params.limit) as any;
     }
 
-    return invoices;
+    return await query;
   }
 
   async getInvoice(id: string): Promise<Invoice | undefined> {
-    return this.invoices.get(id);
+    const result = await db.select().from(invoices).where(eq(invoices.id, id));
+    return result[0];
   }
 
   async getCompany(): Promise<Company> {
-    return this.company;
+    if (this.companyCache) {
+      return this.companyCache;
+    }
+
+    const result = await db.select().from(companies).limit(1);
+    
+    if (result.length === 0) {
+      const [newCompany] = await db.insert(companies).values({
+        name: "Demo Company Inc.",
+        email: "contact@democompany.com",
+        phone: "+1 (555) 123-4567",
+        industry: "Technology",
+        status: "active",
+        tier: "premium",
+        storeHash: "demo_store_hash",
+        channelId: "1",
+      }).returning();
+      
+      this.companyCache = newCompany;
+      return newCompany;
+    }
+
+    this.companyCache = result[0];
+    return result[0];
   }
 
   async getCompanyUsers(): Promise<User[]> {
-    return Array.from(this.users.values()).filter(user => user.companyId === this.company.id);
+    const company = await this.getCompany();
+    return await db.select().from(users).where(eq(users.companyId, company.id));
   }
 
   async getCompanyAddresses(): Promise<Address[]> {
-    return Array.from(this.addresses.values()).filter(address => address.companyId === this.company.id);
+    const company = await this.getCompany();
+    return await db.select().from(addresses).where(eq(addresses.companyId, company.id));
+  }
+
+  async getAccessibleCompanies(userId: string): Promise<Company[]> {
+    const user = await this.getUser(userId);
+    if (!user || !user.companyId) return [];
+
+    const userCompany = await db.select().from(companies).where(eq(companies.id, user.companyId)).limit(1);
+    if (!userCompany || userCompany.length === 0) return [];
+
+    const company = userCompany[0];
+    
+    // Get parent company if exists
+    const parentCompanyId = company.parentCompanyId || (company.hierarchyLevel === 0 ? company.id : null);
+    
+    if (parentCompanyId) {
+      // User can access parent and all its children
+      const accessibleCompanies = await db.select().from(companies).where(
+        or(
+          eq(companies.id, parentCompanyId),
+          eq(companies.parentCompanyId, parentCompanyId)
+        )
+      );
+      return accessibleCompanies;
+    }
+
+    // User can only access their own company
+    return [company];
+  }
+
+  async getCompanyHierarchy(companyId: string): Promise<{ parent: Company | null; children: Company[] }> {
+    const [company] = await db.select().from(companies).where(eq(companies.id, companyId));
+    if (!company) return { parent: null, children: [] };
+
+    let parent: Company | null = null;
+    if (company.parentCompanyId) {
+      const [parentCompany] = await db.select().from(companies).where(eq(companies.id, company.parentCompanyId));
+      parent = parentCompany || null;
+    }
+
+    const children = await db.select().from(companies).where(eq(companies.parentCompanyId, companyId));
+
+    return { parent, children };
   }
 
   async createAddress(address: Partial<Address>): Promise<Address> {
-    const newAddress: Address = {
-      id: randomUUID(),
-      companyId: address.companyId || this.company.id,
+    const company = await this.getCompany();
+    const [newAddress] = await db.insert(addresses).values({
+      companyId: address.companyId || company.id,
       label: address.label || null,
       type: address.type || "shipping",
       isDefault: address.isDefault || false,
@@ -509,126 +597,89 @@ export class MemStorage implements IStorage {
       state: address.state || "",
       postalCode: address.postalCode || "",
       country: address.country || "US",
-      createdAt: new Date() as any,
-      updatedAt: new Date() as any,
-    };
-    this.addresses.set(newAddress.id, newAddress);
+    }).returning();
     return newAddress;
   }
 
   async updateAddress(id: string, updateData: Partial<Address>): Promise<Address | undefined> {
-    const existing = this.addresses.get(id);
-    if (!existing) return undefined;
-    
-    const updated: Address = {
-      ...existing,
-      ...updateData,
-      updatedAt: new Date() as any,
-    };
-    this.addresses.set(id, updated);
+    const [updated] = await db.update(addresses)
+      .set({ ...updateData, updatedAt: new Date() })
+      .where(eq(addresses.id, id))
+      .returning();
     return updated;
   }
 
   async deleteAddress(id: string): Promise<boolean> {
-    return this.addresses.delete(id);
+    const result = await db.delete(addresses).where(eq(addresses.id, id));
+    return result.rowCount ? result.rowCount > 0 : false;
   }
 
   async setDefaultAddress(id: string, type: string): Promise<boolean> {
-    const address = this.addresses.get(id);
+    const address = await db.select().from(addresses).where(eq(addresses.id, id)).then(r => r[0]);
     if (!address) return false;
     
-    // Remove default from all addresses of this type
-    Array.from(this.addresses.values())
-      .filter(a => a.type === type && a.companyId === address.companyId)
-      .forEach(a => {
-        a.isDefault = false;
-        this.addresses.set(a.id, a);
-      });
+    await db.update(addresses)
+      .set({ isDefault: false })
+      .where(and(
+        eq(addresses.type, type),
+        eq(addresses.companyId, address.companyId)
+      ));
     
-    // Set this address as default
-    address.isDefault = true;
-    this.addresses.set(id, address);
+    await db.update(addresses)
+      .set({ isDefault: true })
+      .where(eq(addresses.id, id));
+    
     return true;
   }
 
   async getShoppingLists(): Promise<ShoppingList[]> {
-    return Array.from(this.shoppingLists.values());
+    return await db.select().from(shoppingLists);
   }
 
   async getShoppingList(id: string): Promise<ShoppingList | undefined> {
-    return this.shoppingLists.get(id);
+    const result = await db.select().from(shoppingLists).where(eq(shoppingLists.id, id));
+    return result[0];
   }
 
   async createShoppingList(list: InsertShoppingList): Promise<ShoppingList> {
-    const newList: ShoppingList = {
-      id: randomUUID(),
-      name: list.name,
-      description: list.description || null,
-      companyId: list.companyId,
-      userId: list.userId,
-      status: list.status || "active",
-      isShared: list.isShared || false,
-      createdAt: new Date() as any,
-      updatedAt: new Date() as any,
-    };
-    this.shoppingLists.set(newList.id, newList);
+    const [newList] = await db.insert(shoppingLists).values(list).returning();
     return newList;
   }
 
   async updateShoppingList(id: string, list: Partial<ShoppingList>): Promise<ShoppingList | undefined> {
-    const existing = this.shoppingLists.get(id);
-    if (!existing) return undefined;
-    
-    const updated: ShoppingList = {
-      ...existing,
-      ...list,
-      updatedAt: new Date() as any,
-    };
-    this.shoppingLists.set(id, updated);
+    const [updated] = await db.update(shoppingLists)
+      .set({ ...list, updatedAt: new Date() })
+      .where(eq(shoppingLists.id, id))
+      .returning();
     return updated;
   }
 
   async deleteShoppingList(id: string): Promise<boolean> {
-    return this.shoppingLists.delete(id);
+    const result = await db.delete(shoppingLists).where(eq(shoppingLists.id, id));
+    return result.rowCount ? result.rowCount > 0 : false;
   }
 
   async getShoppingListItems(listId: string): Promise<ShoppingListItem[]> {
-    return Array.from(this.shoppingListItems.values()).filter(item => item.listId === listId);
+    return await db.select().from(shoppingListItems).where(eq(shoppingListItems.listId, listId));
   }
 
   async addShoppingListItem(item: InsertShoppingListItem): Promise<ShoppingListItem> {
-    const newItem: ShoppingListItem = {
-      id: randomUUID(),
-      listId: item.listId,
-      productId: item.productId,
-      productName: item.productName,
-      sku: item.sku || null,
-      quantity: item.quantity || 1,
-      price: item.price || null,
-      imageUrl: item.imageUrl || null,
-      createdAt: new Date() as any,
-      updatedAt: new Date() as any,
-    };
-    this.shoppingListItems.set(newItem.id, newItem);
+    const [newItem] = await db.insert(shoppingListItems).values(item).returning();
     return newItem;
   }
 
   async updateShoppingListItem(id: string, item: Partial<ShoppingListItem>): Promise<ShoppingListItem | undefined> {
-    const existing = this.shoppingListItems.get(id);
-    if (!existing) return undefined;
-    
-    const updated: ShoppingListItem = {
-      ...existing,
-      ...item,
-      updatedAt: new Date() as any,
-    };
-    this.shoppingListItems.set(id, updated);
+    const [updated] = await db.update(shoppingListItems)
+      .set({ ...item, updatedAt: new Date() })
+      .where(eq(shoppingListItems.id, id))
+      .returning();
     return updated;
   }
 
   async deleteShoppingListItem(id: string): Promise<boolean> {
-    return this.shoppingListItems.delete(id);
+    const result = await db.delete(shoppingListItems).where(eq(shoppingListItems.id, id));
+    return result.rowCount ? result.rowCount > 0 : false;
   }
 }
 
-export const storage = new MemStorage();
+export const storage = new DatabaseStorage();

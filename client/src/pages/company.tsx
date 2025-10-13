@@ -8,8 +8,10 @@ import { InviteUserDialog, EditUserDialog, DeactivateUserDialog } from "@/compon
 import { AddAddressDialog, EditAddressDialog, DeleteAddressDialog, SetDefaultAddressButton } from "@/components/b2b/address-dialogs";
 import { MoreVertical } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { usePermissions } from "@/hooks/use-permissions";
 
 export default function Company() {
+  const { can } = usePermissions();
   const { data: company, isLoading: companyLoading } = useQuery<any>({
     queryKey: ['/api/company'],
     staleTime: 300000,
@@ -35,10 +37,12 @@ export default function Company() {
           <p className="text-muted-foreground">Manage your company profile and team members</p>
         </div>
         <div className="flex gap-3">
-          <Button variant="outline" data-testid="button-edit-company">
-            Edit Company
-          </Button>
-          <InviteUserDialog />
+          {can('manage_company') && (
+            <Button variant="outline" data-testid="button-edit-company">
+              Edit Company
+            </Button>
+          )}
+          {can('manage_users') && <InviteUserDialog />}
         </div>
       </div>
 
@@ -187,7 +191,7 @@ export default function Company() {
                     {user.id === currentUser.id && (
                       <Badge variant="secondary">You</Badge>
                     )}
-                    {user.id !== currentUser.id && (
+                    {user.id !== currentUser.id && can('manage_users') && (
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button variant="ghost" size="sm" data-testid={`button-user-actions-${user.id}`}>
@@ -231,7 +235,7 @@ export default function Company() {
               <CardTitle>Company Addresses</CardTitle>
               <CardDescription>Shipping and billing addresses</CardDescription>
             </div>
-            <AddAddressDialog />
+            {can('manage_addresses') && <AddAddressDialog />}
           </div>
         </CardHeader>
         <CardContent>
@@ -272,38 +276,42 @@ export default function Company() {
                             <p>{address.country}</p>
                           </div>
                         </div>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="sm" data-testid={`button-address-actions-${address.id}`}>
-                              <MoreVertical className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <EditAddressDialog address={address}>
-                              <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
-                                Edit Address
-                              </DropdownMenuItem>
-                            </EditAddressDialog>
-                            {!address.isDefault && (
-                              <DropdownMenuItem
-                                onSelect={() => {
-                                  const btn = document.querySelector(`[data-testid="button-set-default-${address.id}"]`) as HTMLButtonElement;
-                                  btn?.click();
-                                }}
-                              >
-                                Set as Default
-                              </DropdownMenuItem>
-                            )}
-                            <DeleteAddressDialog address={address}>
-                              <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive">
-                                Delete Address
-                              </DropdownMenuItem>
-                            </DeleteAddressDialog>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                        <div className="hidden">
-                          <SetDefaultAddressButton address={address} />
-                        </div>
+                        {can('manage_addresses') && (
+                          <>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="sm" data-testid={`button-address-actions-${address.id}`}>
+                                  <MoreVertical className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <EditAddressDialog address={address}>
+                                  <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                                    Edit Address
+                                  </DropdownMenuItem>
+                                </EditAddressDialog>
+                                {!address.isDefault && (
+                                  <DropdownMenuItem
+                                    onSelect={() => {
+                                      const btn = document.querySelector(`[data-testid="button-set-default-${address.id}"]`) as HTMLButtonElement;
+                                      btn?.click();
+                                    }}
+                                  >
+                                    Set as Default
+                                  </DropdownMenuItem>
+                                )}
+                                <DeleteAddressDialog address={address}>
+                                  <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive">
+                                    Delete Address
+                                  </DropdownMenuItem>
+                                </DeleteAddressDialog>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                            <div className="hidden">
+                              <SetDefaultAddressButton address={address} />
+                            </div>
+                          </>
+                        )}
                       </div>
                     </div>
                   </CardContent>
