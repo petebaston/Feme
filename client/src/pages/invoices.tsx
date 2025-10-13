@@ -4,7 +4,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Search } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Search, Download, ExternalLink } from "lucide-react";
+import { b2bClient } from "@/lib/b2b-client";
 
 export default function Invoices() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -235,12 +237,36 @@ export default function Invoices() {
                     </div>
                   </div>
 
-                  {/* Invoice Date */}
-                  <div className="flex items-center justify-between text-xs text-gray-500 pt-2">
-                    <span>Invoice Date: {new Date(invoice.createdAt).toLocaleDateString()}</span>
-                    {invoice.paidDate && (
-                      <span className="text-green-600">Paid: {new Date(invoice.paidDate).toLocaleDateString()}</span>
-                    )}
+                  {/* Invoice Date and Actions */}
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pt-3 border-t border-gray-100">
+                    <div className="text-xs text-gray-500">
+                      <span>Invoice Date: {new Date(invoice.createdAt).toLocaleDateString()}</span>
+                      {invoice.paidDate && (
+                        <span className="text-green-600 ml-3">Paid: {new Date(invoice.paidDate).toLocaleDateString()}</span>
+                      )}
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8 text-xs"
+                        onClick={() => window.open(b2bClient.getInvoiceDetailUrl(invoice.id), '_blank')}
+                        data-testid={`button-view-invoice-${invoice.id}`}
+                      >
+                        <ExternalLink className="w-3 h-3 mr-1" />
+                        View Details
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8 text-xs"
+                        onClick={() => window.open(b2bClient.getInvoicePdfUrl(invoice.id), '_blank')}
+                        data-testid={`button-download-pdf-${invoice.id}`}
+                      >
+                        <Download className="w-3 h-3 mr-1" />
+                        Download PDF
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </CardContent>

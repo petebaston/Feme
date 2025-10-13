@@ -104,6 +104,33 @@ export class B2BClient {
   async getCompanyAddresses() {
     return this.request('/api/v3/company/addresses');
   }
+
+  // Invoices
+  async getInvoices(params?: { search?: string; status?: string; sortBy?: string; limit?: number; recent?: boolean }) {
+    const queryParams = new URLSearchParams();
+    if (params?.search) queryParams.append('search', params.search);
+    if (params?.status && params.status !== 'all') queryParams.append('status', params.status);
+    if (params?.sortBy) queryParams.append('sortBy', params.sortBy);
+    if (params?.limit) queryParams.append('limit', params.limit.toString());
+    if (params?.recent) queryParams.append('recent', 'true');
+
+    const query = queryParams.toString();
+    return this.request(`/api/v3/invoices${query ? `?${query}` : ''}`);
+  }
+
+  async getInvoice(invoiceId: string) {
+    return this.request(`/api/v3/invoices/${invoiceId}`);
+  }
+
+  // Get BigCommerce native invoice PDF URL
+  getInvoicePdfUrl(invoiceId: string): string {
+    return `${this.baseUrl}/api/v3/invoices/${invoiceId}/pdf`;
+  }
+
+  // Get BigCommerce native invoice detail URL
+  getInvoiceDetailUrl(invoiceId: string): string {
+    return `${this.baseUrl}/invoice/${invoiceId}`;
+  }
 }
 
 export const b2bClient = new B2BClient();
