@@ -6,10 +6,11 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, ShoppingCart, Trash2, Share2, Package, Edit } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Plus, ShoppingCart, Trash2, Share2, Package, Edit, Minus } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { insertShoppingListSchema, type ShoppingList } from "@shared/schema";
+import { insertShoppingListSchema, insertShoppingListItemSchema, type ShoppingList, type ShoppingListItem } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useState, useEffect } from "react";
@@ -24,11 +25,20 @@ const createListSchema = insertShoppingListSchema.omit({
   name: z.string().min(1, "Name is required"),
 });
 
+const addItemSchema = insertShoppingListItemSchema.omit({
+  listId: true,
+}).extend({
+  productName: z.string().min(1, "Product name is required"),
+  quantity: z.coerce.number().min(1, "Quantity must be at least 1"),
+  price: z.coerce.number().min(0, "Price must be positive"),
+});
+
 export default function ShoppingLists() {
   const { toast } = useToast();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [userData, setUserData] = useState<{ id: string; companyId: string } | null>(null);
+  const [selectedList, setSelectedList] = useState<ShoppingList | null>(null);
 
   useEffect(() => {
     const userDataStr = localStorage.getItem('b2b_user');
@@ -101,6 +111,106 @@ export default function ShoppingLists() {
       toast({
         title: "Error",
         description: "Failed to delete shopping list",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const { data: items = [], isLoading: itemsLoading } = useQuery<ShoppingListItem[]>({
+    queryKey: ["/api/shopping-lists", selectedList?.id, "items"],
+    enabled: !!selectedList,
+  });
+
+  const itemForm = useForm({
+    resolver: zodResolver(addItemSchema),
+    defaultValues: {
+      productId: "",
+      productName: "",
+      sku: "",
+      quantity: 1,
+      price: "0",
+      imageUrl: "",
+      variantId: "",
+      notes: "",
+    },
+  });
+
+  const addItemMutation = useMutation({
+    mutationFn: async (data: z.infer<typeof addItemSchema>) => {
+      if (!selectedList) throw new Error("No list selected");
+      const response = await apiRequest("POST", `/api/shopping-lists/${selectedList.id}/items`, data);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/shopping-lists", selectedList?.id, "items"] });
+      itemForm.reset();
+      toast({
+        title: "Success",
+        description: "Item added to shopping list",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to add item",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteItemMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await apiRequest("DELETE", `/api/shopping-list-items/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/shopping-lists", selectedList?.id, "items"] });
+      toast({
+        title: "Success",
+        description: "Item removed from shopping list",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to remove item",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const updateQuantityMutation = useMutation({
+    mutationFn: async ({ id, quantity }: { id: string; quantity: number }) => {
+      const response = await apiRequest("PATCH", `/api/shopping-list-items/${id}`, { quantity });
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/shopping-lists", selectedList?.id, "items"] });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to update quantity",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const toggleShareMutation = useMutation({
+    mutationFn: async ({ id, isShared }: { id: string; isShared: boolean }) => {
+      const response = await apiRequest("PATCH", `/api/shopping-lists/${id}`, { isShared });
+      return response.json();
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/shopping-lists"] });
+      toast({
+        title: "Success",
+        description: variables.isShared ? "List shared successfully" : "List unshared successfully",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to update sharing status",
         variant: "destructive",
       });
     },
@@ -269,17 +379,224 @@ export default function ShoppingLists() {
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="flex items-center justify-between">
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-600">Share with team</span>
+                    <Switch
+                      checked={list.isShared}
+                      onCheckedChange={(checked) => 
+                        toggleShareMutation.mutate({ id: list.id, isShared: checked })
+                      }
+                      disabled={toggleShareMutation.isPending}
+                      data-testid={`toggle-share-${list.id}`}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between">
                   <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="border-black text-black hover:bg-black hover:text-white"
-                      data-testid={`button-view-list-${list.id}`}
-                    >
-                      <Edit className="h-4 w-4 mr-1" />
-                      View Items
-                    </Button>
+                    <Dialog>
+                      <DialogTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="border-black text-black hover:bg-black hover:text-white"
+                          onClick={() => setSelectedList(list)}
+                          data-testid={`button-view-list-${list.id}`}
+                        >
+                          <Edit className="h-4 w-4 mr-1" />
+                          View Items
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+                        <DialogHeader>
+                          <DialogTitle className="text-xl font-semibold">
+                            {list.name} - Items
+                          </DialogTitle>
+                        </DialogHeader>
+                        
+                        {/* Add Item Form */}
+                        <div className="border-b pb-4">
+                          <h3 className="font-medium mb-3">Add New Item</h3>
+                          <Form {...itemForm}>
+                            <form
+                              onSubmit={itemForm.handleSubmit((data) => addItemMutation.mutate(data))}
+                              className="grid grid-cols-2 gap-3"
+                            >
+                              <FormField
+                                control={itemForm.control}
+                                name="productName"
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel>Product Name*</FormLabel>
+                                    <FormControl>
+                                      <Input placeholder="Product name" {...field} data-testid="input-product-name" />
+                                    </FormControl>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+                              <FormField
+                                control={itemForm.control}
+                                name="sku"
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel>SKU</FormLabel>
+                                    <FormControl>
+                                      <Input placeholder="SKU" {...field} data-testid="input-sku" />
+                                    </FormControl>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+                              <FormField
+                                control={itemForm.control}
+                                name="quantity"
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel>Quantity*</FormLabel>
+                                    <FormControl>
+                                      <Input type="number" min="1" {...field} data-testid="input-quantity" />
+                                    </FormControl>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+                              <FormField
+                                control={itemForm.control}
+                                name="price"
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel>Price*</FormLabel>
+                                    <FormControl>
+                                      <Input type="number" step="0.01" min="0" {...field} data-testid="input-price" />
+                                    </FormControl>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+                              <FormField
+                                control={itemForm.control}
+                                name="notes"
+                                render={({ field }) => (
+                                  <FormItem className="col-span-2">
+                                    <FormLabel>Notes</FormLabel>
+                                    <FormControl>
+                                      <Textarea placeholder="Add notes..." {...field} data-testid="input-notes" />
+                                    </FormControl>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+                              <div className="col-span-2 flex justify-end">
+                                <Button
+                                  type="submit"
+                                  className="bg-black hover:bg-gray-800"
+                                  disabled={addItemMutation.isPending}
+                                  data-testid="button-add-item"
+                                >
+                                  <Plus className="h-4 w-4 mr-2" />
+                                  {addItemMutation.isPending ? "Adding..." : "Add Item"}
+                                </Button>
+                              </div>
+                            </form>
+                          </Form>
+                        </div>
+
+                        {/* Items List */}
+                        <div>
+                          <h3 className="font-medium mb-3">Items ({items.length})</h3>
+                          {itemsLoading ? (
+                            <div className="space-y-2">
+                              {[1, 2].map((i) => (
+                                <Skeleton key={i} className="h-16" />
+                              ))}
+                            </div>
+                          ) : items.length === 0 ? (
+                            <div className="text-center py-8 text-gray-500">
+                              <Package className="h-12 w-12 mx-auto mb-2 text-gray-300" />
+                              <p>No items in this list yet</p>
+                            </div>
+                          ) : (
+                            <div className="space-y-2">
+                              {items.map((item) => (
+                                <div
+                                  key={item.id}
+                                  className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50"
+                                  data-testid={`item-${item.id}`}
+                                >
+                                  <div className="flex-1">
+                                    <h4 className="font-medium" data-testid={`text-item-name-${item.id}`}>
+                                      {item.productName}
+                                    </h4>
+                                    {item.sku && (
+                                      <p className="text-sm text-gray-500">SKU: {item.sku}</p>
+                                    )}
+                                    {item.notes && (
+                                      <p className="text-sm text-gray-600 mt-1">{item.notes}</p>
+                                    )}
+                                  </div>
+                                  <div className="flex items-center gap-3">
+                                    <div className="flex items-center gap-2 border rounded-lg p-1">
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => {
+                                          if (item.quantity > 1) {
+                                            updateQuantityMutation.mutate({
+                                              id: item.id,
+                                              quantity: item.quantity - 1,
+                                            });
+                                          }
+                                        }}
+                                        disabled={item.quantity <= 1 || updateQuantityMutation.isPending}
+                                        className="h-6 w-6 p-0"
+                                        data-testid={`button-decrease-${item.id}`}
+                                      >
+                                        <Minus className="h-3 w-3" />
+                                      </Button>
+                                      <span className="w-8 text-center font-medium" data-testid={`text-quantity-${item.id}`}>
+                                        {item.quantity}
+                                      </span>
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() =>
+                                          updateQuantityMutation.mutate({
+                                            id: item.id,
+                                            quantity: item.quantity + 1,
+                                          })
+                                        }
+                                        disabled={updateQuantityMutation.isPending}
+                                        className="h-6 w-6 p-0"
+                                        data-testid={`button-increase-${item.id}`}
+                                      >
+                                        <Plus className="h-3 w-3" />
+                                      </Button>
+                                    </div>
+                                    <div className="text-right min-w-[80px]">
+                                      <p className="font-semibold" data-testid={`text-price-${item.id}`}>
+                                        ${parseFloat(item.price).toFixed(2)}
+                                      </p>
+                                      <p className="text-xs text-gray-500">
+                                        Total: ${(parseFloat(item.price) * item.quantity).toFixed(2)}
+                                      </p>
+                                    </div>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => deleteItemMutation.mutate(item.id)}
+                                      disabled={deleteItemMutation.isPending}
+                                      data-testid={`button-remove-item-${item.id}`}
+                                    >
+                                      <Trash2 className="h-4 w-4 text-gray-600 hover:text-red-600" />
+                                    </Button>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </DialogContent>
+                    </Dialog>
                   </div>
                   <Button
                     variant="ghost"
@@ -290,6 +607,7 @@ export default function ShoppingLists() {
                   >
                     <Trash2 className="h-4 w-4 text-gray-600 hover:text-red-600" />
                   </Button>
+                  </div>
                 </div>
               </CardContent>
             </Card>

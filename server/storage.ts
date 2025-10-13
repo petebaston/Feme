@@ -13,6 +13,7 @@ export interface IStorage {
   // Orders
   getOrders(params?: { search?: string; status?: string; sortBy?: string; limit?: number; recent?: boolean }): Promise<Order[]>;
   getOrder(id: string): Promise<Order | undefined>;
+  updateOrder(id: string, order: Partial<Order>): Promise<Order | undefined>;
 
   // Quotes
   getQuotes(params?: { search?: string; status?: string; sortBy?: string; limit?: number; recent?: boolean }): Promise<Quote[]>;
@@ -114,10 +115,13 @@ export class MemStorage implements IStorage {
     };
     this.users.set(user3.id, user3);
 
-    // Create demo orders with payment terms
+    // Create demo orders with payment terms and PO numbers
     const paymentTermsOptions = ["1-30 days", "30-60 days", "60-90 days", "90+ days", "Net 30", "Net 60"];
+    const poStatusOptions = ["approved", "pending", "rejected", null];
     for (let i = 1; i <= 8; i++) {
       const orderId = `ORDER_${i.toString().padStart(3, '0')}`;
+      const hasPO = i % 3 !== 0; // Some orders have PO, some don't
+      const poStatus = hasPO ? poStatusOptions[i % poStatusOptions.length] : null;
       const order: Order = {
         id: orderId,
         orderNumber: `BC-${1000 + i}`,
@@ -130,6 +134,10 @@ export class MemStorage implements IStorage {
         shippingCity: ["New York", "Los Angeles", "Chicago", "Houston"][Math.floor(Math.random() * 4)],
         shippingState: ["NY", "CA", "IL", "TX"][Math.floor(Math.random() * 4)],
         paymentTerms: paymentTermsOptions[i % paymentTermsOptions.length] as any,
+        poNumber: hasPO ? `PO-${2024000 + i}` : null,
+        poStatus: poStatus as any,
+        poApprovedAt: poStatus === 'approved' ? new Date(Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000) as any : null,
+        poApprovedBy: poStatus === 'approved' ? user3.id : null,
         createdAt: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000) as any,
         updatedAt: new Date() as any,
       };
@@ -317,6 +325,19 @@ export class MemStorage implements IStorage {
 
   async getOrder(id: string): Promise<Order | undefined> {
     return this.orders.get(id);
+  }
+
+  async updateOrder(id: string, order: Partial<Order>): Promise<Order | undefined> {
+    const existing = this.orders.get(id);
+    if (!existing) return undefined;
+    
+    const updated: Order = {
+      ...existing,
+      ...order,
+      updatedAt: new Date() as any,
+    };
+    this.orders.set(id, updated);
+    return updated;
   }
 
   async getQuotes(params?: { search?: string; status?: string; sortBy?: string; limit?: number; recent?: boolean }): Promise<Quote[]> {

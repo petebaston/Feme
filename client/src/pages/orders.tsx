@@ -5,8 +5,9 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Search, RefreshCw } from "lucide-react";
+import { Search, RefreshCw, Check, X, FileText } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 
 export default function Orders() {
   const { toast } = useToast();
@@ -40,6 +41,33 @@ export default function Orders() {
     },
   });
 
+  const poApprovalMutation = useMutation({
+    mutationFn: async ({ orderId, action }: { orderId: string; action: 'approve' | 'reject' }) => {
+      const user = JSON.parse(localStorage.getItem('b2b_user') || '{}');
+      const newStatus = action === 'approve' ? 'approved' : 'rejected';
+      const response = await apiRequest("PATCH", `/api/orders/${orderId}`, { 
+        poStatus: newStatus,
+        poApprovedAt: action === 'approve' ? new Date().toISOString() : null,
+        poApprovedBy: action === 'approve' ? user.id : null,
+      });
+      return response.json();
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/orders'] });
+      toast({
+        title: variables.action === 'approve' ? "PO Approved" : "PO Rejected",
+        description: `Purchase Order has been ${variables.action === 'approve' ? 'approved' : 'rejected'} successfully`,
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to update PO status",
+        variant: "destructive",
+      });
+    },
+  });
+
   const filteredOrders = orders?.filter((order: any) => {
     const matchesSearch = !searchTerm || 
       order.orderNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -68,6 +96,15 @@ export default function Orders() {
     if (terms?.includes('60-90')) return 'bg-orange-50 text-orange-700 border-orange-200';
     if (terms?.includes('90+')) return 'bg-red-50 text-red-700 border-red-200';
     return 'bg-gray-50 text-gray-700 border-gray-200';
+  };
+
+  const getPOStatusColor = (status: string) => {
+    const colors: Record<string, string> = {
+      pending: 'bg-yellow-100 text-yellow-800',
+      approved: 'bg-green-100 text-green-800',
+      rejected: 'bg-red-100 text-red-800',
+    };
+    return colors[status?.toLowerCase()] || 'bg-gray-100 text-gray-800';
   };
 
   return (
@@ -139,12 +176,25 @@ export default function Orders() {
                   <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
                     <div className="flex-1 min-w-0">
                       <h3 className="font-semibold text-base md:text-lg truncate" data-testid={`order-number-${order.id}`}>{order.orderNumber}</h3>
-                      <p className="text-sm text-gray-600 mt-0.5" data-testid={`order-customer-${order.id}`}>{order.customerName}</p>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <p className="text-sm text-gray-600" data-testid={`order-customer-${order.id}`}>{order.customerName}</p>
+                        {order.poNumber && (
+                          <span className="flex items-center gap-1 text-xs text-gray-500" data-testid={`order-po-number-${order.id}`}>
+                            <FileText className="h-3 w-3" />
+                            {order.poNumber}
+                          </span>
+                        )}
+                      </div>
                     </div>
                     <div className="flex items-center gap-2 flex-wrap">
                       {order.paymentTerms && (
                         <span className={`text-xs px-2 py-1 rounded-md border font-medium ${getPaymentTermsColor(order.paymentTerms)}`} data-testid={`order-payment-terms-${order.id}`}>
                           {order.paymentTerms}
+                        </span>
+                      )}
+                      {order.poStatus && (
+                        <span className={`text-xs px-2 py-1 rounded-full font-medium ${getPOStatusColor(order.poStatus)}`} data-testid={`order-po-status-${order.id}`}>
+                          PO: {order.poStatus}
                         </span>
                       )}
                       <span className={`text-xs px-2 py-1 rounded-full font-medium ${getStatusColor(order.status)}`} data-testid={`order-status-${order.id}`}>
@@ -174,6 +224,32 @@ export default function Orders() {
                         <p className="text-xs text-gray-500">Order Date</p>
                         <p className="text-sm font-medium">{new Date(order.createdAt).toLocaleDateString()}</p>
                       </div>
+                      {order.poNumber && order.poStatus?.toLowerCase() === 'pending' && (
+                        <>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => poApprovalMutation.mutate({ orderId: order.id, action: 'approve' })}
+                            disabled={poApprovalMutation.isPending}
+                            className="border-green-600 text-green-700 hover:bg-green-600 hover:text-white"
+                            data-testid={`button-approve-po-${order.id}`}
+                          >
+                            <Check className="h-4 w-4 mr-1" />
+                            Approve PO
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => poApprovalMutation.mutate({ orderId: order.id, action: 'reject' })}
+                            disabled={poApprovalMutation.isPending}
+                            className="border-red-600 text-red-700 hover:bg-red-600 hover:text-white"
+                            data-testid={`button-reject-po-${order.id}`}
+                          >
+                            <X className="h-4 w-4 mr-1" />
+                            Reject PO
+                          </Button>
+                        </>
+                      )}
                       <Button
                         variant="outline"
                         size="sm"

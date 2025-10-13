@@ -80,6 +80,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.patch("/api/orders/:id", async (req, res) => {
+    try {
+      const order = await storage.updateOrder(req.params.id, req.body);
+      if (!order) {
+        return res.status(404).json({ message: "Order not found" });
+      }
+      res.json(order);
+    } catch (error) {
+      console.error("Order update error:", error);
+      res.status(500).json({ message: "Failed to update order" });
+    }
+  });
+
   // Quotes endpoints
   app.get("/api/quotes", async (req, res) => {
     try {

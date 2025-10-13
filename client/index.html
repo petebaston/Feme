@@ -13,7 +13,7 @@
     
     <!-- BigCommerce B2B Configuration -->
     <script>
-      // Initialize BigCommerce B2B settings
+      // Initialize BigCommerce B2B settings (will be populated by app)
       window.b3CheckoutConfig = {
         routes: {
           dashboard: '/account.php?action=order_status',
@@ -22,8 +22,8 @@
       
       window.B3 = {
         setting: {
-          store_hash: import.meta.env.VITE_STORE_HASH || '',
-          channel_id: parseInt(import.meta.env.VITE_CHANNEL_ID || '1'),
+          store_hash: '',
+          channel_id: 1,
         },
         'dom.checkoutRegisterParentElement': '#checkout-app',
         'dom.registerElement': '[href^="/login.php"], #checkout-customer-login',

@@ -44,6 +44,10 @@ export const orders = pgTable("orders", {
   shippingCity: text("shipping_city"),
   shippingState: text("shipping_state"),
   paymentTerms: text("payment_terms"),
+  poNumber: text("po_number"),
+  poStatus: text("po_status"),
+  poApprovedAt: timestamp("po_approved_at"),
+  poApprovedBy: varchar("po_approved_by"),
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
 });
