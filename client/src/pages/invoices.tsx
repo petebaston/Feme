@@ -5,10 +5,11 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
-import { Search, Download, ExternalLink } from "lucide-react";
-import { b2bClient } from "@/lib/b2b-client";
+import { Search, ChevronRight } from "lucide-react";
+import { useLocation } from "wouter";
 
 export default function Invoices() {
+  const [, setLocation] = useLocation();
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [sortBy, setSortBy] = useState("date");
@@ -245,28 +246,16 @@ export default function Invoices() {
                         <span className="text-green-600 ml-3">Paid: {new Date(invoice.paidDate).toLocaleDateString()}</span>
                       )}
                     </div>
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-8 text-xs"
-                        onClick={() => window.open(b2bClient.getInvoiceDetailUrl(invoice.id), '_blank')}
-                        data-testid={`button-view-invoice-${invoice.id}`}
-                      >
-                        <ExternalLink className="w-3 h-3 mr-1" />
-                        View Details
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-8 text-xs"
-                        onClick={() => window.open(b2bClient.getInvoicePdfUrl(invoice.id), '_blank')}
-                        data-testid={`button-download-pdf-${invoice.id}`}
-                      >
-                        <Download className="w-3 h-3 mr-1" />
-                        Download PDF
-                      </Button>
-                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 text-xs"
+                      onClick={() => setLocation(`/invoices/${invoice.id}`)}
+                      data-testid={`button-view-invoice-${invoice.id}`}
+                    >
+                      View Details
+                      <ChevronRight className="w-3 h-3 ml-1" />
+                    </Button>
                   </div>
                 </div>
               </CardContent>

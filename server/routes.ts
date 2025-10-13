@@ -146,6 +146,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/invoices/:id/pdf", async (req, res) => {
+    try {
+      const invoice = await storage.getInvoice(req.params.id);
+      if (!invoice) {
+        return res.status(404).json({ message: "Invoice not found" });
+      }
+      
+      // In production, this would either:
+      // 1. Proxy to BigCommerce B2B Edition PDF endpoint with proper auth headers
+      // 2. Generate PDF from invoice data using a library like pdfkit or puppeteer
+      // For now, return a simple text response indicating PDF generation
+      
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename=invoice-${invoice.invoiceNumber}.pdf`);
+      res.send(Buffer.from(`Invoice PDF for ${invoice.invoiceNumber} would be generated here.\n\nIn production, this endpoint would integrate with BigCommerce B2B Edition's native PDF generation or generate the PDF from invoice data.`));
+    } catch (error) {
+      console.error("Invoice PDF error:", error);
+      res.status(500).json({ message: "Failed to generate invoice PDF" });
+    }
+  });
+
   // Company endpoints
   app.get("/api/company", async (req, res) => {
     try {

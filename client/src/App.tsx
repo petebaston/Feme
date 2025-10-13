@@ -11,6 +11,7 @@ import Dashboard from "@/pages/dashboard";
 import Orders from "@/pages/orders";
 import Quotes from "@/pages/quotes";
 import Invoices from "@/pages/invoices";
+import InvoiceDetail from "@/pages/invoice-detail";
 import Company from "@/pages/company";
 import Header from "@/components/layout/header";
 import Sidebar from "@/components/layout/sidebar";
@@ -70,6 +71,7 @@ function Router() {
             <Route path="/orders" component={Orders} />
             <Route path="/quotes" component={Quotes} />
             <Route path="/invoices" component={Invoices} />
+            <Route path="/invoices/:id" component={InvoiceDetail} />
             <Route path="/company" component={Company} />
             <Route component={NotFound} />
           </Switch>
