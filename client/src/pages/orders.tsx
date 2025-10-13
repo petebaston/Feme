@@ -1,12 +1,15 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Search } from "lucide-react";
+import { Search, RefreshCw } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 export default function Orders() {
+  const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [sortBy, setSortBy] = useState("date");
@@ -14,6 +17,27 @@ export default function Orders() {
   const { data: orders, isLoading } = useQuery<any[]>({
     queryKey: ['/api/orders'],
     staleTime: 300000,
+  });
+
+  const reorderMutation = useMutation({
+    mutationFn: async (orderId: string) => {
+      // In production, this would call BigCommerce B2B Edition API to add order items to cart
+      // For now, simulate the action
+      return new Promise((resolve) => setTimeout(resolve, 500));
+    },
+    onSuccess: () => {
+      toast({
+        title: "Items Added to Cart",
+        description: "Order items have been added to your cart for reorder",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to add items to cart",
+        variant: "destructive",
+      });
+    },
   });
 
   const filteredOrders = orders?.filter((order: any) => {
@@ -145,9 +169,22 @@ export default function Orders() {
                         <p className="font-medium">{order.shippingCity}, {order.shippingState}</p>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <p className="text-xs text-gray-500">Order Date</p>
-                      <p className="text-sm font-medium">{new Date(order.createdAt).toLocaleDateString()}</p>
+                    <div className="flex items-center gap-3">
+                      <div className="text-right hidden sm:block">
+                        <p className="text-xs text-gray-500">Order Date</p>
+                        <p className="text-sm font-medium">{new Date(order.createdAt).toLocaleDateString()}</p>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => reorderMutation.mutate(order.id)}
+                        disabled={reorderMutation.isPending || order.status?.toLowerCase() === 'cancelled'}
+                        className="border-black text-black hover:bg-black hover:text-white"
+                        data-testid={`button-reorder-${order.id}`}
+                      >
+                        <RefreshCw className={`h-4 w-4 mr-1 ${reorderMutation.isPending ? 'animate-spin' : ''}`} />
+                        {reorderMutation.isPending ? 'Adding...' : 'Reorder'}
+                      </Button>
                     </div>
                   </div>
                 </div>

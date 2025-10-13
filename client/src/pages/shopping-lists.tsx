@@ -12,21 +12,35 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { insertShoppingListSchema, type ShoppingList } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { z } from "zod";
 
-const createListSchema = insertShoppingListSchema.extend({
+const createListSchema = insertShoppingListSchema.omit({
+  companyId: true,
+  userId: true,
+  status: true,
+  isShared: true,
+}).extend({
   name: z.string().min(1, "Name is required"),
-  companyId: z.string().default("demo-company"),
-  userId: z.string().default("demo-user"),
-  status: z.string().default("active"),
-  isShared: z.boolean().default(false),
 });
 
 export default function ShoppingLists() {
   const { toast } = useToast();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [userData, setUserData] = useState<{ id: string; companyId: string } | null>(null);
+
+  useEffect(() => {
+    const userDataStr = localStorage.getItem('b2b_user');
+    if (userDataStr) {
+      try {
+        const user = JSON.parse(userDataStr);
+        setUserData({ id: user.id, companyId: user.companyId });
+      } catch (error) {
+        console.error('Failed to parse user data:', error);
+      }
+    }
+  }, []);
 
   const { data: lists = [], isLoading } = useQuery<ShoppingList[]>({
     queryKey: ["/api/shopping-lists"],
@@ -37,16 +51,21 @@ export default function ShoppingLists() {
     defaultValues: {
       name: "",
       description: "",
-      companyId: "demo-company",
-      userId: "demo-user",
-      status: "active",
-      isShared: false,
     },
   });
 
   const createMutation = useMutation({
     mutationFn: async (data: z.infer<typeof createListSchema>) => {
-      const response = await apiRequest("POST", "/api/shopping-lists", data);
+      if (!userData) {
+        throw new Error("User data not available");
+      }
+      const response = await apiRequest("POST", "/api/shopping-lists", {
+        ...data,
+        companyId: userData.companyId,
+        userId: userData.id,
+        status: "active",
+        isShared: false,
+      });
       return response.json();
     },
     onSuccess: () => {
@@ -121,7 +140,11 @@ export default function ShoppingLists() {
         </div>
         <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
           <DialogTrigger asChild>
-            <Button className="bg-black hover:bg-gray-800" data-testid="button-create-list">
+            <Button 
+              className="bg-black hover:bg-gray-800" 
+              data-testid="button-create-list"
+              disabled={!userData}
+            >
               <Plus className="h-4 w-4 mr-2" />
               Create List
             </Button>
@@ -211,6 +234,7 @@ export default function ShoppingLists() {
               <Button
                 className="bg-black hover:bg-gray-800"
                 onClick={() => setIsCreateDialogOpen(true)}
+                disabled={!userData}
                 data-testid="button-create-first-list"
               >
                 <Plus className="h-4 w-4 mr-2" />
