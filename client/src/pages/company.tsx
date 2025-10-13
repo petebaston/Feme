@@ -4,6 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
+import { InviteUserDialog, EditUserDialog, DeactivateUserDialog } from "@/components/b2b/user-dialogs";
+import { AddAddressDialog, EditAddressDialog, DeleteAddressDialog, SetDefaultAddressButton } from "@/components/b2b/address-dialogs";
+import { MoreVertical } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 export default function Company() {
   const { data: company, isLoading: companyLoading } = useQuery<any>({
@@ -34,9 +38,7 @@ export default function Company() {
           <Button variant="outline" data-testid="button-edit-company">
             Edit Company
           </Button>
-          <Button data-testid="button-invite-user">
-            Invite User
-          </Button>
+          <InviteUserDialog />
         </div>
       </div>
 
@@ -170,14 +172,41 @@ export default function Company() {
                     <div>
                       <p className="font-medium">{user.name || user.email}</p>
                       <p className="text-sm text-muted-foreground">{user.email}</p>
+                      {user.jobTitle && (
+                        <p className="text-xs text-muted-foreground">{user.jobTitle}</p>
+                      )}
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
                     <Badge variant={user.role === 'admin' ? 'default' : 'outline'}>
                       {user.role || 'User'}
                     </Badge>
+                    {user.status === 'inactive' && (
+                      <Badge variant="destructive">Inactive</Badge>
+                    )}
                     {user.id === currentUser.id && (
                       <Badge variant="secondary">You</Badge>
+                    )}
+                    {user.id !== currentUser.id && (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="sm" data-testid={`button-user-actions-${user.id}`}>
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <EditUserDialog user={user}>
+                            <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                              Edit User
+                            </DropdownMenuItem>
+                          </EditUserDialog>
+                          <DeactivateUserDialog user={user}>
+                            <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive">
+                              Deactivate User
+                            </DropdownMenuItem>
+                          </DeactivateUserDialog>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     )}
                   </div>
                 </div>
@@ -202,9 +231,7 @@ export default function Company() {
               <CardTitle>Company Addresses</CardTitle>
               <CardDescription>Shipping and billing addresses</CardDescription>
             </div>
-            <Button size="sm" variant="outline" data-testid="button-add-address">
-              Add Address
-            </Button>
+            <AddAddressDialog />
           </div>
         </CardHeader>
         <CardContent>
@@ -226,23 +253,57 @@ export default function Company() {
               addresses.map((address: any) => (
                 <Card key={address.id} className="border border-border" data-testid={`address-item-${address.id}`}>
                   <CardContent className="p-4">
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <h4 className="font-medium">{address.label || 'Address'}</h4>
-                        <div className="flex gap-2">
-                          {address.isDefault && (
-                            <Badge variant="secondary" className="text-xs">Default</Badge>
-                          )}
-                          <Badge variant="outline" className="text-xs">
-                            {address.type || 'Shipping'}
-                          </Badge>
+                    <div className="space-y-3">
+                      <div className="flex items-start justify-between">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <h4 className="font-medium">{address.label || 'Address'}</h4>
+                            {address.isDefault && (
+                              <Badge variant="secondary" className="text-xs">Default</Badge>
+                            )}
+                            <Badge variant="outline" className="text-xs">
+                              {address.type || 'Shipping'}
+                            </Badge>
+                          </div>
+                          <div className="text-sm text-muted-foreground">
+                            <p>{address.street1}</p>
+                            {address.street2 && <p>{address.street2}</p>}
+                            <p>{address.city}, {address.state} {address.postalCode}</p>
+                            <p>{address.country}</p>
+                          </div>
                         </div>
-                      </div>
-                      <div className="text-sm text-muted-foreground">
-                        <p>{address.street1}</p>
-                        {address.street2 && <p>{address.street2}</p>}
-                        <p>{address.city}, {address.state} {address.postalCode}</p>
-                        <p>{address.country}</p>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="sm" data-testid={`button-address-actions-${address.id}`}>
+                              <MoreVertical className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <EditAddressDialog address={address}>
+                              <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                                Edit Address
+                              </DropdownMenuItem>
+                            </EditAddressDialog>
+                            {!address.isDefault && (
+                              <DropdownMenuItem
+                                onSelect={() => {
+                                  const btn = document.querySelector(`[data-testid="button-set-default-${address.id}"]`) as HTMLButtonElement;
+                                  btn?.click();
+                                }}
+                              >
+                                Set as Default
+                              </DropdownMenuItem>
+                            )}
+                            <DeleteAddressDialog address={address}>
+                              <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive">
+                                Delete Address
+                              </DropdownMenuItem>
+                            </DeleteAddressDialog>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                        <div className="hidden">
+                          <SetDefaultAddressButton address={address} />
+                        </div>
                       </div>
                     </div>
                   </CardContent>
