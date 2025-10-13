@@ -17,6 +17,7 @@ export interface IStorage {
   // Quotes
   getQuotes(params?: { search?: string; status?: string; sortBy?: string; limit?: number; recent?: boolean }): Promise<Quote[]>;
   getQuote(id: string): Promise<Quote | undefined>;
+  updateQuote(id: string, quote: Partial<Quote>): Promise<Quote | undefined>;
 
   // Invoices
   getInvoices(params?: { search?: string; status?: string; sortBy?: string; limit?: number; recent?: boolean }): Promise<Invoice[]>;
@@ -360,6 +361,19 @@ export class MemStorage implements IStorage {
 
   async getQuote(id: string): Promise<Quote | undefined> {
     return this.quotes.get(id);
+  }
+
+  async updateQuote(id: string, quote: Partial<Quote>): Promise<Quote | undefined> {
+    const existing = this.quotes.get(id);
+    if (!existing) return undefined;
+    
+    const updated: Quote = {
+      ...existing,
+      ...quote,
+      updatedAt: new Date() as any,
+    };
+    this.quotes.set(id, updated);
+    return updated;
   }
 
   async getInvoices(params?: { search?: string; status?: string; sortBy?: string; limit?: number; recent?: boolean }): Promise<Invoice[]> {

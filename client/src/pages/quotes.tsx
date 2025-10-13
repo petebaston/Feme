@@ -1,12 +1,16 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Search } from "lucide-react";
+import { Search, Check, X } from "lucide-react";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
 export default function Quotes() {
+  const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [sortBy, setSortBy] = useState("date");
@@ -14,6 +18,28 @@ export default function Quotes() {
   const { data: quotes, isLoading } = useQuery<any[]>({
     queryKey: ['/api/quotes'],
     staleTime: 300000,
+  });
+
+  const approvalMutation = useMutation({
+    mutationFn: async ({ quoteId, action }: { quoteId: string; action: 'approve' | 'reject' }) => {
+      const newStatus = action === 'approve' ? 'approved' : 'rejected';
+      const response = await apiRequest("PATCH", `/api/quotes/${quoteId}`, { status: newStatus });
+      return response.json();
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/quotes'] });
+      toast({
+        title: variables.action === 'approve' ? "Quote Approved" : "Quote Rejected",
+        description: `Quote has been ${variables.action === 'approve' ? 'approved' : 'rejected'} successfully`,
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to update quote status",
+        variant: "destructive",
+      });
+    },
   });
 
   const filteredQuotes = quotes?.filter((quote: any) => {
@@ -149,9 +175,37 @@ export default function Quotes() {
                         </div>
                       )}
                     </div>
-                    <div className="text-right">
-                      <p className="text-xs text-gray-500">Created</p>
-                      <p className="text-sm font-medium">{new Date(quote.createdAt).toLocaleDateString()}</p>
+                    <div className="flex items-center gap-2">
+                      <div className="text-right hidden sm:block">
+                        <p className="text-xs text-gray-500">Created</p>
+                        <p className="text-sm font-medium">{new Date(quote.createdAt).toLocaleDateString()}</p>
+                      </div>
+                      {quote.status?.toLowerCase() === 'pending' && (
+                        <>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => approvalMutation.mutate({ quoteId: quote.id, action: 'approve' })}
+                            disabled={approvalMutation.isPending}
+                            className="border-green-600 text-green-700 hover:bg-green-600 hover:text-white"
+                            data-testid={`button-approve-${quote.id}`}
+                          >
+                            <Check className="h-4 w-4 mr-1" />
+                            Approve
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => approvalMutation.mutate({ quoteId: quote.id, action: 'reject' })}
+                            disabled={approvalMutation.isPending}
+                            className="border-red-600 text-red-700 hover:bg-red-600 hover:text-white"
+                            data-testid={`button-reject-${quote.id}`}
+                          >
+                            <X className="h-4 w-4 mr-1" />
+                            Reject
+                          </Button>
+                        </>
+                      )}
                     </div>
                   </div>
 

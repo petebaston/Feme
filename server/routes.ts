@@ -113,6 +113,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.patch("/api/quotes/:id", async (req, res) => {
+    try {
+      const quote = await storage.updateQuote(req.params.id, req.body);
+      if (!quote) {
+        return res.status(404).json({ message: "Quote not found" });
+      }
+      res.json(quote);
+    } catch (error) {
+      console.error("Quote update error:", error);
+      res.status(500).json({ message: "Failed to update quote" });
+    }
+  });
+
   // Invoices endpoints
   app.get("/api/invoices", async (req, res) => {
     try {
