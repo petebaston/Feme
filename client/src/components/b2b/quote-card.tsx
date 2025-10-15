@@ -97,7 +97,7 @@ export default function QuoteCard({ quote }: QuoteCardProps) {
           <div className="flex flex-col items-end gap-3">
             <div className="text-right">
               <p className="text-2xl font-bold" data-testid={`quote-total-${quote.id}`}>
-                ${quote.total.toLocaleString()}
+                £{quote.total.toLocaleString()}
               </p>
               <p className={`text-sm ${getStatusColor(quote.status)}`}>
                 {quote.status}

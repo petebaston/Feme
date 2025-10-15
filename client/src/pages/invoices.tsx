@@ -92,49 +92,49 @@ export default function Invoices() {
         <Card className="border border-black bg-black">
           <CardContent className="p-4 md:p-6">
             <p className="text-xs md:text-sm text-gray-400 mb-1">Total Owed</p>
-            <p className="text-xl md:text-2xl font-bold text-white" data-testid="total-owed">${paymentTermTotals.total.toLocaleString()}</p>
+            <p className="text-xl md:text-2xl font-bold text-white" data-testid="total-owed">£{paymentTermTotals.total.toLocaleString()}</p>
           </CardContent>
         </Card>
 
         <Card className="border border-green-200 bg-green-50">
           <CardContent className="p-4 md:p-6">
             <p className="text-xs md:text-sm text-green-700 mb-1">1-30 Days</p>
-            <p className="text-xl md:text-2xl font-bold text-green-800" data-testid="total-1-30-days">${paymentTermTotals.days1_30.toLocaleString()}</p>
+            <p className="text-xl md:text-2xl font-bold text-green-800" data-testid="total-1-30-days">£{paymentTermTotals.days1_30.toLocaleString()}</p>
           </CardContent>
         </Card>
 
         <Card className="border border-blue-200 bg-blue-50">
           <CardContent className="p-4 md:p-6">
             <p className="text-xs md:text-sm text-blue-700 mb-1">30-60 Days</p>
-            <p className="text-xl md:text-2xl font-bold text-blue-800" data-testid="total-30-60-days">${paymentTermTotals.days30_60.toLocaleString()}</p>
+            <p className="text-xl md:text-2xl font-bold text-blue-800" data-testid="total-30-60-days">£{paymentTermTotals.days30_60.toLocaleString()}</p>
           </CardContent>
         </Card>
 
         <Card className="border border-orange-200 bg-orange-50">
           <CardContent className="p-4 md:p-6">
             <p className="text-xs md:text-sm text-orange-700 mb-1">60-90 Days</p>
-            <p className="text-xl md:text-2xl font-bold text-orange-800" data-testid="total-60-90-days">${paymentTermTotals.days60_90.toLocaleString()}</p>
+            <p className="text-xl md:text-2xl font-bold text-orange-800" data-testid="total-60-90-days">£{paymentTermTotals.days60_90.toLocaleString()}</p>
           </CardContent>
         </Card>
 
         <Card className="border border-red-200 bg-red-50">
           <CardContent className="p-4 md:p-6">
             <p className="text-xs md:text-sm text-red-700 mb-1">90+ Days</p>
-            <p className="text-xl md:text-2xl font-bold text-red-800" data-testid="total-90-plus-days">${paymentTermTotals.days90Plus.toLocaleString()}</p>
+            <p className="text-xl md:text-2xl font-bold text-red-800" data-testid="total-90-plus-days">£{paymentTermTotals.days90Plus.toLocaleString()}</p>
           </CardContent>
         </Card>
 
         <Card className="border border-gray-200 bg-gray-50">
           <CardContent className="p-4 md:p-6">
             <p className="text-xs md:text-sm text-gray-700 mb-1">Net 30</p>
-            <p className="text-xl md:text-2xl font-bold text-gray-800" data-testid="total-net-30">${paymentTermTotals.net30.toLocaleString()}</p>
+            <p className="text-xl md:text-2xl font-bold text-gray-800" data-testid="total-net-30">£{paymentTermTotals.net30.toLocaleString()}</p>
           </CardContent>
         </Card>
 
         <Card className="border border-gray-200 bg-gray-50">
           <CardContent className="p-4 md:p-6">
             <p className="text-xs md:text-sm text-gray-700 mb-1">Net 60</p>
-            <p className="text-xl md:text-2xl font-bold text-gray-800" data-testid="total-net-60">${paymentTermTotals.net60.toLocaleString()}</p>
+            <p className="text-xl md:text-2xl font-bold text-gray-800" data-testid="total-net-60">£{paymentTermTotals.net60.toLocaleString()}</p>
           </CardContent>
         </Card>
       </div>
@@ -219,16 +219,16 @@ export default function Invoices() {
                     <div className="flex items-center gap-4 text-sm">
                       <div>
                         <p className="text-gray-500 text-xs">Total</p>
-                        <p className="font-semibold text-base" data-testid={`invoice-total-${invoice.id}`}>${parseFloat(invoice.total).toLocaleString()}</p>
+                        <p className="font-semibold text-base" data-testid={`invoice-total-${invoice.id}`}>£{parseFloat(invoice.total).toLocaleString()}</p>
                       </div>
                       <div>
                         <p className="text-gray-500 text-xs">Subtotal</p>
-                        <p className="font-medium">${parseFloat(invoice.subtotal).toLocaleString()}</p>
+                        <p className="font-medium">£{parseFloat(invoice.subtotal).toLocaleString()}</p>
                       </div>
                       {invoice.tax && (
                         <div className="hidden sm:block">
                           <p className="text-gray-500 text-xs">Tax</p>
-                          <p className="font-medium">${parseFloat(invoice.tax).toLocaleString()}</p>
+                          <p className="font-medium">£{parseFloat(invoice.tax).toLocaleString()}</p>
                         </div>
                       )}
                     </div>

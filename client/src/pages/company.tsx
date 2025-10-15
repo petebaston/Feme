@@ -157,7 +157,7 @@ export default function Company() {
                   </div>
                   <div>
                     <h4 className="text-sm font-medium text-muted-foreground">Credit Limit</h4>
-                    <p data-testid="credit-limit">${company?.creditLimit?.toLocaleString() || '50,000'}</p>
+                    <p data-testid="credit-limit">£{company?.creditLimit?.toLocaleString() || '50,000'}</p>
                   </div>
                   <div>
                     <h4 className="text-sm font-medium text-muted-foreground">Payment Terms</h4>

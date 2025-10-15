@@ -74,7 +74,7 @@ export default function OrderCard({ order }: OrderCardProps) {
           <div className="flex flex-col items-end gap-3">
             <div className="text-right">
               <p className="text-2xl font-bold" data-testid={`order-total-${order.id}`}>
-                ${order.total.toLocaleString()}
+                £{order.total.toLocaleString()}
               </p>
               <p className={`text-sm ${getStatusColor(order.status)}`}>
                 {order.status}

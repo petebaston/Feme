@@ -204,23 +204,23 @@ export default function InvoiceDetail() {
           <CardContent className="space-y-4">
             <div className="flex justify-between">
               <p className="text-sm text-gray-500">Subtotal</p>
-              <p className="font-medium" data-testid="subtotal">${parseFloat(invoice.subtotal).toLocaleString()}</p>
+              <p className="font-medium" data-testid="subtotal">£{parseFloat(invoice.subtotal).toLocaleString()}</p>
             </div>
             {invoice.tax && (
               <div className="flex justify-between">
                 <p className="text-sm text-gray-500">Tax</p>
-                <p className="font-medium" data-testid="tax">${parseFloat(invoice.tax).toLocaleString()}</p>
+                <p className="font-medium" data-testid="tax">£{parseFloat(invoice.tax).toLocaleString()}</p>
               </div>
             )}
             {invoice.shipping && (
               <div className="flex justify-between">
                 <p className="text-sm text-gray-500">Shipping</p>
-                <p className="font-medium" data-testid="shipping">${parseFloat(invoice.shipping).toLocaleString()}</p>
+                <p className="font-medium" data-testid="shipping">£{parseFloat(invoice.shipping).toLocaleString()}</p>
               </div>
             )}
             <div className="flex justify-between pt-4 border-t border-gray-200">
               <p className="text-base font-semibold">Total</p>
-              <p className="text-xl font-bold" data-testid="total">${parseFloat(invoice.total).toLocaleString()}</p>
+              <p className="text-xl font-bold" data-testid="total">£{parseFloat(invoice.total).toLocaleString()}</p>
             </div>
           </CardContent>
         </Card>
@@ -248,9 +248,9 @@ export default function InvoiceDetail() {
                     <tr key={index} className="border-b border-gray-100" data-testid={`item-${index}`}>
                       <td className="py-3 px-2 text-sm">{item.name || item.productName}</td>
                       <td className="py-3 px-2 text-sm text-right">{item.quantity}</td>
-                      <td className="py-3 px-2 text-sm text-right">${parseFloat(item.price).toLocaleString()}</td>
+                      <td className="py-3 px-2 text-sm text-right">£{parseFloat(item.price).toLocaleString()}</td>
                       <td className="py-3 px-2 text-sm text-right font-medium">
-                        ${(parseFloat(item.price) * item.quantity).toLocaleString()}
+                        £{(parseFloat(item.price) * item.quantity).toLocaleString()}
                       </td>
                     </tr>
                   ))}

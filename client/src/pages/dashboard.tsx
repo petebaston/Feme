@@ -84,7 +84,7 @@ export default function Dashboard() {
                   <p className="text-sm font-medium text-gray-600">Monthly Spend</p>
                   <DollarSign className="w-4 h-4 text-gray-400" />
                 </div>
-                <p className="text-3xl font-semibold text-black" data-testid="stat-monthly-spend">${stats?.monthlySpend?.toLocaleString() || 0}</p>
+                <p className="text-3xl font-semibold text-black" data-testid="stat-monthly-spend">£{stats?.monthlySpend?.toLocaleString() || 0}</p>
                 <p className="text-xs text-green-600 mt-1">↑ {stats?.spendChange || 0}% vs last month</p>
               </div>
             )}
@@ -118,7 +118,7 @@ export default function Dashboard() {
                   <p className="text-sm font-medium text-gray-600">Active Credit</p>
                   <Clock className="w-4 h-4 text-gray-400" />
                 </div>
-                <p className="text-3xl font-semibold text-black" data-testid="stat-active-credit">${stats?.activeCredit?.toLocaleString() || 0}</p>
+                <p className="text-3xl font-semibold text-black" data-testid="stat-active-credit">£{stats?.activeCredit?.toLocaleString() || 0}</p>
                 <p className="text-xs text-gray-500 mt-1">Available credit</p>
               </div>
             )}
@@ -159,7 +159,7 @@ export default function Dashboard() {
                       </div>
                     </div>
                     <div className="flex items-center justify-between mt-2">
-                      <p className="text-sm font-semibold">${parseFloat(order.total).toLocaleString()}</p>
+                      <p className="text-sm font-semibold">£{parseFloat(order.total).toLocaleString()}</p>
                       <p className="text-xs text-gray-500">{new Date(order.createdAt).toLocaleDateString()}</p>
                     </div>
                   </div>
@@ -208,7 +208,7 @@ export default function Dashboard() {
                       </div>
                     </div>
                     <div className="flex items-center justify-between mt-2">
-                      <p className="text-sm font-semibold">${parseFloat(quote.total).toLocaleString()}</p>
+                      <p className="text-sm font-semibold">£{parseFloat(quote.total).toLocaleString()}</p>
                       <p className="text-xs text-gray-500">{new Date(quote.createdAt).toLocaleDateString()}</p>
                     </div>
                   </div>
