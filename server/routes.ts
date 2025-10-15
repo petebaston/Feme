@@ -178,6 +178,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post("/api/quotes", async (req, res) => {
+    try {
+      const userToken = getUserToken(req);
+      const response = await bigcommerce.createQuote(userToken, req.body);
+      res.json(response?.data || null);
+    } catch (error) {
+      console.error("Quote creation error:", error);
+      res.status(500).json({ message: "Failed to create quote" });
+    }
+  });
+
+  app.post("/api/quotes/:id/convert-to-order", async (req, res) => {
+    try {
+      const userToken = getUserToken(req);
+      const response = await bigcommerce.convertQuoteToOrder(userToken, req.params.id);
+      res.json(response?.data || null);
+    } catch (error) {
+      console.error("Quote conversion error:", error);
+      res.status(500).json({ message: "Failed to convert quote to order" });
+    }
+  });
+
   // Invoices endpoints
   app.get("/api/invoices", async (req, res) => {
     try {

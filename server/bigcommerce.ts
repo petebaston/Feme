@@ -154,6 +154,22 @@ export class BigCommerceService {
     });
   }
 
+  async createQuote(userToken: string, data: any) {
+    return this.request('/api/v2/quotes', {
+      method: 'POST',
+      body: JSON.stringify(data),
+      userToken,
+    });
+  }
+
+  async convertQuoteToOrder(userToken: string, quoteId: string) {
+    return this.request(`/api/v2/quotes/${quoteId}/checkout`, {
+      method: 'POST',
+      body: JSON.stringify({}),
+      userToken,
+    });
+  }
+
   // Company
   async getCompany(userToken: string) {
     return this.request('/api/v2/company', { userToken });

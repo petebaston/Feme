@@ -5,15 +5,22 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Search, Check, X } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Search, Check, X, ShoppingBag } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { formatCurrency } from "@/lib/currency";
 
 export default function Quotes() {
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [sortBy, setSortBy] = useState("date");
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [quoteTitle, setQuoteTitle] = useState("");
+  const [quoteNotes, setQuoteNotes] = useState("");
 
   const { data: quotes, isLoading } = useQuery<any[]>({
     queryKey: ['/api/quotes'],
@@ -37,6 +44,65 @@ export default function Quotes() {
       toast({
         title: "Error",
         description: "Failed to update quote status",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const convertToOrderMutation = useMutation({
+    mutationFn: async (quoteId: string) => {
+      const response = await apiRequest("POST", `/api/quotes/${quoteId}/convert-to-order`, {});
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/quotes'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/orders'] });
+      toast({
+        title: "Quote Converted",
+        description: "Quote has been converted to an order successfully",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to convert quote to order",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const createQuoteMutation = useMutation({
+    mutationFn: async (data: { title: string; notes: string }) => {
+      // Get user and company info from localStorage
+      const userDataStr = localStorage.getItem('b2b_user');
+      if (!userDataStr) {
+        throw new Error('User data not available');
+      }
+      const userData = JSON.parse(userDataStr);
+      
+      const response = await apiRequest("POST", "/api/quotes", {
+        title: data.title,
+        notes: data.notes,
+        status: 'open',
+        companyId: userData.companyId,
+        bcCustomerId: userData.bcCustomerId || userData.id,
+      });
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/quotes'] });
+      setIsCreateDialogOpen(false);
+      setQuoteTitle("");
+      setQuoteNotes("");
+      toast({
+        title: "Quote Created",
+        description: "Your quote request has been created successfully",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to create quote",
         variant: "destructive",
       });
     },
@@ -75,9 +141,69 @@ export default function Quotes() {
   return (
     <div className="space-y-6 md:space-y-8">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl md:text-3xl font-semibold text-black">Quotes</h1>
-        <p className="text-sm md:text-base text-gray-600 mt-1">Review and manage your quote requests</p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-semibold text-black">Quotes</h1>
+          <p className="text-sm md:text-base text-gray-600 mt-1">Review and manage your quote requests</p>
+        </div>
+        <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+          <DialogTrigger asChild>
+            <Button
+              className="bg-black text-white hover:bg-gray-800"
+              data-testid="button-create-quote"
+            >
+              Request Quote
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Request a Quote</DialogTitle>
+              <DialogDescription>
+                Submit a quote request for custom pricing or large orders
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="quote-title">Quote Title *</Label>
+                <Input
+                  id="quote-title"
+                  placeholder="e.g., Bulk Order - Product XYZ"
+                  value={quoteTitle}
+                  onChange={(e) => setQuoteTitle(e.target.value)}
+                  data-testid="input-quote-title"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="quote-notes">Additional Notes</Label>
+                <Textarea
+                  id="quote-notes"
+                  placeholder="Provide details about your quote request..."
+                  value={quoteNotes}
+                  onChange={(e) => setQuoteNotes(e.target.value)}
+                  rows={4}
+                  data-testid="input-quote-notes"
+                />
+              </div>
+            </div>
+            <div className="flex gap-2 justify-end">
+              <Button
+                variant="outline"
+                onClick={() => setIsCreateDialogOpen(false)}
+                data-testid="button-cancel-quote"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={() => createQuoteMutation.mutate({ title: quoteTitle, notes: quoteNotes })}
+                disabled={!quoteTitle || createQuoteMutation.isPending}
+                className="bg-black text-white hover:bg-gray-800"
+                data-testid="button-submit-quote"
+              >
+                {createQuoteMutation.isPending ? 'Creating...' : 'Submit Request'}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
 
       {/* Filters */}
@@ -162,7 +288,7 @@ export default function Quotes() {
                     <div className="flex items-center gap-4 text-sm">
                       <div>
                         <p className="text-gray-500 text-xs">Total</p>
-                        <p className="font-semibold text-base" data-testid={`quote-total-${quote.id}`}>${parseFloat(quote.total).toLocaleString()}</p>
+                        <p className="font-semibold text-base" data-testid={`quote-total-${quote.id}`}>{formatCurrency(quote.total, quote.money)}</p>
                       </div>
                       <div>
                         <p className="text-gray-500 text-xs">Items</p>
@@ -180,6 +306,18 @@ export default function Quotes() {
                         <p className="text-xs text-gray-500">Created</p>
                         <p className="text-sm font-medium">{new Date(quote.createdAt).toLocaleDateString()}</p>
                       </div>
+                      {quote.status?.toLowerCase() === 'approved' && (
+                        <Button
+                          size="sm"
+                          onClick={() => convertToOrderMutation.mutate(quote.id)}
+                          disabled={convertToOrderMutation.isPending}
+                          className="bg-black text-white hover:bg-gray-800"
+                          data-testid={`button-convert-${quote.id}`}
+                        >
+                          <ShoppingBag className="h-4 w-4 mr-1" />
+                          Convert to Order
+                        </Button>
+                      )}
                       {quote.status?.toLowerCase() === 'pending' && (
                         <>
                           <Button

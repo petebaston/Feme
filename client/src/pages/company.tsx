@@ -9,6 +9,7 @@ import { AddAddressDialog, EditAddressDialog, DeleteAddressDialog, SetDefaultAdd
 import { MoreVertical } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { usePermissions } from "@/hooks/use-permissions";
+import { formatCurrency } from "@/lib/currency";
 
 export default function Company() {
   const { can } = usePermissions();
@@ -44,6 +45,39 @@ export default function Company() {
           )}
           {can('manage_users') && <InviteUserDialog />}
         </div>
+      </div>
+
+      {/* Financial Overview */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card className="border border-green-200 bg-green-50">
+          <CardContent className="p-6">
+            <p className="text-sm text-green-700 mb-1">Credit Limit</p>
+            <p className="text-3xl font-bold text-green-900" data-testid="credit-limit-card">
+              £{(company?.creditLimit || 50000).toLocaleString()}
+            </p>
+            <p className="text-xs text-green-600 mt-2">Available for orders</p>
+          </CardContent>
+        </Card>
+        
+        <Card className="border border-blue-200 bg-blue-50">
+          <CardContent className="p-6">
+            <p className="text-sm text-blue-700 mb-1">Payment Terms</p>
+            <p className="text-3xl font-bold text-blue-900" data-testid="payment-terms-card">
+              {company?.paymentTerms || 'Net 30'}
+            </p>
+            <p className="text-xs text-blue-600 mt-2">Standard terms</p>
+          </CardContent>
+        </Card>
+        
+        <Card className="border border-purple-200 bg-purple-50">
+          <CardContent className="p-6">
+            <p className="text-sm text-purple-700 mb-1">Pricing Tier</p>
+            <p className="text-3xl font-bold text-purple-900" data-testid="pricing-tier-card">
+              {company?.tier || 'Standard'}
+            </p>
+            <p className="text-xs text-purple-600 mt-2">Custom pricing available</p>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Company Profile */}
