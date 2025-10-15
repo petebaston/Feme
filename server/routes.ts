@@ -1,8 +1,6 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { bigcommerce } from "./bigcommerce";
-import { authenticate, authorize } from "./middleware/auth";
-import { storage } from "./storage";
 
 // Helper to extract user token from request
 function getUserToken(req: any): string {
@@ -224,128 +222,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/company/accessible", authenticate, authorize('switch_companies'), async (req, res) => {
-    try {
-      // Use authenticated user's ID instead of query parameter
-      const userId = req.user!.id;
-      const companies = await storage.getAccessibleCompanies(userId);
-      res.json(companies);
-    } catch (error) {
-      console.error("Accessible companies fetch error:", error);
-      res.status(500).json({ message: "Failed to fetch accessible companies" });
-    }
+  app.get("/api/company/accessible", async (req, res) => {
+    res.status(501).json({ message: "Not implemented - feature not available in BigCommerce API" });
   });
 
-  app.get("/api/company/hierarchy", authenticate, async (req, res) => {
-    try {
-      // Use authenticated user's company ID or allow override for admins
-      const companyId = (req.query.companyId as string) || req.user!.companyId;
-      if (!companyId) {
-        return res.status(400).json({ message: "Company ID not found" });
-      }
-      
-      // Verify user has access to this company
-      const accessibleCompanies = await storage.getAccessibleCompanies(req.user!.id);
-      const hasAccess = accessibleCompanies.some(c => c.id === companyId);
-      
-      if (!hasAccess) {
-        return res.status(403).json({ message: "Access denied to this company" });
-      }
-      
-      const hierarchy = await storage.getCompanyHierarchy(companyId);
-      res.json(hierarchy);
-    } catch (error) {
-      console.error("Company hierarchy fetch error:", error);
-      res.status(500).json({ message: "Failed to fetch company hierarchy" });
-    }
+  app.get("/api/company/hierarchy", async (req, res) => {
+    res.status(501).json({ message: "Not implemented - feature not available in BigCommerce API" });
   });
 
   // User management endpoints
-  app.post("/api/users", authenticate, authorize('manage_users'), async (req, res) => {
-    try {
-      const user = await storage.createUser(req.body);
-      res.status(201).json(user);
-    } catch (error) {
-      console.error("User create error:", error);
-      res.status(500).json({ message: "Failed to create user" });
-    }
+  app.post("/api/users", async (req, res) => {
+    res.status(501).json({ message: "Not implemented - feature not available in BigCommerce API" });
   });
 
-  app.patch("/api/users/:id", authenticate, authorize('manage_users'), async (req, res) => {
-    try {
-      const user = await storage.updateUser(req.params.id, req.body);
-      if (!user) {
-        return res.status(404).json({ message: "User not found" });
-      }
-      res.json(user);
-    } catch (error) {
-      console.error("User update error:", error);
-      res.status(500).json({ message: "Failed to update user" });
-    }
+  app.patch("/api/users/:id", async (req, res) => {
+    res.status(501).json({ message: "Not implemented - feature not available in BigCommerce API" });
   });
 
-  app.delete("/api/users/:id", authenticate, authorize('manage_users'), async (req, res) => {
-    try {
-      const success = await storage.deleteUser(req.params.id);
-      if (!success) {
-        return res.status(404).json({ message: "User not found" });
-      }
-      res.status(204).send();
-    } catch (error) {
-      console.error("User delete error:", error);
-      res.status(500).json({ message: "Failed to delete user" });
-    }
+  app.delete("/api/users/:id", async (req, res) => {
+    res.status(501).json({ message: "Not implemented - feature not available in BigCommerce API" });
   });
 
   // Address management endpoints
-  app.post("/api/addresses", authenticate, authorize('manage_addresses'), async (req, res) => {
-    try {
-      const address = await storage.createAddress(req.body);
-      res.status(201).json(address);
-    } catch (error) {
-      console.error("Address create error:", error);
-      res.status(500).json({ message: "Failed to create address" });
-    }
+  app.post("/api/addresses", async (req, res) => {
+    res.status(501).json({ message: "Not implemented - feature not available in BigCommerce API" });
   });
 
-  app.patch("/api/addresses/:id", authenticate, authorize('manage_addresses'), async (req, res) => {
-    try {
-      const address = await storage.updateAddress(req.params.id, req.body);
-      if (!address) {
-        return res.status(404).json({ message: "Address not found" });
-      }
-      res.json(address);
-    } catch (error) {
-      console.error("Address update error:", error);
-      res.status(500).json({ message: "Failed to update address" });
-    }
+  app.patch("/api/addresses/:id", async (req, res) => {
+    res.status(501).json({ message: "Not implemented - feature not available in BigCommerce API" });
   });
 
-  app.delete("/api/addresses/:id", authenticate, authorize('manage_addresses'), async (req, res) => {
-    try {
-      const success = await storage.deleteAddress(req.params.id);
-      if (!success) {
-        return res.status(404).json({ message: "Address not found" });
-      }
-      res.status(204).send();
-    } catch (error) {
-      console.error("Address delete error:", error);
-      res.status(500).json({ message: "Failed to delete address" });
-    }
+  app.delete("/api/addresses/:id", async (req, res) => {
+    res.status(501).json({ message: "Not implemented - feature not available in BigCommerce API" });
   });
 
-  app.patch("/api/addresses/:id/set-default", authenticate, authorize('manage_addresses'), async (req, res) => {
-    try {
-      const { type } = req.body;
-      const success = await storage.setDefaultAddress(req.params.id, type);
-      if (!success) {
-        return res.status(404).json({ message: "Address not found" });
-      }
-      res.json({ success: true });
-    } catch (error) {
-      console.error("Set default address error:", error);
-      res.status(500).json({ message: "Failed to set default address" });
-    }
+  app.patch("/api/addresses/:id/set-default", async (req, res) => {
+    res.status(501).json({ message: "Not implemented - feature not available in BigCommerce API" });
   });
 
   // Shopping Lists endpoints
@@ -374,90 +286,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/shopping-lists", authenticate, authorize('manage_shopping_lists'), async (req, res) => {
-    try {
-      const list = await storage.createShoppingList(req.body);
-      res.status(201).json(list);
-    } catch (error) {
-      console.error("Shopping list create error:", error);
-      res.status(500).json({ message: "Failed to create shopping list" });
-    }
+  app.post("/api/shopping-lists", async (req, res) => {
+    res.status(501).json({ message: "Not implemented - feature not available in BigCommerce API" });
   });
 
-  app.patch("/api/shopping-lists/:id", authenticate, authorize('manage_shopping_lists'), async (req, res) => {
-    try {
-      const list = await storage.updateShoppingList(req.params.id, req.body);
-      if (!list) {
-        return res.status(404).json({ message: "Shopping list not found" });
-      }
-      res.json(list);
-    } catch (error) {
-      console.error("Shopping list update error:", error);
-      res.status(500).json({ message: "Failed to update shopping list" });
-    }
+  app.patch("/api/shopping-lists/:id", async (req, res) => {
+    res.status(501).json({ message: "Not implemented - feature not available in BigCommerce API" });
   });
 
-  app.delete("/api/shopping-lists/:id", authenticate, authorize('manage_shopping_lists'), async (req, res) => {
-    try {
-      const success = await storage.deleteShoppingList(req.params.id);
-      if (!success) {
-        return res.status(404).json({ message: "Shopping list not found" });
-      }
-      res.status(204).send();
-    } catch (error) {
-      console.error("Shopping list delete error:", error);
-      res.status(500).json({ message: "Failed to delete shopping list" });
-    }
+  app.delete("/api/shopping-lists/:id", async (req, res) => {
+    res.status(501).json({ message: "Not implemented - feature not available in BigCommerce API" });
   });
 
   // Shopping List Items endpoints
-  app.get("/api/shopping-lists/:id/items", authenticate, authorize('view_shopping_lists'), async (req, res) => {
-    try {
-      const items = await storage.getShoppingListItems(req.params.id);
-      res.json(items);
-    } catch (error) {
-      console.error("Shopping list items fetch error:", error);
-      res.status(500).json({ message: "Failed to fetch shopping list items" });
-    }
+  app.get("/api/shopping-lists/:id/items", async (req, res) => {
+    res.status(501).json({ message: "Not implemented - feature not available in BigCommerce API" });
   });
 
-  app.post("/api/shopping-lists/:id/items", authenticate, authorize('manage_shopping_lists'), async (req, res) => {
-    try {
-      const item = await storage.addShoppingListItem({
-        ...req.body,
-        listId: req.params.id,
-      });
-      res.status(201).json(item);
-    } catch (error) {
-      console.error("Shopping list item add error:", error);
-      res.status(500).json({ message: "Failed to add item to shopping list" });
-    }
+  app.post("/api/shopping-lists/:id/items", async (req, res) => {
+    res.status(501).json({ message: "Not implemented - feature not available in BigCommerce API" });
   });
 
-  app.patch("/api/shopping-list-items/:id", authenticate, authorize('manage_shopping_lists'), async (req, res) => {
-    try {
-      const item = await storage.updateShoppingListItem(req.params.id, req.body);
-      if (!item) {
-        return res.status(404).json({ message: "Shopping list item not found" });
-      }
-      res.json(item);
-    } catch (error) {
-      console.error("Shopping list item update error:", error);
-      res.status(500).json({ message: "Failed to update shopping list item" });
-    }
+  app.patch("/api/shopping-list-items/:id", async (req, res) => {
+    res.status(501).json({ message: "Not implemented - feature not available in BigCommerce API" });
   });
 
-  app.delete("/api/shopping-list-items/:id", authenticate, authorize('manage_shopping_lists'), async (req, res) => {
-    try {
-      const success = await storage.deleteShoppingListItem(req.params.id);
-      if (!success) {
-        return res.status(404).json({ message: "Shopping list item not found" });
-      }
-      res.status(204).send();
-    } catch (error) {
-      console.error("Shopping list item delete error:", error);
-      res.status(500).json({ message: "Failed to delete shopping list item" });
-    }
+  app.delete("/api/shopping-list-items/:id", async (req, res) => {
+    res.status(501).json({ message: "Not implemented - feature not available in BigCommerce API" });
   });
 
   const httpServer = createServer(app);
