@@ -2,6 +2,7 @@ import { db } from "./db";
 import { eq, and, desc, asc, sql, or, like } from "drizzle-orm";
 import { 
   users, companies, orders, quotes, invoices, addresses, shoppingLists, shoppingListItems,
+  bigcommerceOrdersCache,
   type User, type InsertUser, 
   type Company, 
   type Order, 
@@ -62,6 +63,10 @@ export interface IStorage {
   addShoppingListItem(item: InsertShoppingListItem): Promise<ShoppingListItem>;
   updateShoppingListItem(id: string, item: Partial<ShoppingListItem>): Promise<ShoppingListItem | undefined>;
   deleteShoppingListItem(id: string): Promise<boolean>;
+
+  // BigCommerce Cache
+  getCachedOrder(orderId: string, companyId: string): Promise<any | null>;
+  setCachedOrders(orders: any[], companyId: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -679,6 +684,49 @@ export class DatabaseStorage implements IStorage {
   async deleteShoppingListItem(id: string): Promise<boolean> {
     const result = await db.delete(shoppingListItems).where(eq(shoppingListItems.id, id));
     return result.rowCount ? result.rowCount > 0 : false;
+  }
+
+  // BigCommerce Cache Methods
+  async getCachedOrder(orderId: string, companyId: string): Promise<any | null> {
+    const result = await db.select()
+      .from(bigcommerceOrdersCache)
+      .where(and(
+        eq(bigcommerceOrdersCache.orderId, orderId),
+        eq(bigcommerceOrdersCache.companyId, companyId)
+      ))
+      .limit(1);
+    
+    if (result.length === 0) return null;
+    
+    try {
+      return JSON.parse(result[0].orderData);
+    } catch (e) {
+      console.error('[Cache] Failed to parse cached order:', e);
+      return null;
+    }
+  }
+
+  async setCachedOrders(orders: any[], companyId: string): Promise<void> {
+    for (const order of orders) {
+      const orderId = String(order.id);
+      const orderData = JSON.stringify(order);
+      
+      // Upsert: insert or update if exists
+      await db.insert(bigcommerceOrdersCache)
+        .values({
+          orderId,
+          companyId,
+          orderData,
+          lastFetched: new Date(),
+        })
+        .onConflictDoUpdate({
+          target: bigcommerceOrdersCache.orderId,
+          set: {
+            orderData,
+            lastFetched: new Date(),
+          }
+        });
+    }
   }
 }
 

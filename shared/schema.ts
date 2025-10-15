@@ -133,6 +133,15 @@ export const shoppingListItems = pgTable("shopping_list_items", {
   updatedAt: timestamp("updated_at").default(sql`now()`),
 });
 
+// BigCommerce API Cache - stores raw API responses for reliability
+export const bigcommerceOrdersCache = pgTable("bigcommerce_orders_cache", {
+  orderId: text("order_id").primaryKey(), // BigCommerce order ID
+  companyId: varchar("company_id").notNull(),
+  orderData: text("order_data").notNull(), // JSON string of full order response
+  lastFetched: timestamp("last_fetched").default(sql`now()`),
+  createdAt: timestamp("created_at").default(sql`now()`),
+});
+
 export const rolePermissions = pgTable("role_permissions", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   roleName: text("role_name").notNull(), // admin, manager, buyer, etc.
