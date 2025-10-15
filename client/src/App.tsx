@@ -10,6 +10,7 @@ import Login from "@/pages/login";
 import Dashboard from "@/pages/dashboard";
 import Orders from "@/pages/orders";
 import OrderDetail from "@/pages/order-detail";
+import QuickOrder from "@/pages/quick-order";
 import Quotes from "@/pages/quotes";
 import Invoices from "@/pages/invoices";
 import InvoiceDetail from "@/pages/invoice-detail";
@@ -72,6 +73,7 @@ function Router() {
             <Route path="/dashboard" component={Dashboard} />
             <Route path="/orders/:id" component={OrderDetail} />
             <Route path="/orders" component={Orders} />
+            <Route path="/quick-order" component={QuickOrder} />
             <Route path="/quotes" component={Quotes} />
             <Route path="/invoices" component={Invoices} />
             <Route path="/invoices/:id" component={InvoiceDetail} />

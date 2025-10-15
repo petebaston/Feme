@@ -45,8 +45,16 @@ export default function InvoiceDetail() {
 
   const handleDownloadPDF = async () => {
     try {
+      // Get auth token
+      const token = localStorage.getItem('b2b_token');
+      if (!token) {
+        throw new Error('Not authenticated');
+      }
+
       const response = await fetch(`/api/invoices/${id}/pdf`, {
-        credentials: 'include',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
       });
       
       if (!response.ok) {
@@ -70,7 +78,7 @@ export default function InvoiceDetail() {
     } catch (error) {
       toast({
         title: "Error",
-        description: "Failed to download invoice PDF",
+        description: "Failed to download invoice PDF. This feature may not be available in sandbox mode.",
         variant: "destructive",
       });
     }

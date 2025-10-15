@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Search, RefreshCw, Check, X, FileText, ExternalLink } from "lucide-react";
+import { Search, RefreshCw, Check, X, FileText, ExternalLink, Download } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Link } from "wouter";
@@ -80,6 +80,49 @@ export default function Orders() {
     return matchesSearch && matchesStatus;
   }) || [];
 
+  const handleExportCSV = () => {
+    if (!filteredOrders || filteredOrders.length === 0) {
+      toast({
+        title: "No Data",
+        description: "No orders to export",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Create CSV content
+    const headers = ['Order Number', 'Customer', 'Status', 'Total', 'Date', 'PO Number'];
+    const rows = filteredOrders.map((order: any) => [
+      order.id,
+      order.customerName,
+      order.status,
+      order.total,
+      new Date(order.createdAt).toLocaleDateString(),
+      order.poNumber || '',
+    ]);
+
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
+    ].join('\n');
+
+    // Download CSV
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `orders-export-${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+
+    toast({
+      title: "Export Complete",
+      description: `Exported ${filteredOrders.length} orders to CSV`,
+    });
+  };
+
   const getStatusColor = (status: string) => {
     const colors: Record<string, string> = {
       pending: 'bg-yellow-100 text-yellow-800',
@@ -112,9 +155,20 @@ export default function Orders() {
   return (
     <div className="space-y-6 md:space-y-8">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl md:text-3xl font-semibold text-black">Orders</h1>
-        <p className="text-sm md:text-base text-gray-600 mt-1">Track and manage your order history</p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-semibold text-black">Orders</h1>
+          <p className="text-sm md:text-base text-gray-600 mt-1">Track and manage your order history</p>
+        </div>
+        <Button
+          variant="outline"
+          onClick={handleExportCSV}
+          className="border-gray-300"
+          data-testid="button-export-csv"
+        >
+          <Download className="w-4 h-4 mr-2" />
+          Export CSV
+        </Button>
       </div>
 
       {/* Filters */}
