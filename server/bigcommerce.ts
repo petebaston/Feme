@@ -158,9 +158,18 @@ export class BigCommerceService {
     // Note: Only searches last 100 orders due to API limitations
     const ordersResponse = await this.getOrders(userToken, { limit: 100 });
     const ordersList = ordersResponse?.data?.list || ordersResponse?.data || [];
+    
+    // Debug logging
+    console.log('[BigCommerce] getOrder - Looking for orderId:', orderId);
+    console.log('[BigCommerce] getOrder - Orders count:', ordersList.length);
+    if (ordersList.length > 0) {
+      console.log('[BigCommerce] getOrder - First order fields:', Object.keys(ordersList[0]));
+      console.log('[BigCommerce] getOrder - First order sample:', JSON.stringify(ordersList[0]).substring(0, 200));
+    }
+    
     const foundOrder = ordersList.find((o: any) => 
-      String(o.id) === String(orderId) || 
-      String(o.bcOrderId) === String(orderId)
+      String(o.orderId) === String(orderId) || 
+      String(o.id) === String(orderId)
     );
     
     if (!foundOrder) {
