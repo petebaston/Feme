@@ -13,15 +13,19 @@ export default function OrderDetail() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
 
-  // Cache-first approach: Try to get order from orders list cache first
-  const ordersListCache = queryClient.getQueryData<any[]>(['/api/orders']);
-  const cachedOrder = ordersListCache?.find(o => String(o.id) === String(id));
+  // WORKAROUND: BigCommerce API is unreliable (direct endpoint 404, list returns empty intermittently)
+  // Use client-side cache from orders list page as primary source
+  const ordersCache = queryClient.getQueryData<any[]>(['/api/orders']);
+  const cachedOrder = ordersCache?.find((o: any) => String(o.id) === String(id));
 
-  const { data: order, isLoading } = useQuery<any>({
+  const { data: fetchedOrder, isLoading: isFetching, error } = useQuery<any>({
     queryKey: [`/api/orders/${id}`],
     enabled: !!id && !cachedOrder, // Only fetch if not in cache
-    initialData: cachedOrder, // Use cached data as initial data
+    retry: 2, // Retry on failure
   });
+
+  const order = cachedOrder || fetchedOrder;
+  const isLoading = !cachedOrder && isFetching;
 
   const reorderMutation = useMutation({
     mutationFn: async () => {
@@ -69,6 +73,41 @@ export default function OrderDetail() {
         <Card className="border border-gray-200">
           <CardContent className="p-6">
             <Skeleton className="h-64" />
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (!order && !isLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center gap-4">
+          <Button
+            variant="outline"
+            onClick={() => setLocation('/orders')}
+            className="flex items-center gap-2"
+            data-testid="button-back-to-orders"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back to Orders
+          </Button>
+        </div>
+
+        <Card className="border border-gray-200">
+          <CardContent className="p-12 text-center">
+            <Package className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+            <h2 className="text-2xl font-semibold mb-2">Order Not Found</h2>
+            <p className="text-gray-600 mb-6">
+              Due to API limitations, please navigate to this order from the Orders page.
+            </p>
+            <Button
+              onClick={() => setLocation('/orders')}
+              className="bg-black text-white hover:bg-gray-800"
+              data-testid="button-view-all-orders"
+            >
+              View All Orders
+            </Button>
           </CardContent>
         </Card>
       </div>

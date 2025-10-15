@@ -74,6 +74,20 @@ Preferred communication style: Simple, everyday language.
 - Shared schema between frontend and backend for type consistency
 - Demo tokens for development (production-ready for JWT upgrade)
 
+**BigCommerce API Architecture & Limitations (Critical):**
+- **GraphQL API** (api-b2b.bigcommerce.com/graphql) supports: Quotes, Invoices, Shopping Lists, Company data
+- **GraphQL API does NOT support Orders** - orders only available via REST
+- **REST API Reliability Issues:**
+  - Direct order endpoint `/api/v2/orders/{id}` returns 404 (doesn't exist)
+  - List endpoint `/api/v2/orders` returns inconsistent results (intermittent empty arrays)
+  - Case-sensitive status values (BigCommerce returns uppercase: PENDING, APPROVED)
+- **Workarounds Implemented:**
+  - Client-side cache-first approach for order details (uses React Query cache from orders list)
+  - Case-insensitive status filtering in dashboard stats
+  - User-friendly error messages guiding navigation from orders list page
+  - Retry logic for unreliable API calls
+- **Future Improvements:** Migrate quotes, invoices, shopping lists to GraphQL for better reliability
+
 ## Implemented Features (18 of 20)
 
 ### 1. Quick Order Pad with CSV Upload
