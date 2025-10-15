@@ -153,19 +153,134 @@ export class BigCommerceService {
   }
 
   async getOrder(userToken: string, orderId: string) {
-    // BigCommerce B2B Edition doesn't have a single order detail REST endpoint
-    // Fetch from the orders list and find the specific order
-    // Note: Only searches last 100 orders due to API limitations
+    // Hybrid approach: Use GraphQL for reliable order detail, REST as fallback
+    try {
+      console.log('[BigCommerce] Fetching order via GraphQL:', orderId);
+      
+      const graphqlQuery = `
+        query GetOrderDetails($orderId: Int!) {
+          site {
+            order(filter: { entityId: $orderId }) {
+              entityId
+              orderedAt
+              status {
+                value
+                label
+              }
+              subTotal {
+                currencyCode
+                value
+              }
+              totalIncTax {
+                currencyCode
+                value
+              }
+              shippingCostTotal {
+                currencyCode
+                value
+              }
+              billingAddress {
+                firstName
+                lastName
+                address1
+                address2
+                city
+                stateOrProvince
+                postalCode
+                country
+                countryCode
+                email
+                phone
+                company
+              }
+              consignments {
+                shipping {
+                  edges {
+                    node {
+                      lineItems {
+                        edges {
+                          node {
+                            brand
+                            entityId
+                            name
+                            quantity
+                            productOptions {
+                              name
+                              value
+                            }
+                            image {
+                              url
+                              altText
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      `;
+
+      const graphqlResponse = await this.graphqlRequest(
+        graphqlQuery, 
+        { orderId: parseInt(orderId) },
+        userToken
+      );
+
+      const graphqlOrder = graphqlResponse?.data?.site?.order;
+      
+      if (graphqlOrder) {
+        // Transform GraphQL response to match REST format
+        const transformedOrder = {
+          orderId: graphqlOrder.entityId,
+          id: graphqlOrder.entityId,
+          orderStatus: graphqlOrder.status?.label || graphqlOrder.status?.value,
+          status: graphqlOrder.status?.label || graphqlOrder.status?.value,
+          totalIncTax: graphqlOrder.totalIncTax?.value || 0,
+          subtotalIncTax: graphqlOrder.subTotal?.value || 0,
+          totalExTax: graphqlOrder.subTotal?.value || 0,
+          currencyCode: graphqlOrder.totalIncTax?.currencyCode || 'GBP',
+          money: {
+            currency_code: graphqlOrder.totalIncTax?.currencyCode || 'GBP',
+            currency_location: 'left',
+            currency_token: graphqlOrder.totalIncTax?.currencyCode === 'GBP' ? '£' : '$',
+            decimal_places: 2,
+            decimal_token: '.',
+            thousands_token: ','
+          },
+          createdAt: graphqlOrder.orderedAt ? String(Math.floor(new Date(graphqlOrder.orderedAt).getTime() / 1000)) : String(Math.floor(Date.now() / 1000)),
+          updatedAt: graphqlOrder.orderedAt ? String(Math.floor(new Date(graphqlOrder.orderedAt).getTime() / 1000)) : String(Math.floor(Date.now() / 1000)),
+          billingAddress: graphqlOrder.billingAddress,
+          productsList: graphqlOrder.consignments?.shipping?.edges?.flatMap((edge: any) => 
+            edge.node?.lineItems?.edges?.map((item: any) => ({
+              productId: item.node?.entityId,
+              sku: item.node?.entityId,
+              name: item.node?.name,
+              quantity: item.node?.quantity,
+              brand: item.node?.brand,
+              imageUrl: item.node?.image?.url,
+              variantSku: item.node?.productOptions?.map((opt: any) => `${opt.name}: ${opt.value}`).join(', ') || ''
+            })) || []
+          ) || [],
+          itemCount: graphqlOrder.consignments?.shipping?.edges?.flatMap((edge: any) => 
+            edge.node?.lineItems?.edges || []
+          )?.length || 0,
+        };
+
+        console.log('[BigCommerce] GraphQL order found:', transformedOrder.orderId);
+        return { code: 200, data: transformedOrder };
+      }
+    } catch (graphqlError: any) {
+      console.error('[BigCommerce] GraphQL order fetch failed, trying REST fallback:', graphqlError.message);
+    }
+
+    // Fallback to REST API
+    console.log('[BigCommerce] Falling back to REST API for order:', orderId);
     const ordersResponse = await this.getOrders(userToken, { limit: 100 });
     const ordersList = ordersResponse?.data?.list || ordersResponse?.data || [];
-    
-    // Debug logging
-    console.log('[BigCommerce] getOrder - Looking for orderId:', orderId);
-    console.log('[BigCommerce] getOrder - Orders count:', ordersList.length);
-    if (ordersList.length > 0) {
-      console.log('[BigCommerce] getOrder - First order fields:', Object.keys(ordersList[0]));
-      console.log('[BigCommerce] getOrder - First order sample:', JSON.stringify(ordersList[0]).substring(0, 200));
-    }
     
     const foundOrder = ordersList.find((o: any) => 
       String(o.orderId) === String(orderId) || 
@@ -176,7 +291,7 @@ export class BigCommerceService {
       throw new Error('Order not found');
     }
 
-    // Return in the expected format
+    console.log('[BigCommerce] REST fallback order found:', foundOrder.orderId);
     return { code: 200, data: foundOrder };
   }
 
