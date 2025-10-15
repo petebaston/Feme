@@ -13,7 +13,7 @@ export class BigCommerceService {
     this.config = {
       storeHash: process.env.BIGCOMMERCE_STORE_HASH || process.env.VITE_STORE_HASH || '',
       accessToken: process.env.BIGCOMMERCE_ACCESS_TOKEN || '',
-      b2bApiUrl: process.env.VITE_B2B_URL || 'https://api-b2b.bigcommerce.com/api/v3/io',
+      b2bApiUrl: 'https://api-b2b.bigcommerce.com',
       clientId: process.env.BIGCOMMERCE_CLIENT_ID || '',
       clientSecret: process.env.BIGCOMMERCE_CLIENT_SECRET || '',
     };
@@ -31,11 +31,15 @@ export class BigCommerceService {
     
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
-      'X-Auth-Token': this.config.accessToken,
       ...(options.headers || {}),
     };
 
-    // Add user token if provided
+    // Always add server access token
+    if (this.config.accessToken) {
+      headers['X-Auth-Token'] = this.config.accessToken;
+    }
+
+    // Add user token for authenticated requests
     if (options.userToken) {
       headers['Authorization'] = `Bearer ${options.userToken}`;
     }
@@ -64,15 +68,36 @@ export class BigCommerceService {
 
   // Authentication
   async login(email: string, password: string) {
-    return this.request('/login', {
+    const channelId = parseInt(process.env.VITE_CHANNEL_ID || '1');
+    
+    const response = await this.request('/api/io/auth/customers', {
       method: 'POST',
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({
+        storeHash: this.config.storeHash,
+        channelId,
+        name: 'buyer portal token',
+        email,
+        password,
+      }),
     });
+
+    // Extract token from response (format: {code: 200, data: {token: "..."}, meta: {message: "SUCCESS"}})
+    if (response && response.data && response.data.token) {
+      return {
+        token: response.data.token,
+        user: {
+          email,
+          name: email.split('@')[0], // Basic fallback
+        }
+      };
+    }
+
+    throw new Error(response?.meta?.message || 'Login failed - no token returned');
   }
 
   // Dashboard
   async getDashboardStats(userToken: string) {
-    return this.request('/dashboard/stats', { userToken });
+    return this.request('/api/v3/io/dashboard/stats', { userToken });
   }
 
   // Orders
@@ -85,18 +110,18 @@ export class BigCommerceService {
     if (params?.recent) queryParams.append('recent', 'true');
 
     const query = queryParams.toString();
-    return this.request(`/orders${query ? `?${query}` : ''}`, { userToken });
+    return this.request(`/api/v3/io/orders${query ? `?${query}` : ''}`, { userToken });
   }
 
   async getOrder(userToken: string, orderId: string) {
-    return this.request(`/orders/${orderId}`, { userToken });
+    return this.request(`/api/v3/io/orders/${orderId}`, { userToken });
   }
 
   async updateOrder(userToken: string, orderId: string, data: any) {
-    return this.request(`/orders/${orderId}`, {
+    return this.request(`/api/v3/io/orders/${orderId}`, {
       method: 'PATCH',
       body: JSON.stringify(data),
-      userToken,
+      userToken
     });
   }
 
@@ -110,15 +135,15 @@ export class BigCommerceService {
     if (params?.recent) queryParams.append('recent', 'true');
 
     const query = queryParams.toString();
-    return this.request(`/quotes${query ? `?${query}` : ''}`, { userToken });
+    return this.request(`/api/v3/io/quotes${query ? `?${query}` : ''}`, { userToken });
   }
 
   async getQuote(userToken: string, quoteId: string) {
-    return this.request(`/quotes/${quoteId}`, { userToken });
+    return this.request(`/api/v3/io/quotes/${quoteId}`, { userToken });
   }
 
   async updateQuote(userToken: string, quoteId: string, data: any) {
-    return this.request(`/quotes/${quoteId}`, {
+    return this.request(`/api/v3/io/quotes/${quoteId}`, {
       method: 'PATCH',
       body: JSON.stringify(data),
       userToken,
@@ -127,15 +152,15 @@ export class BigCommerceService {
 
   // Company
   async getCompany(userToken: string) {
-    return this.request('/company', { userToken });
+    return this.request('/api/v3/io/company', { userToken });
   }
 
   async getCompanyUsers(userToken: string) {
-    return this.request('/company/users', { userToken });
+    return this.request('/api/v3/io/company/users', { userToken });
   }
 
   async getCompanyAddresses(userToken: string) {
-    return this.request('/company/addresses', { userToken });
+    return this.request('/api/v3/io/company/addresses', { userToken });
   }
 
   // Invoices
@@ -148,24 +173,24 @@ export class BigCommerceService {
     if (params?.recent) queryParams.append('recent', 'true');
 
     const query = queryParams.toString();
-    return this.request(`/invoices${query ? `?${query}` : ''}`, { userToken });
+    return this.request(`/api/v3/io/invoices${query ? `?${query}` : ''}`, { userToken });
   }
 
   async getInvoice(userToken: string, invoiceId: string) {
-    return this.request(`/invoices/${invoiceId}`, { userToken });
+    return this.request(`/api/v3/io/invoices/${invoiceId}`, { userToken });
   }
 
   async getInvoicePdf(userToken: string, invoiceId: string) {
-    return this.request(`/invoices/${invoiceId}/pdf`, { userToken });
+    return this.request(`/api/v3/io/invoices/${invoiceId}/pdf`, { userToken });
   }
 
   // Shopping Lists
   async getShoppingLists(userToken: string) {
-    return this.request('/shopping-lists', { userToken });
+    return this.request('/api/v3/io/shopping-lists', { userToken });
   }
 
   async getShoppingList(userToken: string, listId: string) {
-    return this.request(`/shopping-lists/${listId}`, { userToken });
+    return this.request(`/api/v3/io/shopping-lists/${listId}`, { userToken });
   }
 }
 
