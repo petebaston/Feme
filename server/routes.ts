@@ -19,9 +19,11 @@ function transformOrder(bcOrder: any): any {
     customerName: bcOrder.companyName || bcOrder.customerName,
     status: bcOrder.orderStatus || bcOrder.customOrderStatus || bcOrder.status,
     total: bcOrder.totalIncTax || 0,
+    subtotal: bcOrder.totalExTax || bcOrder.subtotalIncTax || bcOrder.totalIncTax || 0,
     createdAt: bcOrder.createdAt ? new Date(parseInt(bcOrder.createdAt) * 1000).toISOString() : new Date().toISOString(),
     updatedAt: bcOrder.updatedAt ? new Date(parseInt(bcOrder.updatedAt) * 1000).toISOString() : new Date().toISOString(),
-    itemCount: bcOrder.items || 0,
+    itemCount: bcOrder.itemCount || bcOrder.items || 0,
+    items: bcOrder.productsList || bcOrder.products || [],
     poNumber: bcOrder.poNumber || '',
     referenceNumber: bcOrder.referenceNumber || '',
     companyId: bcOrder.companyId,
@@ -31,6 +33,7 @@ function transformOrder(bcOrder: any): any {
     currencyCode: bcOrder.currencyCode,
     money: bcOrder.money,
     shippingAddress: bcOrder.shippingAddress,
+    billingAddress: bcOrder.billingAddress,
     // Custom fields from ERP integrations
     extraFields: bcOrder.extraFields || [],
     extraInt1: bcOrder.extraInt1,
@@ -117,8 +120,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Order not found" });
       }
       res.json(transformOrder(bcOrder));
-    } catch (error) {
+    } catch (error: any) {
       console.error("Order fetch error:", error);
+      // If order not found, return 404
+      if (error.message && error.message.includes('Order not found')) {
+        return res.status(404).json({ message: "Order not found" });
+      }
       res.status(500).json({ message: "Failed to fetch order" });
     }
   });
