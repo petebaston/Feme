@@ -1,7 +1,14 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
-import { storage } from "./storage";
+import { bigcommerce } from "./bigcommerce";
 import { authenticate, authorize } from "./middleware/auth";
+import { storage } from "./storage";
+
+// Helper to extract user token from request
+function getUserToken(req: any): string {
+  const authHeader = req.headers.authorization;
+  return authHeader?.replace('Bearer ', '') || '';
+}
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Authentication endpoints
@@ -13,34 +20,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Email and password are required" });
       }
 
-      const user = await storage.getUserByEmail(email);
-      if (!user || user.password !== password) {
-        return res.status(401).json({ message: "Invalid credentials" });
-      }
-
-      // In production, use proper JWT tokens
-      const token = `demo_token_${user.id}`;
+      console.log('[Login] Attempting BigCommerce login for:', email);
+      const result = await bigcommerce.login(email, password);
       
-      res.json({
-        token,
-        user: {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-          role: user.role,
-          companyId: user.companyId,
-        }
-      });
-    } catch (error) {
-      console.error("Login error:", error);
-      res.status(500).json({ message: "Internal server error" });
+      console.log('[Login] BigCommerce login successful');
+      res.json(result);
+    } catch (error: any) {
+      console.error("[Login] BigCommerce login failed:", error.message);
+      res.status(401).json({ message: "Invalid credentials" });
     }
   });
 
   // Dashboard stats
-  app.get("/api/dashboard/stats", authenticate, authorize('view_orders'), async (req, res) => {
+  app.get("/api/dashboard/stats", async (req, res) => {
     try {
-      const stats = await storage.getDashboardStats();
+      const userToken = getUserToken(req);
+      const stats = await bigcommerce.getDashboardStats(userToken);
       res.json(stats);
     } catch (error) {
       console.error("Dashboard stats error:", error);
@@ -49,11 +44,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Orders endpoints
-  app.get("/api/orders", authenticate, authorize('view_orders'), async (req, res) => {
+  app.get("/api/orders", async (req, res) => {
     try {
+      const userToken = getUserToken(req);
       const { search, status, sortBy, limit, recent } = req.query;
       
-      const orders = await storage.getOrders({
+      const orders = await bigcommerce.getOrders(userToken, {
         search: search as string,
         status: status as string,
         sortBy: sortBy as string,
@@ -68,9 +64,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/orders/:id", authenticate, authorize('view_orders'), async (req, res) => {
+  app.get("/api/orders/:id", async (req, res) => {
     try {
-      const order = await storage.getOrder(req.params.id);
+      const userToken = getUserToken(req);
+      const order = await bigcommerce.getOrder(userToken, req.params.id);
       if (!order) {
         return res.status(404).json({ message: "Order not found" });
       }
@@ -81,9 +78,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/orders/:id", authenticate, authorize('create_orders'), async (req, res) => {
+  app.patch("/api/orders/:id", async (req, res) => {
     try {
-      const order = await storage.updateOrder(req.params.id, req.body);
+      const userToken = getUserToken(req);
+      const order = await bigcommerce.updateOrder(userToken, req.params.id, req.body);
       if (!order) {
         return res.status(404).json({ message: "Order not found" });
       }
@@ -95,11 +93,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Quotes endpoints
-  app.get("/api/quotes", authenticate, authorize('view_quotes'), async (req, res) => {
+  app.get("/api/quotes", async (req, res) => {
     try {
+      const userToken = getUserToken(req);
       const { search, status, sortBy, limit, recent } = req.query;
       
-      const quotes = await storage.getQuotes({
+      const quotes = await bigcommerce.getQuotes(userToken, {
         search: search as string,
         status: status as string,
         sortBy: sortBy as string,
@@ -114,9 +113,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/quotes/:id", authenticate, authorize('view_quotes'), async (req, res) => {
+  app.get("/api/quotes/:id", async (req, res) => {
     try {
-      const quote = await storage.getQuote(req.params.id);
+      const userToken = getUserToken(req);
+      const quote = await bigcommerce.getQuote(userToken, req.params.id);
       if (!quote) {
         return res.status(404).json({ message: "Quote not found" });
       }
@@ -127,9 +127,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/quotes/:id", authenticate, authorize('manage_quotes'), async (req, res) => {
+  app.patch("/api/quotes/:id", async (req, res) => {
     try {
-      const quote = await storage.updateQuote(req.params.id, req.body);
+      const userToken = getUserToken(req);
+      const quote = await bigcommerce.updateQuote(userToken, req.params.id, req.body);
       if (!quote) {
         return res.status(404).json({ message: "Quote not found" });
       }
@@ -141,11 +142,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Invoices endpoints
-  app.get("/api/invoices", authenticate, authorize('view_invoices'), async (req, res) => {
+  app.get("/api/invoices", async (req, res) => {
     try {
+      const userToken = getUserToken(req);
       const { search, status, sortBy, limit, recent } = req.query;
       
-      const invoices = await storage.getInvoices({
+      const invoices = await bigcommerce.getInvoices(userToken, {
         search: search as string,
         status: status as string,
         sortBy: sortBy as string,
@@ -160,9 +162,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/invoices/:id", authenticate, authorize('view_invoices'), async (req, res) => {
+  app.get("/api/invoices/:id", async (req, res) => {
     try {
-      const invoice = await storage.getInvoice(req.params.id);
+      const userToken = getUserToken(req);
+      const invoice = await bigcommerce.getInvoice(userToken, req.params.id);
       if (!invoice) {
         return res.status(404).json({ message: "Invoice not found" });
       }
@@ -173,21 +176,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/invoices/:id/pdf", authenticate, authorize('view_invoices'), async (req, res) => {
+  app.get("/api/invoices/:id/pdf", async (req, res) => {
     try {
-      const invoice = await storage.getInvoice(req.params.id);
-      if (!invoice) {
-        return res.status(404).json({ message: "Invoice not found" });
-      }
-      
-      // In production, this would either:
-      // 1. Proxy to BigCommerce B2B Edition PDF endpoint with proper auth headers
-      // 2. Generate PDF from invoice data using a library like pdfkit or puppeteer
-      // For now, return a simple text response indicating PDF generation
+      const userToken = getUserToken(req);
+      const pdfData = await bigcommerce.getInvoicePdf(userToken, req.params.id);
       
       res.setHeader('Content-Type', 'application/pdf');
-      res.setHeader('Content-Disposition', `attachment; filename=invoice-${invoice.invoiceNumber}.pdf`);
-      res.send(Buffer.from(`Invoice PDF for ${invoice.invoiceNumber} would be generated here.\n\nIn production, this endpoint would integrate with BigCommerce B2B Edition's native PDF generation or generate the PDF from invoice data.`));
+      res.setHeader('Content-Disposition', `attachment; filename=invoice-${req.params.id}.pdf`);
+      res.send(pdfData);
     } catch (error) {
       console.error("Invoice PDF error:", error);
       res.status(500).json({ message: "Failed to generate invoice PDF" });
@@ -195,9 +191,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Company endpoints
-  app.get("/api/company", authenticate, authorize('view_company'), async (req, res) => {
+  app.get("/api/company", async (req, res) => {
     try {
-      const company = await storage.getCompany();
+      const userToken = getUserToken(req);
+      const company = await bigcommerce.getCompany(userToken);
       res.json(company);
     } catch (error) {
       console.error("Company fetch error:", error);
@@ -205,9 +202,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/company/users", authenticate, authorize('view_company'), async (req, res) => {
+  app.get("/api/company/users", async (req, res) => {
     try {
-      const users = await storage.getCompanyUsers();
+      const userToken = getUserToken(req);
+      const users = await bigcommerce.getCompanyUsers(userToken);
       res.json(users);
     } catch (error) {
       console.error("Company users fetch error:", error);
@@ -215,9 +213,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/company/addresses", authenticate, authorize('view_company'), async (req, res) => {
+  app.get("/api/company/addresses", async (req, res) => {
     try {
-      const addresses = await storage.getCompanyAddresses();
+      const userToken = getUserToken(req);
+      const addresses = await bigcommerce.getCompanyAddresses(userToken);
       res.json(addresses);
     } catch (error) {
       console.error("Company addresses fetch error:", error);
@@ -350,9 +349,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Shopping Lists endpoints
-  app.get("/api/shopping-lists", authenticate, authorize('view_shopping_lists'), async (req, res) => {
+  app.get("/api/shopping-lists", async (req, res) => {
     try {
-      const lists = await storage.getShoppingLists();
+      const userToken = getUserToken(req);
+      const lists = await bigcommerce.getShoppingLists(userToken);
       res.json(lists);
     } catch (error) {
       console.error("Shopping lists fetch error:", error);
@@ -360,9 +360,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/shopping-lists/:id", authenticate, authorize('view_shopping_lists'), async (req, res) => {
+  app.get("/api/shopping-lists/:id", async (req, res) => {
     try {
-      const list = await storage.getShoppingList(req.params.id);
+      const userToken = getUserToken(req);
+      const list = await bigcommerce.getShoppingList(userToken, req.params.id);
       if (!list) {
         return res.status(404).json({ message: "Shopping list not found" });
       }
