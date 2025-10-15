@@ -9,6 +9,7 @@ import { Search, RefreshCw, Check, X, FileText, ExternalLink } from "lucide-reac
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Link } from "wouter";
+import { formatCurrency } from "@/lib/currency";
 
 export default function Orders() {
   const { toast } = useToast();
@@ -209,7 +210,7 @@ export default function Orders() {
                     <div className="flex items-center gap-4 text-sm">
                       <div>
                         <p className="text-gray-500 text-xs">Total</p>
-                        <p className="font-semibold text-base" data-testid={`order-total-${order.id}`}>${parseFloat(order.total).toLocaleString()}</p>
+                        <p className="font-semibold text-base" data-testid={`order-total-${order.id}`}>{formatCurrency(order.total, order.money)}</p>
                       </div>
                       <div>
                         <p className="text-gray-500 text-xs">Items</p>

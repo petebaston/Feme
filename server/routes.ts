@@ -23,6 +23,7 @@ function transformOrder(bcOrder: any): any {
     updatedAt: bcOrder.updatedAt ? new Date(parseInt(bcOrder.updatedAt) * 1000).toISOString() : new Date().toISOString(),
     itemCount: bcOrder.items || 0,
     poNumber: bcOrder.poNumber || '',
+    referenceNumber: bcOrder.referenceNumber || '',
     companyId: bcOrder.companyId,
     companyName: bcOrder.companyName,
     firstName: bcOrder.firstName,
@@ -30,6 +31,19 @@ function transformOrder(bcOrder: any): any {
     currencyCode: bcOrder.currencyCode,
     money: bcOrder.money,
     shippingAddress: bcOrder.shippingAddress,
+    // Custom fields from ERP integrations
+    extraFields: bcOrder.extraFields || [],
+    extraInt1: bcOrder.extraInt1,
+    extraInt2: bcOrder.extraInt2,
+    extraInt3: bcOrder.extraInt3,
+    extraInt4: bcOrder.extraInt4,
+    extraInt5: bcOrder.extraInt5,
+    extraStr1: bcOrder.extraStr1,
+    extraStr2: bcOrder.extraStr2,
+    extraStr3: bcOrder.extraStr3,
+    extraStr4: bcOrder.extraStr4,
+    extraStr5: bcOrder.extraStr5,
+    extraText: bcOrder.extraText,
   };
 }
 

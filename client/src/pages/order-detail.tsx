@@ -6,6 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ArrowLeft, RefreshCw, Package, Truck, FileText } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { formatCurrency } from "@/lib/currency";
 
 export default function OrderDetail() {
   const { id } = useParams();
@@ -178,23 +179,23 @@ export default function OrderDetail() {
           <CardContent className="space-y-4">
             <div className="flex justify-between">
               <p className="text-sm text-gray-500">Subtotal</p>
-              <p className="font-medium" data-testid="subtotal">${parseFloat(order.subtotal || order.total).toLocaleString()}</p>
+              <p className="font-medium" data-testid="subtotal">{formatCurrency(order.subtotal || order.total, order.money)}</p>
             </div>
             {order.tax && (
               <div className="flex justify-between">
                 <p className="text-sm text-gray-500">Tax</p>
-                <p className="font-medium" data-testid="tax">${parseFloat(order.tax).toLocaleString()}</p>
+                <p className="font-medium" data-testid="tax">{formatCurrency(order.tax, order.money)}</p>
               </div>
             )}
             {order.shipping && (
               <div className="flex justify-between">
                 <p className="text-sm text-gray-500">Shipping</p>
-                <p className="font-medium" data-testid="shipping">${parseFloat(order.shipping).toLocaleString()}</p>
+                <p className="font-medium" data-testid="shipping">{formatCurrency(order.shipping, order.money)}</p>
               </div>
             )}
             <div className="flex justify-between pt-4 border-t border-gray-200">
               <p className="text-base font-semibold">Total</p>
-              <p className="text-xl font-bold" data-testid="total">${parseFloat(order.total).toLocaleString()}</p>
+              <p className="text-xl font-bold" data-testid="total">{formatCurrency(order.total, order.money)}</p>
             </div>
           </CardContent>
         </Card>
@@ -221,6 +222,69 @@ export default function OrderDetail() {
             )}
             {!order.shippingAddress && (order.shippingCity || order.shippingState) && (
               <p>{order.shippingCity}, {order.shippingState}</p>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Custom Fields / ERP Integration Data */}
+      {(order.extraFields?.length > 0 || order.referenceNumber || order.extraText) && (
+        <Card className="border border-gray-200">
+          <CardHeader>
+            <CardTitle className="text-lg">Additional Information</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {order.referenceNumber && (
+              <div>
+                <p className="text-sm text-gray-500">Reference Number</p>
+                <p className="font-medium" data-testid="reference-number">{order.referenceNumber}</p>
+              </div>
+            )}
+            
+            {order.extraFields?.map((field: any, index: number) => (
+              field.fieldValue && (
+                <div key={index}>
+                  <p className="text-sm text-gray-500">{field.fieldName}</p>
+                  <p className="font-medium" data-testid={`extra-field-${index}`}>{field.fieldValue}</p>
+                </div>
+              )
+            ))}
+
+            {[
+              { label: 'Extra Field 1', value: order.extraStr1 },
+              { label: 'Extra Field 2', value: order.extraStr2 },
+              { label: 'Extra Field 3', value: order.extraStr3 },
+              { label: 'Extra Field 4', value: order.extraStr4 },
+              { label: 'Extra Field 5', value: order.extraStr5 },
+            ].map((field, index) => (
+              field.value && (
+                <div key={`str-${index}`}>
+                  <p className="text-sm text-gray-500">{field.label}</p>
+                  <p className="font-medium">{field.value}</p>
+                </div>
+              )
+            ))}
+
+            {[
+              { label: 'Extra Number 1', value: order.extraInt1 },
+              { label: 'Extra Number 2', value: order.extraInt2 },
+              { label: 'Extra Number 3', value: order.extraInt3 },
+              { label: 'Extra Number 4', value: order.extraInt4 },
+              { label: 'Extra Number 5', value: order.extraInt5 },
+            ].map((field, index) => (
+              field.value !== null && field.value !== undefined && (
+                <div key={`int-${index}`}>
+                  <p className="text-sm text-gray-500">{field.label}</p>
+                  <p className="font-medium">{field.value}</p>
+                </div>
+              )
+            ))}
+
+            {order.extraText && (
+              <div>
+                <p className="text-sm text-gray-500">Additional Notes</p>
+                <p className="font-medium whitespace-pre-wrap">{order.extraText}</p>
+              </div>
             )}
           </CardContent>
         </Card>
@@ -254,9 +318,9 @@ export default function OrderDetail() {
                         {item.sku && <p className="text-xs text-gray-500">SKU: {item.sku}</p>}
                       </td>
                       <td className="py-3 px-2 text-sm text-right">{item.quantity}</td>
-                      <td className="py-3 px-2 text-sm text-right">${parseFloat(item.price).toLocaleString()}</td>
+                      <td className="py-3 px-2 text-sm text-right">{formatCurrency(item.price, order.money)}</td>
                       <td className="py-3 px-2 text-sm text-right font-medium">
-                        ${(parseFloat(item.price) * item.quantity).toLocaleString()}
+                        {formatCurrency(parseFloat(item.price) * item.quantity, order.money)}
                       </td>
                     </tr>
                   ))}
