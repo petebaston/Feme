@@ -13,9 +13,14 @@ export default function OrderDetail() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
 
+  // Cache-first approach: Try to get order from orders list cache first
+  const ordersListCache = queryClient.getQueryData<any[]>(['/api/orders']);
+  const cachedOrder = ordersListCache?.find(o => String(o.id) === String(id));
+
   const { data: order, isLoading } = useQuery<any>({
     queryKey: [`/api/orders/${id}`],
-    enabled: !!id,
+    enabled: !!id && !cachedOrder, // Only fetch if not in cache
+    initialData: cachedOrder, // Use cached data as initial data
   });
 
   const reorderMutation = useMutation({
