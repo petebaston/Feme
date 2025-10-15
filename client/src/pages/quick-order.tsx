@@ -1,10 +1,13 @@
-import { useState } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useState, useEffect } from "react";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Trash2, ShoppingCart, Upload, Download } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Plus, Trash2, ShoppingCart, Upload, Download, Save, FileText, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 
@@ -25,6 +28,30 @@ export default function QuickOrder() {
     { id: '2', sku: '', quantity: 1 },
     { id: '3', sku: '', quantity: 1 },
   ]);
+  const [productSearchQuery, setProductSearchQuery] = useState('');
+  const [showProductSearch, setShowProductSearch] = useState(false);
+  const [templates, setTemplates] = useState<{name: string; items: QuickOrderRow[]}[]>([]);
+  const [showSaveTemplate, setShowSaveTemplate] = useState(false);
+  const [templateName, setTemplateName] = useState('');
+
+  // Load templates from localStorage on mount
+  useEffect(() => {
+    const saved = localStorage.getItem('reorder_templates');
+    if (saved) {
+      try {
+        setTemplates(JSON.parse(saved));
+      } catch (e) {
+        console.error('Failed to load templates:', e);
+      }
+    }
+  }, []);
+
+  // Product search with debounce
+  const { data: productResults } = useQuery<any[]>({
+    queryKey: ['/api/products/search', { query: productSearchQuery }],
+    enabled: productSearchQuery.length >= 2,
+    staleTime: 60000,
+  });
 
   const addToCartMutation = useMutation({
     mutationFn: async (items: QuickOrderRow[]) => {
@@ -148,6 +175,57 @@ export default function QuickOrder() {
     document.body.removeChild(a);
   };
 
+  const handleSaveTemplate = () => {
+    if (!templateName.trim()) {
+      toast({
+        title: "Error",
+        description: "Please enter a template name",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const validRows = rows.filter(r => r.sku);
+    if (validRows.length === 0) {
+      toast({
+        title: "Error",
+        description: "Add some items before saving a template",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const newTemplate = { name: templateName, items: validRows };
+    const updatedTemplates = [...templates, newTemplate];
+    setTemplates(updatedTemplates);
+    localStorage.setItem('reorder_templates', JSON.stringify(updatedTemplates));
+    
+    setShowSaveTemplate(false);
+    setTemplateName('');
+    toast({
+      title: "Template Saved",
+      description: `"${templateName}" saved with ${validRows.length} items`,
+    });
+  };
+
+  const handleLoadTemplate = (template: {name: string; items: QuickOrderRow[]}) => {
+    setRows(template.items.map(item => ({...item, id: Date.now().toString() + Math.random()})));
+    toast({
+      title: "Template Loaded",
+      description: `Loaded "${template.name}" with ${template.items.length} items`,
+    });
+  };
+
+  const handleDeleteTemplate = (templateName: string) => {
+    const updatedTemplates = templates.filter(t => t.name !== templateName);
+    setTemplates(updatedTemplates);
+    localStorage.setItem('reorder_templates', JSON.stringify(updatedTemplates));
+    toast({
+      title: "Template Deleted",
+      description: `"${templateName}" has been removed`,
+    });
+  };
+
   return (
     <div className="space-y-6 md:space-y-8">
       {/* Header */}
@@ -156,7 +234,102 @@ export default function QuickOrder() {
           <h1 className="text-2xl md:text-3xl font-semibold text-black">Quick Order</h1>
           <p className="text-sm md:text-base text-gray-600 mt-1">Enter SKUs and quantities for rapid ordering</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                className="border-gray-300"
+                data-testid="button-load-template"
+              >
+                <FileText className="w-4 h-4 mr-2" />
+                Load Template
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-80">
+              <div className="space-y-2">
+                <h4 className="font-medium text-sm">Reorder Templates</h4>
+                {templates.length === 0 ? (
+                  <p className="text-sm text-gray-500">No templates saved yet</p>
+                ) : (
+                  <div className="space-y-1">
+                    {templates.map((template, idx) => (
+                      <div key={idx} className="flex items-center justify-between p-2 hover:bg-gray-50 rounded border border-gray-200">
+                        <button
+                          onClick={() => handleLoadTemplate(template)}
+                          className="flex-1 text-left"
+                          data-testid={`template-${idx}`}
+                        >
+                          <div className="font-medium text-sm">{template.name}</div>
+                          <div className="text-xs text-gray-500">{template.items.length} items</div>
+                        </button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDeleteTemplate(template.name)}
+                          data-testid={`delete-template-${idx}`}
+                        >
+                          <X className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </PopoverContent>
+          </Popover>
+
+          <Dialog open={showSaveTemplate} onOpenChange={setShowSaveTemplate}>
+            <DialogTrigger asChild>
+              <Button
+                variant="outline"
+                className="border-gray-300"
+                data-testid="button-save-template"
+              >
+                <Save className="w-4 h-4 mr-2" />
+                Save Template
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Save Reorder Template</DialogTitle>
+                <DialogDescription>
+                  Save your current items as a template for quick reordering
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <Label htmlFor="template-name">Template Name *</Label>
+                  <Input
+                    id="template-name"
+                    placeholder="e.g., Monthly Supplies"
+                    value={templateName}
+                    onChange={(e) => setTemplateName(e.target.value)}
+                    data-testid="input-template-name"
+                  />
+                </div>
+                <p className="text-sm text-gray-600">
+                  {rows.filter(r => r.sku).length} items will be saved
+                </p>
+              </div>
+              <div className="flex gap-2 justify-end">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowSaveTemplate(false)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleSaveTemplate}
+                  className="bg-black text-white hover:bg-gray-800"
+                  data-testid="button-confirm-save-template"
+                >
+                  Save Template
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+
           <Button
             variant="outline"
             onClick={handleDownloadTemplate}
@@ -164,7 +337,7 @@ export default function QuickOrder() {
             data-testid="button-download-template"
           >
             <Download className="w-4 h-4 mr-2" />
-            Template
+            CSV Template
           </Button>
           <label>
             <Button
@@ -188,12 +361,77 @@ export default function QuickOrder() {
         </div>
       </div>
 
+      {/* Product Search */}
+      <Card className="border border-gray-200">
+        <CardHeader>
+          <CardTitle className="text-lg">Product Search</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="relative">
+            <Input
+              placeholder="Search by product name or SKU..."
+              value={productSearchQuery}
+              onChange={(e) => {
+                setProductSearchQuery(e.target.value);
+                setShowProductSearch(e.target.value.length >= 2);
+              }}
+              onFocus={() => productSearchQuery.length >= 2 && setShowProductSearch(true)}
+              data-testid="input-product-search"
+              className="w-full"
+            />
+            {showProductSearch && productResults && productResults.length > 0 && (
+              <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-auto">
+                {productResults.map((product: any, idx: number) => (
+                  <button
+                    key={product.id || idx}
+                    className="w-full text-left px-4 py-3 hover:bg-gray-50 border-b border-gray-100 last:border-0"
+                    onClick={() => {
+                      const emptyRowIndex = rows.findIndex(r => !r.sku);
+                      if (emptyRowIndex >= 0) {
+                        const newRows = [...rows];
+                        newRows[emptyRowIndex] = {
+                          ...newRows[emptyRowIndex],
+                          sku: product.sku || product.variantSku,
+                          productName: product.productName || product.name,
+                          price: product.price,
+                        };
+                        setRows(newRows);
+                      } else {
+                        setRows([...rows, {
+                          id: Date.now().toString(),
+                          sku: product.sku || product.variantSku,
+                          quantity: 1,
+                          productName: product.productName || product.name,
+                          price: product.price,
+                        }]);
+                      }
+                      setProductSearchQuery('');
+                      setShowProductSearch(false);
+                      toast({
+                        title: "Product Added",
+                        description: `${product.productName || product.name} added to quick order`,
+                      });
+                    }}
+                    data-testid={`product-result-${idx}`}
+                  >
+                    <div className="font-medium text-black">{product.productName || product.name}</div>
+                    <div className="text-sm text-gray-600">SKU: {product.sku || product.variantSku}</div>
+                    {product.price && <div className="text-sm text-gray-900 font-medium">£{product.price.toFixed(2)}</div>}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Instructions */}
       <Card className="border border-blue-200 bg-blue-50">
         <CardContent className="p-4">
           <div className="space-y-2 text-sm">
             <p className="font-medium text-gray-900">Quick Tips:</p>
             <ul className="space-y-1 text-gray-700 list-disc list-inside">
+              <li>Search for products by name or SKU above</li>
               <li>Enter product SKUs and quantities directly</li>
               <li>Paste from Excel/CSV (SKU in column 1, quantity in column 2)</li>
               <li>Upload a CSV file with SKU and Quantity columns</li>

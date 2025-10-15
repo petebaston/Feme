@@ -318,6 +318,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.status(501).json({ message: "Not implemented - feature not available in BigCommerce API" });
   });
 
+  // Products endpoints
+  app.get("/api/products/search", async (req, res) => {
+    try {
+      const userToken = getUserToken(req);
+      const { query } = req.query;
+      const response = await bigcommerce.searchProducts(userToken, query as string || '');
+      res.json(response?.data?.list || response?.data || []);
+    } catch (error) {
+      console.error("Product search error:", error);
+      res.status(500).json({ message: "Failed to search products" });
+    }
+  });
+
   // Shopping Lists endpoints - using BigCommerce API
   app.get("/api/shopping-lists", async (req, res) => {
     try {

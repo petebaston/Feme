@@ -204,6 +204,13 @@ export class BigCommerceService {
     return this.request(`/api/v2/invoices/${invoiceId}/pdf`, { userToken });
   }
 
+  // Products
+  async searchProducts(userToken: string, query: string) {
+    const queryParams = new URLSearchParams();
+    if (query) queryParams.append('search', query);
+    return this.request(`/api/v2/products?${queryParams.toString()}`, { userToken });
+  }
+
   // Shopping Lists
   async getShoppingLists(userToken: string) {
     return this.request('/api/v2/shopping-lists', { userToken });
