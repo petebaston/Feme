@@ -29,8 +29,12 @@ export class BigCommerceService {
   private async request(endpoint: string, options: any = {}) {
     const url = `${this.config.b2bApiUrl}${endpoint}`;
     
+    const channelId = process.env.VITE_CHANNEL_ID || '1';
+    
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
+      'X-Store-Hash': this.config.storeHash,
+      'X-Channel-Id': channelId,
       ...(options.headers || {}),
     };
 
@@ -44,7 +48,7 @@ export class BigCommerceService {
       headers['Authorization'] = `Bearer ${options.userToken}`;
     }
 
-    console.log(`[BigCommerce] ${options.method || 'GET'} ${url}`);
+    console.log(`[BigCommerce] ${options.method || 'GET'} ${url}`, 'Headers:', Object.keys(headers));
 
     try {
       const response = await fetch(url, {
