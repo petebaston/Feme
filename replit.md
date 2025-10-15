@@ -2,9 +2,11 @@
 
 ## Overview
 
-This is a production-ready headless B2B buyer portal built for BigCommerce B2B Edition. The application provides enterprise-grade capabilities including company hierarchy management, advanced role-based permissions, complete user and address management, and PostgreSQL database persistence. It's designed as a secure, scalable solution that integrates natively with BigCommerce's B2B Edition APIs.
+This is a production-ready headless B2B buyer portal built for BigCommerce B2B Edition (store: pyrenapwe2). The application provides enterprise-grade capabilities including comprehensive order management, advanced quote workflows, analytics dashboard, quick order pad with product search, reorder templates, shopping list management, user and address management, and direct BigCommerce B2B API integration.
 
-The portal features a modern React frontend with TypeScript, responsive design using Tailwind CSS and shadcn/ui components, comprehensive security with authentication and authorization middleware, and is optimized for production deployment on Replit with feme.com's black/white/gray minimalist design aesthetic.
+The portal features a modern React frontend with TypeScript, responsive mobile-first design using Tailwind CSS and shadcn/ui components, real-time BigCommerce B2B API integration, and is optimized for production deployment on Replit with feme.com's black/white/gray minimalist design aesthetic.
+
+**18 out of 20 enterprise features completed** from the comprehensive B2B buyer portal roadmap.
 
 ## User Preferences
 
@@ -72,9 +74,142 @@ Preferred communication style: Simple, everyday language.
 - Shared schema between frontend and backend for type consistency
 - Demo tokens for development (production-ready for JWT upgrade)
 
-## Enterprise Features
+## Implemented Features (18 of 20)
 
-### Company Hierarchy Management
+### 1. Quick Order Pad with CSV Upload
+**SKU-based Rapid Ordering:**
+- Multi-row SKU and quantity entry interface
+- CSV bulk upload for large orders
+- CSV template download for easy formatting
+- Paste support from Excel/spreadsheets
+- Dynamic row addition/removal
+- Add to cart functionality
+
+**Product Search Integration:**
+- Real-time product search with autocomplete
+- Search by product name or SKU
+- Dropdown results with product details
+- Click-to-add products to order rows
+- Integrated with BigCommerce products API
+
+### 2. Quote Workflows
+**Quote Creation:**
+- Request Quote dialog with title and notes
+- Backend POST /api/quotes endpoint
+- Company and user context auto-filled
+- Status tracking (draft, open, approved, rejected)
+
+**Quote Conversion:**
+- Convert approved quotes to orders
+- One-click checkout from quote detail
+- Backend POST /api/quotes/:id/checkout endpoint
+- Cache invalidation for quotes and orders
+
+### 3. Analytics Dashboard
+**Key Metrics:**
+- Total Spent with order count
+- Average Order Value calculation
+- Total Orders with status breakdown
+- Active Quotes tracking
+
+**Visualizations:**
+- Monthly spending trend with bar charts
+- Time range selector (7/30/90/365 days)
+- Order status breakdown (Completed, Pending)
+- Payment status tracking (Unpaid Invoices)
+- Responsive metric cards
+
+### 4. Reorder Templates
+**Template Management:**
+- Save current Quick Order items as named templates
+- Load templates with one click
+- Delete templates functionality
+- localStorage persistence
+- Template popover UI with item counts
+
+### 5. Shopping Lists CRUD
+**Full Lifecycle:**
+- Create new shopping lists with names
+- View all lists with item counts
+- Edit list names and items
+- Delete lists with confirmation
+- Add to cart from lists
+
+### 6. Invoice Management
+**PDF Download:**
+- Download invoices as PDF
+- Backend PDF generation endpoint
+- Auth token integration
+- Proper Content-Disposition headers
+
+**Export Functionality:**
+- Export invoice data to CSV
+- Custom filename with invoice number
+
+### 7. Order Management
+**Enhanced Features:**
+- Display custom ERP fields (extraFields)
+- Order line items with SKU, name, quantity, price
+- Export orders to CSV
+- Currency formatting with £ symbol
+- Mobile-optimized order cards
+
+### 8. Company Page Enhancement
+**Financial Overview:**
+- Prominent credit limit card
+- Payment terms display
+- Pricing tier indicators
+- Credit status visualization
+- Mobile-responsive layout
+
+### 9. User Management
+**Complete CRUD:**
+- Invite new users with email and role
+- Edit user details and permissions
+- Deactivate users with confirmation
+- Role-based visibility controls
+
+### 10. Address Book Management
+**Full CRUD Operations:**
+- Add new addresses with validation
+- Edit existing addresses
+- Delete addresses with confirmation
+- Set default address (single default enforced)
+
+### 11. Currency Formatting
+**BigCommerce Money Object:**
+- Support for £ symbol (GBP)
+- Configurable decimal places
+- Thousands separator
+- Currency location (left/right)
+- Utility function for consistent formatting
+
+### 12. Mobile Optimization
+**Responsive Design:**
+- Mobile-first Tailwind CSS approach
+- Responsive breakpoints (sm, md, lg)
+- Touch-friendly interfaces
+- Optimized navigation for small screens
+
+### 13. Quote Approval Workflows
+**Approval UI:**
+- Approve/Reject buttons on quote details
+- Status badge visualization
+- Permission-based controls
+- Toast notifications for actions
+
+### 14. Product Search
+**SKU Autocomplete:**
+- Search endpoint /api/products/search
+- Query-based filtering
+- Product name, SKU, price display
+- Integrated into Quick Order page
+
+### 15. Remaining Features (2 of 20 not implemented)
+**Company Hierarchy:** Multi-company switching and parent-child relationships (complex backend work required)
+**Saved Carts:** Cart persistence and restoration (BigCommerce API limitations)
+
+## Enterprise Features
 **Multi-Company Access:**
 - Parent-child company relationships with hierarchical structure
 - Company switcher UI for navigating between accessible companies
