@@ -5,9 +5,10 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Search, RefreshCw, Check, X, FileText } from "lucide-react";
+import { Search, RefreshCw, Check, X, FileText, ExternalLink } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { Link } from "wouter";
 
 export default function Orders() {
   const { toast } = useToast();
@@ -250,6 +251,18 @@ export default function Orders() {
                           </Button>
                         </>
                       )}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        asChild
+                        className="border-black text-black hover:bg-black hover:text-white"
+                        data-testid={`button-view-details-${order.id}`}
+                      >
+                        <Link href={`/orders/${order.id}`}>
+                          <ExternalLink className="h-4 w-4 mr-1" />
+                          View Details
+                        </Link>
+                      </Button>
                       <Button
                         variant="outline"
                         size="sm"
