@@ -9,6 +9,7 @@ import NotFound from "@/pages/not-found";
 import Login from "@/pages/login";
 import Dashboard from "@/pages/dashboard";
 import Orders from "@/pages/orders";
+import OrderDetail from "@/pages/order-detail";
 import Quotes from "@/pages/quotes";
 import Invoices from "@/pages/invoices";
 import InvoiceDetail from "@/pages/invoice-detail";
@@ -69,6 +70,7 @@ function Router() {
           <Switch>
             <Route path="/" component={Dashboard} />
             <Route path="/dashboard" component={Dashboard} />
+            <Route path="/orders/:id" component={OrderDetail} />
             <Route path="/orders" component={Orders} />
             <Route path="/quotes" component={Quotes} />
             <Route path="/invoices" component={Invoices} />
