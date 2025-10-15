@@ -14,16 +14,19 @@ function getUserToken(req: any): string {
 // Transform BigCommerce order to frontend format
 function transformOrder(bcOrder: any): any {
   return {
-    id: bcOrder.id,
-    bcOrderId: bcOrder.bcOrderId,
-    customerName: bcOrder.customerName,
-    status: bcOrder.status || bcOrder.customStatus,
+    id: bcOrder.orderId || bcOrder.id,
+    bcOrderId: bcOrder.orderId,
+    customerName: bcOrder.companyName || bcOrder.customerName,
+    status: bcOrder.orderStatus || bcOrder.customOrderStatus || bcOrder.status,
     total: bcOrder.totalIncTax || 0,
-    createdAt: bcOrder.createdAt ? new Date(bcOrder.createdAt * 1000).toISOString() : new Date().toISOString(),
-    updatedAt: bcOrder.updatedAt ? new Date(bcOrder.updatedAt * 1000).toISOString() : new Date().toISOString(),
+    createdAt: bcOrder.createdAt ? new Date(parseInt(bcOrder.createdAt) * 1000).toISOString() : new Date().toISOString(),
+    updatedAt: bcOrder.updatedAt ? new Date(parseInt(bcOrder.updatedAt) * 1000).toISOString() : new Date().toISOString(),
     itemCount: bcOrder.items || 0,
-    poNumber: bcOrder.poNumber,
+    poNumber: bcOrder.poNumber || '',
     companyId: bcOrder.companyId,
+    companyName: bcOrder.companyName,
+    firstName: bcOrder.firstName,
+    lastName: bcOrder.lastName,
     currencyCode: bcOrder.currencyCode,
     money: bcOrder.money,
     shippingAddress: bcOrder.shippingAddress,
@@ -77,11 +80,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         recent: recent === 'true',
       });
       
-      // Extract data from BigCommerce response format {code: 200, data: [...]}
-      const bcOrders = response?.data || [];
+      // Extract data from BigCommerce response format
+      // /api/v2/ returns {data: {list: [...], pagination: {...}}}
+      const bcOrders = response?.data?.list || response?.data || [];
       
       // Transform orders to frontend format
-      const orders = bcOrders.map(transformOrder);
+      const orders = Array.isArray(bcOrders) ? bcOrders.map(transformOrder) : [];
       
       res.json(orders);
     } catch (error) {
@@ -130,7 +134,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         recent: recent === 'true',
       });
       
-      res.json(response?.data || []);
+      // /api/v2/ returns {data: {list: [...], pagination: {...}}}
+      res.json(response?.data?.list || response?.data || []);
     } catch (error) {
       console.error("Quotes fetch error:", error);
       res.status(500).json({ message: "Failed to fetch quotes" });
@@ -173,7 +178,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         recent: recent === 'true',
       });
       
-      res.json(response?.data || []);
+      res.json(response?.data?.list || response?.data || []);
     } catch (error) {
       console.error("Invoices fetch error:", error);
       res.status(500).json({ message: "Failed to fetch invoices" });
@@ -221,7 +226,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userToken = getUserToken(req);
       const response = await bigcommerce.getCompanyUsers(userToken);
-      res.json(response?.data || []);
+      res.json(response?.data?.list || response?.data || []);
     } catch (error) {
       console.error("Company users fetch error:", error);
       res.status(500).json({ message: "Failed to fetch company users" });
@@ -232,7 +237,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userToken = getUserToken(req);
       const response = await bigcommerce.getCompanyAddresses(userToken);
-      res.json(response?.data || []);
+      res.json(response?.data?.list || response?.data || []);
     } catch (error) {
       console.error("Company addresses fetch error:", error);
       res.status(500).json({ message: "Failed to fetch company addresses" });
@@ -277,11 +282,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.status(501).json({ message: "Not implemented - feature not available in BigCommerce API" });
   });
 
-  // Shopping Lists endpoints - using local database
+  // Shopping Lists endpoints - using BigCommerce API
   app.get("/api/shopping-lists", async (req, res) => {
     try {
-      const lists = await storage.getShoppingLists();
-      res.json(lists);
+      const userToken = getUserToken(req);
+      const response = await bigcommerce.getShoppingLists(userToken);
+      res.json(response?.data?.list || response?.data || []);
     } catch (error) {
       console.error("Shopping lists fetch error:", error);
       res.status(500).json({ message: "Failed to fetch shopping lists" });
@@ -290,11 +296,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/shopping-lists/:id", async (req, res) => {
     try {
-      const list = await storage.getShoppingList(req.params.id);
-      if (!list) {
+      const userToken = getUserToken(req);
+      const response = await bigcommerce.getShoppingList(userToken, req.params.id);
+      if (!response?.data) {
         return res.status(404).json({ message: "Shopping list not found" });
       }
-      res.json(list);
+      res.json(response.data);
     } catch (error) {
       console.error("Shopping list fetch error:", error);
       res.status(500).json({ message: "Failed to fetch shopping list" });

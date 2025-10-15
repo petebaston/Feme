@@ -101,7 +101,7 @@ export class BigCommerceService {
 
   // Dashboard
   async getDashboardStats(userToken: string) {
-    return this.request('/api/v3/io/dashboard/stats', { userToken });
+    return this.request('/api/v2/dashboard/stats', { userToken });
   }
 
   // Orders
@@ -114,15 +114,15 @@ export class BigCommerceService {
     if (params?.recent) queryParams.append('recent', 'true');
 
     const query = queryParams.toString();
-    return this.request(`/api/v3/io/orders${query ? `?${query}` : ''}`, { userToken });
+    return this.request(`/api/v2/orders${query ? `?${query}` : ''}`, { userToken });
   }
 
   async getOrder(userToken: string, orderId: string) {
-    return this.request(`/api/v3/io/orders/${orderId}`, { userToken });
+    return this.request(`/api/v2/orders/${orderId}`, { userToken });
   }
 
   async updateOrder(userToken: string, orderId: string, data: any) {
-    return this.request(`/api/v3/io/orders/${orderId}`, {
+    return this.request(`/api/v2/orders/${orderId}`, {
       method: 'PATCH',
       body: JSON.stringify(data),
       userToken
@@ -139,15 +139,15 @@ export class BigCommerceService {
     if (params?.recent) queryParams.append('recent', 'true');
 
     const query = queryParams.toString();
-    return this.request(`/api/v3/io/quotes${query ? `?${query}` : ''}`, { userToken });
+    return this.request(`/api/v2/quotes${query ? `?${query}` : ''}`, { userToken });
   }
 
   async getQuote(userToken: string, quoteId: string) {
-    return this.request(`/api/v3/io/quotes/${quoteId}`, { userToken });
+    return this.request(`/api/v2/quotes/${quoteId}`, { userToken });
   }
 
   async updateQuote(userToken: string, quoteId: string, data: any) {
-    return this.request(`/api/v3/io/quotes/${quoteId}`, {
+    return this.request(`/api/v2/quotes/${quoteId}`, {
       method: 'PATCH',
       body: JSON.stringify(data),
       userToken,
@@ -156,15 +156,15 @@ export class BigCommerceService {
 
   // Company
   async getCompany(userToken: string) {
-    return this.request('/api/v3/io/company', { userToken });
+    return this.request('/api/v2/company', { userToken });
   }
 
   async getCompanyUsers(userToken: string) {
-    return this.request('/api/v3/io/company/users', { userToken });
+    return this.request('/api/v2/company/users', { userToken });
   }
 
   async getCompanyAddresses(userToken: string) {
-    return this.request('/api/v3/io/company/addresses', { userToken });
+    return this.request('/api/v2/company/addresses', { userToken });
   }
 
   // Invoices
@@ -177,24 +177,24 @@ export class BigCommerceService {
     if (params?.recent) queryParams.append('recent', 'true');
 
     const query = queryParams.toString();
-    return this.request(`/api/v3/io/invoices${query ? `?${query}` : ''}`, { userToken });
+    return this.request(`/api/v2/invoices${query ? `?${query}` : ''}`, { userToken });
   }
 
   async getInvoice(userToken: string, invoiceId: string) {
-    return this.request(`/api/v3/io/invoices/${invoiceId}`, { userToken });
+    return this.request(`/api/v2/invoices/${invoiceId}`, { userToken });
   }
 
   async getInvoicePdf(userToken: string, invoiceId: string) {
-    return this.request(`/api/v3/io/invoices/${invoiceId}/pdf`, { userToken });
+    return this.request(`/api/v2/invoices/${invoiceId}/pdf`, { userToken });
   }
 
   // Shopping Lists
   async getShoppingLists(userToken: string) {
-    return this.request('/api/v3/io/shopping-lists', { userToken });
+    return this.request('/api/v2/shopping-lists', { userToken });
   }
 
   async getShoppingList(userToken: string, listId: string) {
-    return this.request(`/api/v3/io/shopping-lists/${listId}`, { userToken });
+    return this.request(`/api/v2/shopping-lists/${listId}`, { userToken });
   }
 }
 
