@@ -89,13 +89,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userToken = getUserToken(req);
       const { search, status, sortBy, limit, recent } = req.query;
       
+      // Get companyId for caching
+      let companyId: string | undefined;
+      try {
+        const companyResponse = await bigcommerce.getCompany(userToken);
+        companyId = companyResponse?.data?.companyId || companyResponse?.data?.id;
+      } catch (e) {
+        console.log('[Orders] Could not fetch companyId for cache, continuing without cache');
+      }
+      
       const response = await bigcommerce.getOrders(userToken, {
         search: search as string,
         status: status as string,
         sortBy: sortBy as string,
         limit: limit ? parseInt(limit as string) : undefined,
         recent: recent === 'true',
-      });
+      }, companyId);
       
       // Extract data from BigCommerce response format
       // /api/v2/ returns {data: {list: [...], pagination: {...}}}
@@ -114,7 +123,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/orders/:id", async (req, res) => {
     try {
       const userToken = getUserToken(req);
-      const response = await bigcommerce.getOrder(userToken, req.params.id);
+      
+      // Get companyId for caching
+      let companyId: string | undefined;
+      try {
+        const companyResponse = await bigcommerce.getCompany(userToken);
+        companyId = companyResponse?.data?.companyId || companyResponse?.data?.id;
+      } catch (e) {
+        console.log('[Order] Could not fetch companyId for cache, continuing without cache');
+      }
+      
+      const response = await bigcommerce.getOrder(userToken, req.params.id, companyId);
       const bcOrder = response?.data;
       if (!bcOrder) {
         return res.status(404).json({ message: "Order not found" });

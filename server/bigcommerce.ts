@@ -1,3 +1,5 @@
+import { storage } from './storage';
+
 interface BigCommerceConfig {
   storeHash: string;
   accessToken: string;
@@ -140,7 +142,7 @@ export class BigCommerceService {
   }
 
   // Orders
-  async getOrders(userToken: string, params?: any) {
+  async getOrders(userToken: string, params?: any, companyId?: string) {
     const queryParams = new URLSearchParams();
     if (params?.search) queryParams.append('search', params.search);
     if (params?.status && params.status !== 'all') queryParams.append('status', params.status);
@@ -149,12 +151,33 @@ export class BigCommerceService {
     if (params?.recent) queryParams.append('recent', 'true');
 
     const query = queryParams.toString();
-    return this.request(`/api/v2/orders${query ? `?${query}` : ''}`, { userToken });
+    const response = await this.request(`/api/v2/orders${query ? `?${query}` : ''}`, { userToken });
+    
+    // Cache orders if we have companyId
+    if (companyId && response?.data) {
+      const ordersList = response.data.list || response.data || [];
+      if (ordersList.length > 0) {
+        await storage.setCachedOrders(ordersList, companyId);
+        console.log(`[Cache] Stored ${ordersList.length} orders for company ${companyId}`);
+      }
+    }
+    
+    return response;
   }
 
-  async getOrder(userToken: string, orderId: string) {
+  async getOrder(userToken: string, orderId: string, companyId?: string) {
     // Note: B2B Edition GraphQL doesn't support orders - using REST API only
     // GraphQL supports: quotes, invoices, company, shopping lists (not orders)
+    
+    // CACHE-FIRST: Check database cache first for reliability
+    if (companyId) {
+      const cachedOrder = await storage.getCachedOrder(orderId, companyId);
+      if (cachedOrder) {
+        console.log('[Cache] Order found in cache:', orderId);
+        return { code: 200, data: cachedOrder };
+      }
+      console.log('[Cache] Order not in cache, fetching from API:', orderId);
+    }
     
     // Try direct order endpoint first
     try {
@@ -163,6 +186,10 @@ export class BigCommerceService {
       
       if (response?.data) {
         console.log('[BigCommerce] Direct order fetch successful:', orderId);
+        // Cache the order
+        if (companyId) {
+          await storage.setCachedOrders([response.data], companyId);
+        }
         return response;
       }
     } catch (directError: any) {
@@ -171,7 +198,7 @@ export class BigCommerceService {
 
     // Fallback: search in orders list (for API compatibility)
     console.log('[BigCommerce] Searching for order in list:', orderId);
-    const ordersResponse = await this.getOrders(userToken, { limit: 100 });
+    const ordersResponse = await this.getOrders(userToken, { limit: 100 }, companyId);
     const ordersList = ordersResponse?.data?.list || ordersResponse?.data || [];
     
     const foundOrder = ordersList.find((o: any) => 

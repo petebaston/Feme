@@ -13,19 +13,11 @@ export default function OrderDetail() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
 
-  // WORKAROUND: BigCommerce API is unreliable (direct endpoint 404, list returns empty intermittently)
-  // Use client-side cache from orders list page as primary source
-  const ordersCache = queryClient.getQueryData<any[]>(['/api/orders']);
-  const cachedOrder = ordersCache?.find((o: any) => String(o.id) === String(id));
-
-  const { data: fetchedOrder, isLoading: isFetching, error } = useQuery<any>({
+  // Server-side cache handles BigCommerce API reliability issues
+  const { data: order, isLoading } = useQuery<any>({
     queryKey: [`/api/orders/${id}`],
-    enabled: !!id && !cachedOrder, // Only fetch if not in cache
-    retry: 2, // Retry on failure
+    enabled: !!id,
   });
-
-  const order = cachedOrder || fetchedOrder;
-  const isLoading = !cachedOrder && isFetching;
 
   const reorderMutation = useMutation({
     mutationFn: async () => {
@@ -99,7 +91,7 @@ export default function OrderDetail() {
             <Package className="h-16 w-16 text-gray-400 mx-auto mb-4" />
             <h2 className="text-2xl font-semibold mb-2">Order Not Found</h2>
             <p className="text-gray-600 mb-6">
-              Due to API limitations, please navigate to this order from the Orders page.
+              This order could not be found. It may have been deleted or you may not have permission to view it.
             </p>
             <Button
               onClick={() => setLocation('/orders')}
