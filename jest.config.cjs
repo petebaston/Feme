@@ -16,7 +16,7 @@ module.exports = {
     '^@/(.*)$': '<rootDir>/client/src/$1',
     '\\.(css|less|scss|sass)$': 'identity-obj-proxy',
   },
-  setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
+  setupFilesAfterEnv: ['<rootDir>/jest.setup.cjs'],
   collectCoverageFrom: [
     'client/src/**/*.{ts,tsx}',
     'server/**/*.ts',
