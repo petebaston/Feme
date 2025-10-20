@@ -6,6 +6,7 @@ import { DatabaseStorage } from "./storage";
 import {
   generateAccessToken,
   generateRefreshToken,
+  verifyAccessToken,
   verifyRefreshToken,
   authenticateToken,
   trackSession,
