@@ -91,24 +91,111 @@ export default function Orders() {
       return;
     }
 
-    // Create CSV content
+    // Determine which custom fields exist across all orders
+    const hasExtraFields = filteredOrders.some((o: any) => o.extraFields?.length > 0);
+    const hasExtraStr = [1, 2, 3, 4, 5].some(i =>
+      filteredOrders.some((o: any) => o[`extraStr${i}`])
+    );
+    const hasExtraInt = [1, 2, 3, 4, 5].some(i =>
+      filteredOrders.some((o: any) => o[`extraInt${i}`] !== null && o[`extraInt${i}`] !== undefined)
+    );
+    const hasExtraText = filteredOrders.some((o: any) => o.extraText);
+    const hasReferenceNumber = filteredOrders.some((o: any) => o.referenceNumber);
+
+    // Build headers dynamically
     const headers = ['Order Number', 'Customer', 'Status', 'Total', 'Date', 'PO Number'];
-    const rows = filteredOrders.map((order: any) => [
-      order.id,
-      order.customerName,
-      order.status,
-      order.total,
-      new Date(order.createdAt).toLocaleDateString(),
-      order.poNumber || '',
-    ]);
+
+    if (hasReferenceNumber) headers.push('Reference Number');
+
+    // Add extra fields headers (modern)
+    if (hasExtraFields) {
+      // Find max number of extra fields in any order
+      const maxExtraFields = Math.max(
+        ...filteredOrders.map((o: any) => o.extraFields?.length || 0)
+      );
+      for (let i = 0; i < maxExtraFields; i++) {
+        headers.push(`Extra Field ${i + 1} Name`);
+        headers.push(`Extra Field ${i + 1} Value`);
+      }
+    }
+
+    // Add legacy string fields
+    if (hasExtraStr) {
+      for (let i = 1; i <= 5; i++) {
+        if (filteredOrders.some((o: any) => o[`extraStr${i}`])) {
+          headers.push(`Extra String ${i}`);
+        }
+      }
+    }
+
+    // Add legacy integer fields
+    if (hasExtraInt) {
+      for (let i = 1; i <= 5; i++) {
+        if (filteredOrders.some((o: any) => o[`extraInt${i}`] !== null && o[`extraInt${i}`] !== undefined)) {
+          headers.push(`Extra Number ${i}`);
+        }
+      }
+    }
+
+    // Add extra text
+    if (hasExtraText) headers.push('Additional Notes');
+
+    // Build rows dynamically
+    const rows = filteredOrders.map((order: any) => {
+      const row = [
+        order.id,
+        order.customerName,
+        order.status,
+        order.total,
+        new Date(order.createdAt).toLocaleDateString(),
+        order.poNumber || '',
+      ];
+
+      if (hasReferenceNumber) row.push(order.referenceNumber || '');
+
+      // Add extra fields (modern)
+      if (hasExtraFields) {
+        const maxExtraFields = Math.max(
+          ...filteredOrders.map((o: any) => o.extraFields?.length || 0)
+        );
+        for (let i = 0; i < maxExtraFields; i++) {
+          const field = order.extraFields?.[i];
+          row.push(field?.fieldName || '');
+          row.push(field?.fieldValue || '');
+        }
+      }
+
+      // Add legacy string fields
+      if (hasExtraStr) {
+        for (let i = 1; i <= 5; i++) {
+          if (filteredOrders.some((o: any) => o[`extraStr${i}`])) {
+            row.push(order[`extraStr${i}`] || '');
+          }
+        }
+      }
+
+      // Add legacy integer fields
+      if (hasExtraInt) {
+        for (let i = 1; i <= 5; i++) {
+          if (filteredOrders.some((o: any) => o[`extraInt${i}`] !== null && o[`extraInt${i}`] !== undefined)) {
+            row.push(order[`extraInt${i}`] !== null && order[`extraInt${i}`] !== undefined ? order[`extraInt${i}`] : '');
+          }
+        }
+      }
+
+      // Add extra text
+      if (hasExtraText) row.push(order.extraText || '');
+
+      return row;
+    });
 
     const csvContent = [
       headers.join(','),
-      ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
+      ...rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
     ].join('\n');
 
     // Download CSV
-    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -120,7 +207,7 @@ export default function Orders() {
 
     toast({
       title: "Export Complete",
-      description: `Exported ${filteredOrders.length} orders to CSV`,
+      description: `Exported ${filteredOrders.length} orders with custom fields to CSV`,
     });
   };
 
