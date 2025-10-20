@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Link } from "wouter";
 import { formatCurrency } from "@/lib/currency";
+import { CustomFieldsDisplay } from "@/components/b2b/custom-fields-display";
 
 export default function Orders() {
   const { toast } = useToast();
@@ -256,6 +257,22 @@ export default function Orders() {
                       <span className={`text-xs px-2 py-1 rounded-full font-medium ${getStatusColor(order.status)}`} data-testid={`order-status-${order.id}`}>
                         {order.status}
                       </span>
+                      <CustomFieldsDisplay
+                        extraFields={order.extraFields}
+                        extraStr1={order.extraStr1}
+                        extraStr2={order.extraStr2}
+                        extraStr3={order.extraStr3}
+                        extraStr4={order.extraStr4}
+                        extraStr5={order.extraStr5}
+                        extraInt1={order.extraInt1}
+                        extraInt2={order.extraInt2}
+                        extraInt3={order.extraInt3}
+                        extraInt4={order.extraInt4}
+                        extraInt5={order.extraInt5}
+                        extraText={order.extraText}
+                        referenceNumber={order.referenceNumber}
+                        variant="badge-only"
+                      />
                     </div>
                   </div>
 

@@ -7,6 +7,7 @@ import { ArrowLeft, RefreshCw, Package, Truck, FileText } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { formatCurrency } from "@/lib/currency";
+import { CustomFieldsDisplay } from "@/components/b2b/custom-fields-display";
 
 export default function OrderDetail() {
   const { id } = useParams();
@@ -264,67 +265,22 @@ export default function OrderDetail() {
       )}
 
       {/* Custom Fields / ERP Integration Data */}
-      {(order.extraFields?.length > 0 || order.referenceNumber || order.extraText) && (
-        <Card className="border border-gray-200">
-          <CardHeader>
-            <CardTitle className="text-lg">Additional Information</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {order.referenceNumber && (
-              <div>
-                <p className="text-sm text-gray-500">Reference Number</p>
-                <p className="font-medium" data-testid="reference-number">{order.referenceNumber}</p>
-              </div>
-            )}
-            
-            {order.extraFields?.map((field: any, index: number) => (
-              field.fieldValue && (
-                <div key={index}>
-                  <p className="text-sm text-gray-500">{field.fieldName}</p>
-                  <p className="font-medium" data-testid={`extra-field-${index}`}>{field.fieldValue}</p>
-                </div>
-              )
-            ))}
-
-            {[
-              { label: 'Extra Field 1', value: order.extraStr1 },
-              { label: 'Extra Field 2', value: order.extraStr2 },
-              { label: 'Extra Field 3', value: order.extraStr3 },
-              { label: 'Extra Field 4', value: order.extraStr4 },
-              { label: 'Extra Field 5', value: order.extraStr5 },
-            ].map((field, index) => (
-              field.value && (
-                <div key={`str-${index}`}>
-                  <p className="text-sm text-gray-500">{field.label}</p>
-                  <p className="font-medium">{field.value}</p>
-                </div>
-              )
-            ))}
-
-            {[
-              { label: 'Extra Number 1', value: order.extraInt1 },
-              { label: 'Extra Number 2', value: order.extraInt2 },
-              { label: 'Extra Number 3', value: order.extraInt3 },
-              { label: 'Extra Number 4', value: order.extraInt4 },
-              { label: 'Extra Number 5', value: order.extraInt5 },
-            ].map((field, index) => (
-              field.value !== null && field.value !== undefined && (
-                <div key={`int-${index}`}>
-                  <p className="text-sm text-gray-500">{field.label}</p>
-                  <p className="font-medium">{field.value}</p>
-                </div>
-              )
-            ))}
-
-            {order.extraText && (
-              <div>
-                <p className="text-sm text-gray-500">Additional Notes</p>
-                <p className="font-medium whitespace-pre-wrap">{order.extraText}</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      )}
+      <CustomFieldsDisplay
+        extraFields={order.extraFields}
+        extraStr1={order.extraStr1}
+        extraStr2={order.extraStr2}
+        extraStr3={order.extraStr3}
+        extraStr4={order.extraStr4}
+        extraStr5={order.extraStr5}
+        extraInt1={order.extraInt1}
+        extraInt2={order.extraInt2}
+        extraInt3={order.extraInt3}
+        extraInt4={order.extraInt4}
+        extraInt5={order.extraInt5}
+        extraText={order.extraText}
+        referenceNumber={order.referenceNumber}
+        variant="full"
+      />
 
       {/* Line Items */}
       {order.items && order.items.length > 0 && (
