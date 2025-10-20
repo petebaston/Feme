@@ -1,5 +1,5 @@
 // Best Practice: Jest setup file for testing environment
-import '@testing-library/jest-dom';
+require('@testing-library/jest-dom');
 
 // Best Practice: Mock environment variables for tests
 process.env.NODE_ENV = 'test';
