@@ -11,15 +11,21 @@ export default function Dashboard() {
     staleTime: 300000,
   });
 
-  const { data: recentOrders, isLoading: ordersLoading } = useQuery<any[]>({
+  const { data: recentOrdersRaw, isLoading: ordersLoading } = useQuery<any>({
     queryKey: ['/api/orders', { limit: 5, recent: true }],
     staleTime: 300000,
   });
+  
+  // Ensure recentOrders is always an array (handle error responses)
+  const recentOrders = Array.isArray(recentOrdersRaw) ? recentOrdersRaw : [];
 
-  const { data: recentQuotes, isLoading: quotesLoading } = useQuery<any[]>({
+  const { data: recentQuotesRaw, isLoading: quotesLoading } = useQuery<any>({
     queryKey: ['/api/quotes', { limit: 5, recent: true }],
     staleTime: 300000,
   });
+  
+  // Ensure recentQuotes is always an array (handle error responses)
+  const recentQuotes = Array.isArray(recentQuotesRaw) ? recentQuotesRaw : [];
 
   const user = JSON.parse(localStorage.getItem('b2b_user') || '{}');
 

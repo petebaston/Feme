@@ -339,6 +339,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         recent: recent === 'true',
       }, companyId);
       
+      // Check for BigCommerce error responses (they return 200 with errMsg)
+      if (response?.errMsg || response?.error) {
+        console.warn("[Orders] BigCommerce returned error:", response.errMsg || response.error);
+        return res.json([]);
+      }
+      
       // Extract data from BigCommerce response format
       // /api/v2/ returns {data: {list: [...], pagination: {...}}}
       const bcOrders = response?.data?.list || response?.data || [];
@@ -406,6 +412,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         limit: limit ? parseInt(limit as string) : undefined,
         recent: recent === 'true',
       });
+      
+      // Check for BigCommerce error responses (they return 200 with errMsg)
+      if (response?.errMsg || response?.error) {
+        console.warn("[Quotes] BigCommerce returned error:", response.errMsg || response.error);
+        return res.json([]);
+      }
       
       // /api/v2/ returns {data: {list: [...], pagination: {...}}}
       res.json(response?.data?.list || response?.data || []);

@@ -22,10 +22,13 @@ export default function Quotes() {
   const [quoteTitle, setQuoteTitle] = useState("");
   const [quoteNotes, setQuoteNotes] = useState("");
 
-  const { data: quotes, isLoading } = useQuery<any[]>({
+  const { data: quotesRaw, isLoading } = useQuery<any>({
     queryKey: ['/api/quotes'],
     staleTime: 300000,
   });
+  
+  // Ensure quotes is always an array (handle error responses)
+  const quotes = Array.isArray(quotesRaw) ? quotesRaw : [];
 
   const approvalMutation = useMutation({
     mutationFn: async ({ quoteId, action }: { quoteId: string; action: 'approve' | 'reject' }) => {

@@ -110,8 +110,12 @@ export class BigCommerceService {
         this.getQuotes(userToken, { limit: 100 })
       ]);
 
-      const orders = ordersResponse?.data?.list || ordersResponse?.data || [];
-      const quotes = quotesResponse?.data?.list || quotesResponse?.data || [];
+      // Ensure we have arrays (handle error responses from BigCommerce)
+      const ordersRaw = ordersResponse?.data?.list || ordersResponse?.data || [];
+      const quotesRaw = quotesResponse?.data?.list || quotesResponse?.data || [];
+      
+      const orders = Array.isArray(ordersRaw) ? ordersRaw : [];
+      const quotes = Array.isArray(quotesRaw) ? quotesRaw : [];
 
       return {
         code: 200,
