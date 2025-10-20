@@ -516,7 +516,7 @@ export class DatabaseStorage implements IStorage {
     }
 
     const result = await db.select().from(companies).limit(1);
-    
+
     if (result.length === 0) {
       const [newCompany] = await db.insert(companies).values({
         name: "Demo Company Inc.",
@@ -528,13 +528,27 @@ export class DatabaseStorage implements IStorage {
         storeHash: "demo_store_hash",
         channelId: "1",
       }).returning();
-      
+
       this.companyCache = newCompany;
       return newCompany;
     }
 
     this.companyCache = result[0];
     return result[0];
+  }
+
+  async updateCompany(id: string, updateData: Partial<Company>): Promise<Company | undefined> {
+    const [updated] = await db.update(companies)
+      .set({ ...updateData, updatedAt: new Date() })
+      .where(eq(companies.id, id))
+      .returning();
+
+    // Clear cache
+    if (this.companyCache && this.companyCache.id === id) {
+      this.companyCache = null;
+    }
+
+    return updated;
   }
 
   async getCompanyUsers(): Promise<User[]> {

@@ -5,6 +5,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
 import { CompanySwitcher } from "@/components/b2b/company-switcher";
+import { MiniCart } from "./mini-cart";
 
 export default function Header() {
   const [, setLocation] = useLocation();
@@ -35,6 +36,7 @@ export default function Header() {
         </div>
 
         <div className="ml-auto flex items-center space-x-2 md:space-x-4">
+          <MiniCart />
           <CompanySwitcher />
           {/* User Menu */}
           <DropdownMenu>

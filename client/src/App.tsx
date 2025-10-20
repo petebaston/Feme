@@ -3,6 +3,7 @@ import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { ErrorBoundary } from "@/components/error-boundary";
 import { useEffect, useState } from "react";
 
 import NotFound from "@/pages/not-found";
@@ -17,6 +18,8 @@ import Invoices from "@/pages/invoices";
 import InvoiceDetail from "@/pages/invoice-detail";
 import ShoppingLists from "@/pages/shopping-lists";
 import Company from "@/pages/company";
+import Cart from "@/pages/cart";
+import Checkout from "@/pages/checkout";
 import Header from "@/components/layout/header";
 import Sidebar from "@/components/layout/sidebar";
 
@@ -75,6 +78,8 @@ function Router() {
             <Route path="/orders/:id" component={OrderDetail} />
             <Route path="/orders" component={Orders} />
             <Route path="/quick-order" component={QuickOrder} />
+            <Route path="/cart" component={Cart} />
+            <Route path="/checkout" component={Checkout} />
             <Route path="/analytics" component={Analytics} />
             <Route path="/quotes" component={Quotes} />
             <Route path="/invoices" component={Invoices} />
@@ -91,12 +96,14 @@ function Router() {
 
 function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <Router />
-      </TooltipProvider>
-    </QueryClientProvider>
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <TooltipProvider>
+          <Toaster />
+          <Router />
+        </TooltipProvider>
+      </QueryClientProvider>
+    </ErrorBoundary>
   );
 }
 

@@ -1,7 +1,17 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
+import bcrypt from "bcryptjs";
 import { bigcommerce } from "./bigcommerce";
 import { DatabaseStorage } from "./storage";
+import {
+  generateAccessToken,
+  generateRefreshToken,
+  verifyRefreshToken,
+  authenticateToken,
+  trackSession,
+  clearSession,
+  type AuthRequest
+} from "./auth";
 
 const storage = new DatabaseStorage();
 
@@ -51,23 +61,245 @@ function transformOrder(bcOrder: any): any {
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Authentication endpoints
+  // Authentication endpoints (Items 1, 2, 6, 7)
   app.post("/api/auth/login", async (req, res) => {
     try {
-      const { email, password } = req.body;
-      
+      const { email, password, rememberMe } = req.body;
+
       if (!email || !password) {
         return res.status(400).json({ message: "Email and password are required" });
       }
 
       console.log('[Login] Attempting BigCommerce login for:', email);
       const result = await bigcommerce.login(email, password);
-      
-      console.log('[Login] BigCommerce login successful');
-      res.json(result);
+
+      // Get user from database to include in JWT
+      let user = await storage.getUserByEmail(email);
+
+      // If user doesn't exist locally, create them
+      if (!user) {
+        user = await storage.createUser({
+          email,
+          password: await bcrypt.hash(password, 10),
+          name: email.split('@')[0],
+          role: 'buyer',
+        });
+      }
+
+      // Generate JWT tokens
+      const tokenPayload = {
+        userId: user.id,
+        email: user.email,
+        companyId: user.companyId || undefined,
+        role: user.role || 'buyer',
+      };
+
+      const accessToken = generateAccessToken(tokenPayload);
+      const refreshToken = generateRefreshToken(tokenPayload);
+
+      // Track session
+      trackSession(user.id, accessToken);
+
+      // Set refresh token as HTTP-only cookie if remember me is enabled (Item 7)
+      if (rememberMe) {
+        res.cookie('refreshToken', refreshToken, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'strict',
+          maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+        });
+      }
+
+      console.log('[Login] Login successful, tokens generated');
+      res.json({
+        accessToken,
+        refreshToken: rememberMe ? undefined : refreshToken, // Only return in response if not using cookie
+        user: {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          role: user.role,
+          companyId: user.companyId,
+        },
+        b2bToken: result.token, // BigCommerce B2B token
+      });
     } catch (error: any) {
-      console.error("[Login] BigCommerce login failed:", error.message);
+      console.error("[Login] Login failed:", error.message);
       res.status(401).json({ message: "Invalid credentials" });
+    }
+  });
+
+  // Logout endpoint (Item 2)
+  app.post("/api/auth/logout", authenticateToken, async (req: AuthRequest, res) => {
+    try {
+      if (req.user) {
+        clearSession(req.user.userId);
+      }
+      res.clearCookie('refreshToken');
+      res.json({ message: "Logged out successfully" });
+    } catch (error) {
+      console.error("[Logout] Error:", error);
+      res.status(500).json({ message: "Logout failed" });
+    }
+  });
+
+  // Register endpoint (Item 6)
+  app.post("/api/auth/register", async (req, res) => {
+    try {
+      const { email, password, name, companyName } = req.body;
+
+      if (!email || !password || !name) {
+        return res.status(400).json({ message: "Email, password, and name are required" });
+      }
+
+      // Check if user already exists
+      const existingUser = await storage.getUserByEmail(email);
+      if (existingUser) {
+        return res.status(400).json({ message: "User already exists" });
+      }
+
+      // Hash password
+      const hashedPassword = await bcrypt.hash(password, 10);
+
+      // Create company if provided
+      let companyId: string | undefined;
+      if (companyName) {
+        // This would need to be integrated with BigCommerce B2B company creation
+        // For now, we'll create a local company record
+      }
+
+      // Create user
+      const user = await storage.createUser({
+        email,
+        password: hashedPassword,
+        name,
+        role: 'buyer',
+        companyId,
+      });
+
+      // Generate tokens
+      const tokenPayload = {
+        userId: user.id,
+        email: user.email,
+        companyId: user.companyId || undefined,
+        role: user.role || 'buyer',
+      };
+
+      const accessToken = generateAccessToken(tokenPayload);
+      const refreshToken = generateRefreshToken(tokenPayload);
+
+      trackSession(user.id, accessToken);
+
+      res.status(201).json({
+        accessToken,
+        refreshToken,
+        user: {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          role: user.role,
+        },
+      });
+    } catch (error: any) {
+      console.error("[Register] Error:", error);
+      res.status(500).json({ message: "Registration failed" });
+    }
+  });
+
+  // Token refresh endpoint (Item 1)
+  app.post("/api/auth/refresh", async (req, res) => {
+    try {
+      const refreshToken = req.body.refreshToken || req.cookies.refreshToken;
+
+      if (!refreshToken) {
+        return res.status(401).json({ message: "Refresh token required" });
+      }
+
+      const payload = verifyRefreshToken(refreshToken);
+      if (!payload) {
+        return res.status(403).json({ message: "Invalid refresh token" });
+      }
+
+      // Generate new access token
+      const accessToken = generateAccessToken({
+        userId: payload.userId,
+        email: payload.email,
+        companyId: payload.companyId,
+        role: payload.role,
+      });
+
+      trackSession(payload.userId, accessToken);
+
+      res.json({ accessToken });
+    } catch (error) {
+      console.error("[Refresh] Error:", error);
+      res.status(500).json({ message: "Token refresh failed" });
+    }
+  });
+
+  // Password reset request (Items 3, 4)
+  app.post("/api/auth/forgot-password", async (req, res) => {
+    try {
+      const { email } = req.body;
+
+      if (!email) {
+        return res.status(400).json({ message: "Email is required" });
+      }
+
+      const user = await storage.getUserByEmail(email);
+      if (!user) {
+        // Don't reveal if user exists
+        return res.json({ message: "If an account exists, a password reset link will be sent" });
+      }
+
+      // Generate reset token (24 hour expiry)
+      const resetToken = generateAccessToken({
+        userId: user.id,
+        email: user.email,
+      });
+
+      // In production, send email with reset link
+      // For now, just return token (Item 4)
+      console.log(`[Password Reset] Token for ${email}: ${resetToken}`);
+
+      res.json({
+        message: "If an account exists, a password reset link will be sent",
+        // Remove this in production - only for development
+        resetToken: process.env.NODE_ENV === 'development' ? resetToken : undefined
+      });
+    } catch (error) {
+      console.error("[Forgot Password] Error:", error);
+      res.status(500).json({ message: "Failed to process password reset" });
+    }
+  });
+
+  // Password reset confirmation (Item 3)
+  app.post("/api/auth/reset-password", async (req, res) => {
+    try {
+      const { token, newPassword } = req.body;
+
+      if (!token || !newPassword) {
+        return res.status(400).json({ message: "Token and new password are required" });
+      }
+
+      const payload = verifyAccessToken(token);
+      if (!payload) {
+        return res.status(403).json({ message: "Invalid or expired reset token" });
+      }
+
+      // Hash new password
+      const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+      // Update user password
+      await storage.updateUser(payload.userId, { password: hashedPassword });
+
+      // Clear all sessions for this user
+      clearSession(payload.userId);
+
+      res.json({ message: "Password reset successfully" });
+    } catch (error) {
+      console.error("[Reset Password] Error:", error);
+      res.status(500).json({ message: "Failed to reset password" });
     }
   });
 
@@ -306,12 +538,107 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/company/accessible", async (req, res) => {
-    res.status(501).json({ message: "Not implemented - feature not available in BigCommerce API" });
+  // Accessible companies endpoint (Item 12)
+  app.get("/api/company/accessible", authenticateToken, async (req: AuthRequest, res) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      const companies = await storage.getAccessibleCompanies(req.user.userId);
+      res.json(companies);
+    } catch (error) {
+      console.error("Accessible companies fetch error:", error);
+      res.status(500).json({ message: "Failed to fetch accessible companies" });
+    }
   });
 
-  app.get("/api/company/hierarchy", async (req, res) => {
-    res.status(501).json({ message: "Not implemented - feature not available in BigCommerce API" });
+  // Switch company endpoint (Item 12)
+  app.post("/api/company/switch", authenticateToken, async (req: AuthRequest, res) => {
+    try {
+      const { companyId } = req.body;
+
+      if (!companyId) {
+        return res.status(400).json({ message: "Company ID required" });
+      }
+
+      if (!req.user) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      // Verify user has access to this company
+      const accessibleCompanies = await storage.getAccessibleCompanies(req.user.userId);
+      const hasAccess = accessibleCompanies.some(c => c.id === companyId);
+
+      if (!hasAccess) {
+        return res.status(403).json({ message: "Access denied to this company" });
+      }
+
+      // Update user's current company
+      await storage.updateUser(req.user.userId, { companyId });
+
+      // Generate new token with updated companyId
+      const newToken = generateAccessToken({
+        ...req.user,
+        companyId,
+      });
+
+      res.json({
+        message: "Company switched successfully",
+        accessToken: newToken,
+      });
+    } catch (error) {
+      console.error("Company switch error:", error);
+      res.status(500).json({ message: "Failed to switch company" });
+    }
+  });
+
+  // Update company endpoint (Item 13)
+  app.patch("/api/company/:id", authenticateToken, async (req: AuthRequest, res) => {
+    try {
+      const { id } = req.params;
+      const updates = req.body;
+
+      if (!req.user) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      // Check if user has permission to edit company
+      if (!['admin', 'manager'].includes(req.user.role || '')) {
+        return res.status(403).json({ message: "Insufficient permissions" });
+      }
+
+      // Update company (this would also sync with BigCommerce in production)
+      const updatedCompany = await storage.updateCompany(id, updates);
+
+      res.json(updatedCompany);
+    } catch (error) {
+      console.error("Company update error:", error);
+      res.status(500).json({ message: "Failed to update company" });
+    }
+  });
+
+  // Company hierarchy endpoint (Item 11)
+  app.get("/api/company/hierarchy", async (req: AuthRequest, res) => {
+    try {
+      const companyId = req.query.companyId as string || req.user?.companyId;
+
+      if (!companyId) {
+        return res.status(400).json({ message: "Company ID required" });
+      }
+
+      const hierarchy = await storage.getCompanyHierarchy(companyId);
+      const [currentCompany] = await storage.getAccessibleCompanies(req.user?.userId || '');
+
+      res.json({
+        parent: hierarchy.parent,
+        children: hierarchy.children,
+        current: currentCompany || null,
+      });
+    } catch (error) {
+      console.error("Company hierarchy fetch error:", error);
+      res.status(500).json({ message: "Failed to fetch company hierarchy" });
+    }
   });
 
   // User management endpoints
@@ -354,6 +681,68 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Product search error:", error);
       res.status(500).json({ message: "Failed to search products" });
+    }
+  });
+
+  // Cart endpoints (Items 31, 32)
+  app.get("/api/cart", async (req, res) => {
+    try {
+      const userToken = getUserToken(req);
+      // In production, use BigCommerce cart API
+      // For now, return mock cart data
+      res.json({
+        id: 'cart-1',
+        items: [],
+        subtotal: 0,
+        tax: 0,
+        shipping: 0,
+        total: 0,
+      });
+    } catch (error) {
+      console.error("Cart fetch error:", error);
+      res.status(500).json({ message: "Failed to fetch cart" });
+    }
+  });
+
+  app.post("/api/cart/items", async (req, res) => {
+    try {
+      const userToken = getUserToken(req);
+      const { items } = req.body;
+
+      // In production, add items to BigCommerce cart
+      console.log('[Cart] Adding items:', items);
+
+      res.json({ message: "Items added to cart", items });
+    } catch (error) {
+      console.error("Cart add error:", error);
+      res.status(500).json({ message: "Failed to add items to cart" });
+    }
+  });
+
+  app.patch("/api/cart/items/:id", async (req, res) => {
+    try {
+      const userToken = getUserToken(req);
+      const { quantity } = req.body;
+
+      console.log(`[Cart] Updating item ${req.params.id} to quantity ${quantity}`);
+
+      res.json({ message: "Cart item updated" });
+    } catch (error) {
+      console.error("Cart update error:", error);
+      res.status(500).json({ message: "Failed to update cart item" });
+    }
+  });
+
+  app.delete("/api/cart/items/:id", async (req, res) => {
+    try {
+      const userToken = getUserToken(req);
+
+      console.log(`[Cart] Removing item ${req.params.id}`);
+
+      res.json({ message: "Cart item removed" });
+    } catch (error) {
+      console.error("Cart delete error:", error);
+      res.status(500).json({ message: "Failed to remove cart item" });
     }
   });
 

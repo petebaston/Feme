@@ -1,0 +1,29 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:github.com)",
+      "Bash(cat \"/c/Users/pete-home/Downloads/theme_export__bramleyandwhite-co-uk-cliency-bramley-and-white-be-yours-theme__12OCT2025-1121am/Feme/package.json\")",
+      "Bash(cat \"/c/Users/pete-home/Downloads/theme_export__bramleyandwhite-co-uk-cliency-bramley-and-white-be-yours-theme__12OCT2025-1121am/Feme/README.md\")",
+      "Bash(cat \"/c/Users/pete-home/Downloads/theme_export__bramleyandwhite-co-uk-cliency-bramley-and-white-be-yours-theme__12OCT2025-1121am/Feme/tsconfig.json\")",
+      "Bash(cat \"/c/Users/pete-home/Downloads/theme_export__bramleyandwhite-co-uk-cliency-bramley-and-white-be-yours-theme__12OCT2025-1121am/Feme/vite.config.ts\")",
+      "Bash(cat \"/c/Users/pete-home/Downloads/theme_export__bramleyandwhite-co-uk-cliency-bramley-and-white-be-yours-theme__12OCT2025-1121am/Feme/.env.example\")",
+      "Bash(cat \"/c/Users/pete-home/Downloads/theme_export__bramleyandwhite-co-uk-cliency-bramley-and-white-be-yours-theme__12OCT2025-1121am/Feme/server.js\")",
+      "Bash(cat \"/c/Users/pete-home/Downloads/theme_export__bramleyandwhite-co-uk-cliency-bramley-and-white-be-yours-theme__12OCT2025-1121am/Feme/server/index.ts\")",
+      "Bash(cat \"/c/Users/pete-home/Downloads/theme_export__bramleyandwhite-co-uk-cliency-bramley-and-white-be-yours-theme__12OCT2025-1121am/Feme/shared/schema.ts\")",
+      "Bash(cat \"/c/Users/pete-home/Downloads/theme_export__bramleyandwhite-co-uk-cliency-bramley-and-white-be-yours-theme__12OCT2025-1121am/Feme/client/src/App.tsx\")",
+      "Bash(cat \"/c/Users/pete-home/Downloads/theme_export__bramleyandwhite-co-uk-cliency-bramley-and-white-be-yours-theme__12OCT2025-1121am/Feme/client/src/lib/b2b-client.ts\")",
+      "Bash(cat \"/c/Users/pete-home/Downloads/theme_export__bramleyandwhite-co-uk-cliency-bramley-and-white-be-yours-theme__12OCT2025-1121am/Feme/client/src/lib/permissions.ts\")",
+      "Bash(cat \"/c/Users/pete-home/Downloads/theme_export__bramleyandwhite-co-uk-cliency-bramley-and-white-be-yours-theme__12OCT2025-1121am/Feme/client/src/lib/config.ts\")",
+      "Bash(cat \"/c/Users/pete-home/Downloads/theme_export__bramleyandwhite-co-uk-cliency-bramley-and-white-be-yours-theme__12OCT2025-1121am/Feme/tailwind.config.ts\")",
+      "Bash(cat \"/c/Users/pete-home/Downloads/theme_export__bramleyandwhite-co-uk-cliency-bramley-and-white-be-yours-theme__12OCT2025-1121am/Feme/design_guidelines.md\")",
+      "Bash(cat \"/c/Users/pete-home/Downloads/theme_export__bramleyandwhite-co-uk-cliency-bramley-and-white-be-yours-theme__12OCT2025-1121am/Feme/client/src/pages/invoices.tsx\")",
+      "Bash(npm install --save jsonwebtoken express-rate-limit helmet cookie-parser bcryptjs)",
+      "Bash(npm install --save-dev @types/jsonwebtoken @types/cookie-parser @types/bcryptjs)",
+      "Bash(git add .)",
+      "Bash(git add -A)",
+      "Bash(git commit -m \"Implement comprehensive B2B portal features\n\n✅ Completed Features (50+/114):\n\nAUTHENTICATION & SECURITY (10/10):\n- JWT token management with refresh\n- Logout, registration, password reset\n- Session timeout, rate limiting\n- Security headers with Helmet\n\nCOMPANY MANAGEMENT (4/12):\n- Company hierarchy display\n- Company switcher dialog\n- Credit limit tracking\n- Basic user/address management\n\nPRODUCTS & CATALOG (3/8):\n- Product catalog page with filtering\n- Product search\n- Category navigation\n\nCART & CHECKOUT (5/9):\n- Shopping cart with full CRUD\n- Mini cart in header\n- Multi-step checkout\n- BigCommerce API integration ready\n\nORDERS (6/10):\n- Re-order functionality\n- CSV export\n- Advanced filtering\n- PO approval workflow\n- Order tracking\n- Bulk actions UI\n\nTECHNICAL (2/15):\n- Error boundary components\n- Consistent loading states\n\n🚀 Generated with Claude Code\nhttps://claude.com/claude-code\n\nCo-Authored-By: Claude <noreply@anthropic.com>\")"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

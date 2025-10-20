@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -6,13 +7,17 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { InviteUserDialog, EditUserDialog, DeactivateUserDialog } from "@/components/b2b/user-dialogs";
 import { AddAddressDialog, EditAddressDialog, DeleteAddressDialog, SetDefaultAddressButton } from "@/components/b2b/address-dialogs";
-import { MoreVertical } from "lucide-react";
+import { CompanyHierarchy } from "@/components/b2b/company-hierarchy";
+import { CompanySwitcherDialog } from "@/components/b2b/company-switcher-dialog";
+import { MoreVertical, Building2, ArrowLeftRight } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { usePermissions } from "@/hooks/use-permissions";
 import { formatCurrency } from "@/lib/currency";
 
 export default function Company() {
   const { can } = usePermissions();
+  const [showCompanySwitcher, setShowCompanySwitcher] = useState(false);
+
   const { data: company, isLoading: companyLoading } = useQuery<any>({
     queryKey: ['/api/company'],
     staleTime: 300000,
@@ -38,6 +43,16 @@ export default function Company() {
           <p className="text-muted-foreground">Manage your company profile and team members</p>
         </div>
         <div className="flex gap-3">
+          {can('switch_companies') && (
+            <Button
+              variant="outline"
+              onClick={() => setShowCompanySwitcher(true)}
+              data-testid="button-switch-company"
+            >
+              <ArrowLeftRight className="w-4 h-4 mr-2" />
+              Switch Company
+            </Button>
+          )}
           {can('manage_company') && (
             <Button variant="outline" data-testid="button-edit-company">
               Edit Company
@@ -46,6 +61,13 @@ export default function Company() {
           {can('manage_users') && <InviteUserDialog />}
         </div>
       </div>
+
+      {/* Company Switcher Dialog (Item 12) */}
+      <CompanySwitcherDialog
+        open={showCompanySwitcher}
+        onOpenChange={setShowCompanySwitcher}
+        currentCompanyId={company?.id || ''}
+      />
 
       {/* Financial Overview */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -260,6 +282,11 @@ export default function Company() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Company Hierarchy (Item 11) */}
+      {company?.id && can('switch_companies') && (
+        <CompanyHierarchy companyId={company.id} />
+      )}
 
       {/* Company Addresses */}
       <Card>
