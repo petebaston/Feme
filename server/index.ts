@@ -5,6 +5,11 @@ import cookieParser from "cookie-parser";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { sessionTimeout } from "./auth";
+import { logger, httpLogger } from "./logger";
+import { errorHandler, notFoundHandler, setupProcessErrorHandlers } from "./errors";
+
+// Best Practice: Setup process-level error handlers
+setupProcessErrorHandlers();
 
 const app = express();
 
@@ -50,6 +55,9 @@ app.use(express.json({
 }));
 app.use(express.urlencoded({ extended: false }));
 
+// Best Practice: HTTP request logging (Item 109)
+app.use(httpLogger);
+
 // Session timeout middleware (Item 5)
 app.use(sessionTimeout);
 
@@ -86,13 +94,11 @@ app.use((req, res, next) => {
 (async () => {
   const server = await registerRoutes(app);
 
-  app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-    const status = err.status || err.statusCode || 500;
-    const message = err.message || "Internal Server Error";
+  // Best Practice: 404 handler for unknown routes
+  app.use(notFoundHandler);
 
-    res.status(status).json({ message });
-    throw err;
-  });
+  // Best Practice: Global error handler (Item 80)
+  app.use(errorHandler);
 
   // importantly only setup vite in development and after
   // setting up all the other routes so the catch-all route
@@ -113,6 +119,8 @@ app.use((req, res, next) => {
     host: "0.0.0.0",
     reusePort: true,
   }, () => {
+    logger.info(`🚀 Server running on port ${port}`);
+    logger.info(`📝 Environment: ${app.get("env")}`);
     log(`serving on port ${port}`);
   });
 })();
