@@ -25,7 +25,10 @@
       "WebSearch",
       "WebFetch(domain:developer.bigcommerce.com)",
       "Bash(npm install:*)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Bash(npm start)",
+      "Bash(npx tsx:*)",
+      "Bash(npx dotenv:*)"
     ],
     "deny": [],
     "ask": []
