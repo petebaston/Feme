@@ -380,21 +380,18 @@ export class BigCommerceService {
   }
 
   async getCompanyUsers(userToken: string, companyId?: string) {
-    // REST Storefront API endpoint
-    return this.request('/api/v2/companies/users', { userToken });
+    // V2 REST Storefront API endpoint - per official spec
+    return this.request('/api/v2/users', { userToken });
   }
 
   async getCompanyAddresses(userToken: string, companyId?: string) {
-    // If we have companyId, use the correct path
-    // Otherwise use the user's current company
-    const endpoint = companyId 
-      ? `/api/v2/companies/${companyId}/addresses`
-      : '/api/v2/addresses';
-    
-    return this.request(endpoint, { userToken });
+    // V2 REST API endpoint - per official spec
+    // GET /api/v2/addresses - Get Company Addresses
+    return this.request('/api/v2/addresses', { userToken });
   }
 
-  // Invoices - Use Management API v3
+  // Invoices - Use Management API v3 with correct endpoint per official spec
+  // Base path: /api/v3/io/invoice-management/
   async getInvoices(userToken: string, params?: any) {
     const queryParams = new URLSearchParams();
     if (params?.search) queryParams.append('search', params.search);
@@ -404,15 +401,15 @@ export class BigCommerceService {
     if (params?.offset) queryParams.append('offset', params.offset.toString());
 
     const query = queryParams.toString();
-    return this.request(`/api/v3/io/invoices${query ? `?${query}` : ''}`, { userToken });
+    return this.request(`/api/v3/io/invoice-management/invoice${query ? `?${query}` : ''}`, { userToken });
   }
 
   async getInvoice(userToken: string, invoiceId: string) {
-    return this.request(`/api/v3/io/invoices/${invoiceId}`, { userToken });
+    return this.request(`/api/v3/io/invoice-management/invoice/${invoiceId}`, { userToken });
   }
 
   async getInvoicePdf(userToken: string, invoiceId: string) {
-    return this.request(`/api/v3/io/invoices/${invoiceId}/pdf`, { userToken });
+    return this.request(`/api/v3/io/invoice-management/invoice/${invoiceId}/pdf`, { userToken });
   }
 
   // Products
@@ -422,22 +419,23 @@ export class BigCommerceService {
     return this.request(`/api/v2/products?${queryParams.toString()}`, { userToken });
   }
 
-  // Shopping Lists - Use Management API v3 for full CRUD
+  // Shopping Lists - Use Management API v3 per official spec
+  // Base path: /api/v3/io/shopping-list (singular, not plural)
   async getShoppingLists(userToken: string, params?: any) {
     const queryParams = new URLSearchParams();
     if (params?.limit) queryParams.append('limit', params.limit.toString());
     if (params?.offset) queryParams.append('offset', params.offset.toString());
 
     const query = queryParams.toString();
-    return this.request(`/api/v3/io/shopping-lists${query ? `?${query}` : ''}`, { userToken });
+    return this.request(`/api/v3/io/shopping-list${query ? `?${query}` : ''}`, { userToken });
   }
 
   async getShoppingList(userToken: string, listId: string) {
-    return this.request(`/api/v3/io/shopping-lists/${listId}`, { userToken });
+    return this.request(`/api/v3/io/shopping-list/${listId}`, { userToken });
   }
 
   async createShoppingList(userToken: string, data: any) {
-    return this.request('/api/v3/io/shopping-lists', {
+    return this.request('/api/v3/io/shopping-list', {
       method: 'POST',
       body: JSON.stringify(data),
       userToken,
@@ -445,7 +443,7 @@ export class BigCommerceService {
   }
 
   async updateShoppingList(userToken: string, listId: string, data: any) {
-    return this.request(`/api/v3/io/shopping-lists/${listId}`, {
+    return this.request(`/api/v3/io/shopping-list/${listId}`, {
       method: 'PUT',
       body: JSON.stringify(data),
       userToken,
@@ -453,14 +451,14 @@ export class BigCommerceService {
   }
 
   async deleteShoppingList(userToken: string, listId: string) {
-    return this.request(`/api/v3/io/shopping-lists/${listId}`, {
+    return this.request(`/api/v3/io/shopping-list/${listId}`, {
       method: 'DELETE',
       userToken,
     });
   }
 
   async addShoppingListItem(userToken: string, listId: string, item: any) {
-    return this.request(`/api/v3/io/shopping-lists/${listId}/items`, {
+    return this.request(`/api/v3/io/shopping-list/${listId}/items`, {
       method: 'POST',
       body: JSON.stringify(item),
       userToken,
