@@ -3,6 +3,7 @@ import { storage } from './storage';
 interface BigCommerceConfig {
   storeHash: string;
   accessToken: string;
+  managementToken: string;
   b2bApiUrl: string;
   clientId: string;
   clientSecret: string;
@@ -15,6 +16,7 @@ export class BigCommerceService {
     this.config = {
       storeHash: process.env.BIGCOMMERCE_STORE_HASH || process.env.VITE_STORE_HASH || '',
       accessToken: process.env.BIGCOMMERCE_ACCESS_TOKEN || '',
+      managementToken: process.env.BIGCOMMERCE_B2B_MANAGEMENT_TOKEN || '',
       b2bApiUrl: 'https://api-b2b.bigcommerce.com',
       clientId: process.env.BIGCOMMERCE_CLIENT_ID || '',
       clientSecret: process.env.BIGCOMMERCE_CLIENT_SECRET || '',
@@ -24,6 +26,7 @@ export class BigCommerceService {
       storeHash: this.config.storeHash,
       b2bApiUrl: this.config.b2bApiUrl,
       hasAccessToken: !!this.config.accessToken,
+      hasManagementToken: !!this.config.managementToken,
       hasClientId: !!this.config.clientId,
     });
   }
@@ -40,12 +43,19 @@ export class BigCommerceService {
       ...(options.headers || {}),
     };
 
-    // Always add server access token
-    if (this.config.accessToken) {
-      headers['X-Auth-Token'] = this.config.accessToken;
+    // Use Management API token for v3 endpoints, otherwise use access token
+    if (endpoint.startsWith('/api/v3/io')) {
+      if (this.config.managementToken) {
+        headers['authToken'] = this.config.managementToken;
+      }
+    } else {
+      // Always add server access token for v2 endpoints
+      if (this.config.accessToken) {
+        headers['X-Auth-Token'] = this.config.accessToken;
+      }
     }
 
-    // Add user token for authenticated requests
+    // Add user token for authenticated storefront requests
     if (options.userToken) {
       headers['Authorization'] = `Bearer ${options.userToken}`;
     }
@@ -325,61 +335,65 @@ export class BigCommerceService {
     });
   }
 
-  // Company
+  // Company - Get current user's company info
   async getCompany(userToken: string) {
-    // Note: /api/v2/company endpoint may not exist - try GraphQL or /api/v3/storefront/customer-info
-    console.log('[BigCommerce] Fetching company data...');
+    // Use the storefront GraphQL API to get current user's company
+    console.log('[BigCommerce] Fetching company data via GraphQL...');
     try {
-      return await this.request('/api/v2/company', { userToken });
-    } catch (error: any) {
-      console.log('[BigCommerce] /api/v2/company failed, trying alternative endpoints...');
-      
-      // Try GraphQL query for company data
-      try {
-        const query = `
-          query {
+      const query = `
+        query {
+          currentCustomer {
             company {
               id
               companyName
-              email
+              companyEmail
+              customerGroupId
+              companyStatus
             }
           }
-        `;
-        return await this.graphqlRequest(query, {}, userToken);
-      } catch (gqlError: any) {
-        console.error('[BigCommerce] GraphQL company query also failed:', gqlError.message);
-        throw error; // Throw original error
-      }
+        }
+      `;
+      return await this.graphqlRequest(query, {}, userToken);
+    } catch (error: any) {
+      console.error('[BigCommerce] Failed to fetch company:', error.message);
+      throw error;
     }
   }
 
-  async getCompanyUsers(userToken: string) {
-    return this.request('/api/v2/company/users', { userToken });
+  async getCompanyUsers(userToken: string, companyId?: string) {
+    // REST Storefront API endpoint
+    return this.request('/api/v2/companies/users', { userToken });
   }
 
-  async getCompanyAddresses(userToken: string) {
-    return this.request('/api/v2/company/addresses', { userToken });
+  async getCompanyAddresses(userToken: string, companyId?: string) {
+    // If we have companyId, use the correct path
+    // Otherwise use the user's current company
+    const endpoint = companyId 
+      ? `/api/v2/companies/${companyId}/addresses`
+      : '/api/v2/addresses';
+    
+    return this.request(endpoint, { userToken });
   }
 
-  // Invoices
+  // Invoices - Use Management API v3
   async getInvoices(userToken: string, params?: any) {
     const queryParams = new URLSearchParams();
     if (params?.search) queryParams.append('search', params.search);
     if (params?.status && params.status !== 'all') queryParams.append('status', params.status);
     if (params?.sortBy) queryParams.append('sortBy', params.sortBy);
     if (params?.limit) queryParams.append('limit', params.limit.toString());
-    if (params?.recent) queryParams.append('recent', 'true');
+    if (params?.offset) queryParams.append('offset', params.offset.toString());
 
     const query = queryParams.toString();
-    return this.request(`/api/v2/invoices${query ? `?${query}` : ''}`, { userToken });
+    return this.request(`/api/v3/io/invoices${query ? `?${query}` : ''}`, { userToken });
   }
 
   async getInvoice(userToken: string, invoiceId: string) {
-    return this.request(`/api/v2/invoices/${invoiceId}`, { userToken });
+    return this.request(`/api/v3/io/invoices/${invoiceId}`, { userToken });
   }
 
   async getInvoicePdf(userToken: string, invoiceId: string) {
-    return this.request(`/api/v2/invoices/${invoiceId}/pdf`, { userToken });
+    return this.request(`/api/v3/io/invoices/${invoiceId}/pdf`, { userToken });
   }
 
   // Products
@@ -389,13 +403,49 @@ export class BigCommerceService {
     return this.request(`/api/v2/products?${queryParams.toString()}`, { userToken });
   }
 
-  // Shopping Lists
-  async getShoppingLists(userToken: string) {
-    return this.request('/api/v2/shopping-lists', { userToken });
+  // Shopping Lists - Use Management API v3 for full CRUD
+  async getShoppingLists(userToken: string, params?: any) {
+    const queryParams = new URLSearchParams();
+    if (params?.limit) queryParams.append('limit', params.limit.toString());
+    if (params?.offset) queryParams.append('offset', params.offset.toString());
+
+    const query = queryParams.toString();
+    return this.request(`/api/v3/io/shopping-lists${query ? `?${query}` : ''}`, { userToken });
   }
 
   async getShoppingList(userToken: string, listId: string) {
-    return this.request(`/api/v2/shopping-lists/${listId}`, { userToken });
+    return this.request(`/api/v3/io/shopping-lists/${listId}`, { userToken });
+  }
+
+  async createShoppingList(userToken: string, data: any) {
+    return this.request('/api/v3/io/shopping-lists', {
+      method: 'POST',
+      body: JSON.stringify(data),
+      userToken,
+    });
+  }
+
+  async updateShoppingList(userToken: string, listId: string, data: any) {
+    return this.request(`/api/v3/io/shopping-lists/${listId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+      userToken,
+    });
+  }
+
+  async deleteShoppingList(userToken: string, listId: string) {
+    return this.request(`/api/v3/io/shopping-lists/${listId}`, {
+      method: 'DELETE',
+      userToken,
+    });
+  }
+
+  async addShoppingListItem(userToken: string, listId: string, item: any) {
+    return this.request(`/api/v3/io/shopping-lists/${listId}/items`, {
+      method: 'POST',
+      body: JSON.stringify(item),
+      userToken,
+    });
   }
 }
 
