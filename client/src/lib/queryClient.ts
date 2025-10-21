@@ -1,5 +1,29 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 
+// Handle session expiration and auto-logout
+function handleSessionExpired() {
+  console.log('[Auth] Session expired, clearing auth and redirecting to login');
+  localStorage.removeItem('b2b_token');
+  localStorage.removeItem('b2b_store_hash');
+  localStorage.removeItem('b2b_channel_id');
+  localStorage.removeItem('b2b_user');
+  window.location.href = '/login';
+}
+
+// Check if response indicates session expired
+function checkSessionExpired(data: any) {
+  if (data && (
+    data.errMsg === 'Session expired, please login again' ||
+    data.message === 'Session expired, please login again' ||
+    data.code === 40101 ||
+    (data.data && data.data.errMsg === 'Session expired, please login again')
+  )) {
+    handleSessionExpired();
+    return true;
+  }
+  return false;
+}
+
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
     const text = (await res.text()) || res.statusText;
@@ -26,6 +50,16 @@ export async function apiRequest(
   });
 
   await throwIfResNotOk(res);
+  
+  // Check for session expired in response body
+  const clonedRes = res.clone();
+  try {
+    const responseData = await clonedRes.json();
+    checkSessionExpired(responseData);
+  } catch (e) {
+    // Response might not be JSON, that's OK
+  }
+  
   return res;
 }
 
@@ -67,7 +101,12 @@ export const getQueryFn: <T>(options: {
     }
 
     await throwIfResNotOk(res);
-    return await res.json();
+    const data = await res.json();
+    
+    // Check if the response indicates session expired (BigCommerce returns 200 with error)
+    checkSessionExpired(data);
+    
+    return data;
   };
 
 export const queryClient = new QueryClient({
