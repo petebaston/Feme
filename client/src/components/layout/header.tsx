@@ -4,26 +4,27 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
+import { useLogout } from "@/hooks/use-graphql-auth";
 import { CompanySwitcher } from "@/components/b2b/company-switcher";
 import { MiniCart } from "./mini-cart";
 
 export default function Header() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
-  const user = JSON.parse(localStorage.getItem('b2b_user') || '{}');
+  const { logout, loading } = useLogout();
+  const user = JSON.parse(localStorage.getItem('user') || localStorage.getItem('b2b_user') || '{}');
 
-  const handleLogout = () => {
-    localStorage.removeItem('b2b_token');
-    localStorage.removeItem('b2b_store_hash');
-    localStorage.removeItem('b2b_channel_id');
-    localStorage.removeItem('b2b_user');
-    
-    toast({
-      title: "Logged out",
-      description: "You have been signed out.",
-    });
-    
-    window.location.href = "/";
+  const handleLogout = async () => {
+    try {
+      await logout();
+      toast({
+        title: "Logged out",
+        description: "You have been signed out.",
+      });
+    } catch (err) {
+      // Even if API fails, logout hook clears local storage and redirects
+      console.error('Logout error:', err);
+    }
   };
 
   return (
@@ -68,8 +69,8 @@ export default function Header() {
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={handleLogout} data-testid="menu-logout">
-                Log out
+              <DropdownMenuItem onClick={handleLogout} disabled={loading} data-testid="menu-logout">
+                {loading ? 'Logging out...' : 'Log out'}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
