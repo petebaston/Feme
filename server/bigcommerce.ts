@@ -50,7 +50,15 @@ export class BigCommerceService {
       headers['Authorization'] = `Bearer ${options.userToken}`;
     }
 
-    console.log(`[BigCommerce] ${options.method || 'GET'} ${url}`, 'Headers:', Object.keys(headers));
+    console.log(`[BigCommerce] ${options.method || 'GET'} ${url}`);
+    console.log('[BigCommerce] Headers:', JSON.stringify({
+      ...headers,
+      'X-Auth-Token': headers['X-Auth-Token'] ? '***' : undefined,
+      'Authorization': headers['Authorization'] ? '***' : undefined,
+    }, null, 2));
+    if (options.body) {
+      console.log('[BigCommerce] Body:', options.body);
+    }
 
     try {
       const response = await fetch(url, {
@@ -60,12 +68,22 @@ export class BigCommerceService {
 
       const text = await response.text();
       
+      console.log(`[BigCommerce] Response Status: ${response.status} ${response.statusText}`);
+      console.log('[BigCommerce] Response Body:', text.substring(0, 500) + (text.length > 500 ? '...' : ''));
+      
       if (!response.ok) {
-        console.error(`[BigCommerce] Error ${response.status}: ${text}`);
+        console.error(`[BigCommerce] ❌ Error ${response.status}: ${text}`);
         throw new Error(`BigCommerce API Error: ${response.status} ${response.statusText}`);
       }
 
-      return text ? JSON.parse(text) : null;
+      const parsed = text ? JSON.parse(text) : null;
+      
+      // Check for BigCommerce error responses that come with 200 status
+      if (parsed && (parsed.errMsg || parsed.error)) {
+        console.error('[BigCommerce] ❌ API returned error in 200 response:', JSON.stringify(parsed, null, 2));
+      }
+
+      return parsed;
     } catch (error: any) {
       console.error('[BigCommerce] Request failed:', error.message);
       throw error;
