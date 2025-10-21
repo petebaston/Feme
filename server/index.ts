@@ -13,6 +13,9 @@ setupProcessErrorHandlers();
 
 const app = express();
 
+// Enable trust proxy for Replit's reverse proxy
+app.set('trust proxy', true);
+
 // Security headers (Item 10)
 app.use(helmet({
   contentSecurityPolicy: process.env.NODE_ENV === "production" ? undefined : false,

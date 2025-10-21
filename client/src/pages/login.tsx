@@ -47,10 +47,12 @@ export default function Login() {
       const data = await response.json();
 
       // Store authentication data
-      localStorage.setItem('b2b_token', data.token || 'demo_token');
+      localStorage.setItem('b2b_token', data.b2bToken || data.token || 'demo_token');
       localStorage.setItem('b2b_store_hash', storeHash);
       localStorage.setItem('b2b_channel_id', channelId);
       localStorage.setItem('b2b_user', JSON.stringify(data.user || { email, name: 'Demo User' }));
+      
+      console.log('[Login] Stored BigCommerce B2B token:', data.b2bToken ? 'Yes' : 'No');
 
       toast({
         title: "Login Successful",

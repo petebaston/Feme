@@ -327,7 +327,30 @@ export class BigCommerceService {
 
   // Company
   async getCompany(userToken: string) {
-    return this.request('/api/v2/company', { userToken });
+    // Note: /api/v2/company endpoint may not exist - try GraphQL or /api/v3/storefront/customer-info
+    console.log('[BigCommerce] Fetching company data...');
+    try {
+      return await this.request('/api/v2/company', { userToken });
+    } catch (error: any) {
+      console.log('[BigCommerce] /api/v2/company failed, trying alternative endpoints...');
+      
+      // Try GraphQL query for company data
+      try {
+        const query = `
+          query {
+            company {
+              id
+              companyName
+              email
+            }
+          }
+        `;
+        return await this.graphqlRequest(query, {}, userToken);
+      } catch (gqlError: any) {
+        console.error('[BigCommerce] GraphQL company query also failed:', gqlError.message);
+        throw error; // Throw original error
+      }
+    }
   }
 
   async getCompanyUsers(userToken: string) {
