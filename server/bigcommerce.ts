@@ -342,10 +342,12 @@ export class BigCommerceService {
     console.log('[BigCommerce] Fetching company data...');
     try {
       // Use GraphQL to get basic customer/company info
+      // Per API spec, use currentUser instead of customer
+      // UserType uses 'id' not 'entityId'
       const query = `
         query {
-          customer {
-            entityId
+          currentUser {
+            id
             email
             firstName
             lastName
@@ -358,10 +360,10 @@ export class BigCommerceService {
       return {
         code: 200,
         data: {
-          id: result?.data?.customer?.entityId,
-          companyId: result?.data?.customer?.entityId,
-          email: result?.data?.customer?.email,
-          name: `${result?.data?.customer?.firstName || ''} ${result?.data?.customer?.lastName || ''}`.trim(),
+          id: result?.data?.currentUser?.id,
+          companyId: result?.data?.currentUser?.id,
+          email: result?.data?.currentUser?.email,
+          name: `${result?.data?.currentUser?.firstName || ''} ${result?.data?.currentUser?.lastName || ''}`.trim(),
         }
       };
     } catch (error: any) {
