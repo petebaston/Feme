@@ -114,7 +114,11 @@ export function clearSession(userId: string) {
 
 export function checkSessionTimeout(userId: string): boolean {
   const session = userSessions.get(userId);
-  if (!session) return true;
+  if (!session) {
+    // Session doesn't exist - create it instead of failing
+    // This happens after server restart or initial request
+    return false;
+  }
 
   const timeout = parseInt(process.env.SESSION_TIMEOUT || '3600000'); // 1 hour default
   return Date.now() - session.lastActivity > timeout;
@@ -127,7 +131,14 @@ export function sessionTimeout(req: AuthRequest, res: Response, next: NextFuncti
       clearSession(req.user.userId);
       return res.status(401).json({ message: 'Session expired due to inactivity' });
     }
-    updateSessionActivity(req.user.userId);
+    // Update or create session activity
+    const session = userSessions.get(req.user.userId);
+    if (session) {
+      session.lastActivity = Date.now();
+    } else {
+      // Create new session if it doesn't exist (e.g., after server restart)
+      userSessions.set(req.user.userId, { lastActivity: Date.now(), token: '' });
+    }
   }
   next();
 }
