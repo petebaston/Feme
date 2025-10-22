@@ -65,7 +65,7 @@ function Router() {
   }
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-[#FAFAF5]">
       <Header />
       <div className="flex">
         <Sidebar />
