@@ -18,3 +18,7 @@
 2025-10-22 12:34:01:341 [31merror[39m: [31mGET /api/orders 500 - 2ms[39m
 2025-10-22 12:34:02:342 [31merror[39m: [31mGET /api/orders 500 - 1ms[39m
 2025-10-22 12:35:28:3528 [31merror[39m: [31mGET /api/orders 500 - 9ms[39m
+2025-10-22 12:37:38:3738 [31merror[39m: [31mGET /api/orders 500 - 14ms[39m
+2025-10-22 12:38:13:3813 [31merror[39m: [31mGET /api/orders 500 - 11ms[39m
+2025-10-22 12:38:21:3821 [31merror[39m: [31mGET /api/orders 500 - 2ms[39m
+2025-10-22 12:38:29:3829 [31merror[39m: [31mGET /api/orders 500 - 11ms[39m

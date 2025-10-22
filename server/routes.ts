@@ -370,7 +370,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     sessionTimeout,
     async (req: AuthRequest, res) => {
       try {
+        console.log('[Orders] Fetching orders for user:', req.user?.email);
         const bcToken = await getBigCommerceToken(req);
+        console.log('[Orders] Got BC token, fetching orders...');
         const { search, status, sortBy, limit, recent } = req.query;
 
         // Get companyId for caching

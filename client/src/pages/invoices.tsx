@@ -103,7 +103,7 @@ export default function Invoices() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-full">
       {/* Header */}
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-normal text-white bg-[#6366F1] px-4 py-1 inline-block">
@@ -139,7 +139,7 @@ export default function Invoices() {
       </div>
 
       {/* Table */}
-      <div className="border border-gray-200 bg-white overflow-x-auto">
+      <div className="border border-gray-200 bg-white overflow-x-auto relative">
         <Table>
           <TableHeader>
             <TableRow className="hover:bg-transparent">

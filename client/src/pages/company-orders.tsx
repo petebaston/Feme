@@ -61,7 +61,7 @@ export default function CompanyOrders() {
       </div>
 
       {/* Table */}
-      <div className="border border-gray-200 bg-white">
+      <div className="border border-gray-200 bg-white overflow-x-auto relative">
         <Table>
           <TableHeader>
             <TableRow className="hover:bg-transparent">
