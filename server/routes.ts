@@ -615,10 +615,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     async (req: AuthRequest, res) => {
       try {
-        // Invoices use server ACCESS_TOKEN (no user token needed)
+        // Get user's BigCommerce token to fetch their invoices
+        const bcToken = await getBigCommerceToken(req);
         const { search, status, sortBy, limit, recent } = req.query;
 
-        const response = await bigcommerce.getInvoices(undefined, {
+        // Use user's token to automatically filter invoices to their account
+        const response = await bigcommerce.getInvoices(bcToken, {
           search: search as string,
           status: status as string,
           sortBy: sortBy as string,
@@ -626,15 +628,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           recent: recent === 'true',
         });
 
-        const allInvoices = response?.data?.list || response?.data || [];
+        const invoices = response?.data?.list || response?.data || [];
 
-        // SECURITY: Filter invoices to only show user's own invoices
-        const userInvoices = allInvoices.filter((invoice: any) => 
-          verifyResourceOwnership(invoice, req.user?.companyId, req.user?.role)
-        );
-
-        console.log(`[Invoices] Filtered ${allInvoices.length} invoices to ${userInvoices.length} for user ${req.user?.email}`);
-        res.json(userInvoices);
+        console.log(`[Invoices] Returned ${invoices.length} invoices for user ${req.user?.email}`);
+        res.json(invoices);
       } catch (error) {
         console.error("Invoices fetch error:", error);
         res.status(500).json({ message: "Failed to fetch invoices" });
