@@ -9,10 +9,18 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 export default function Orders() {
   const [searchTerm, setSearchTerm] = useState("");
 
-  const { data: orders, isLoading } = useQuery<any[]>({
+  const { data: orders, isLoading, error } = useQuery<any[]>({
     queryKey: ['/api/orders'],
     staleTime: 300000,
+    retry: false,
   });
+  
+  // If we get an auth error, clear token and force re-login
+  if (error && (error as any)?.message?.includes('token')) {
+    localStorage.removeItem('b2b_token');
+    localStorage.removeItem('user');
+    window.location.href = '/login';
+  }
 
   const filteredOrders = orders?.filter((order: any) => {
     const matchesSearch = !searchTerm ||
