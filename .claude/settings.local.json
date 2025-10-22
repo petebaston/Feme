@@ -41,7 +41,8 @@
       "Bash(done)",
       "Bash(git push:*)",
       "Bash(git stash:*)",
-      "Read(//c/Users/pete-home/Downloads/**)"
+      "Read(//c/Users/pete-home/Downloads/**)",
+      "Bash(git commit:*)"
     ],
     "deny": [],
     "ask": []
