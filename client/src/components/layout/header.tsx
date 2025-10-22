@@ -1,11 +1,10 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
-import { CompanySwitcher } from "@/components/b2b/company-switcher";
-import { MiniCart } from "./mini-cart";
+import { ChevronDown } from "lucide-react";
+import femeLogo from "@assets/feme-logo.png";
 
 export default function Header() {
   const [, setLocation] = useLocation();
@@ -18,7 +17,6 @@ export default function Header() {
     try {
       const token = localStorage.getItem('b2b_token');
 
-      // Call logout API
       await fetch('/api/auth/logout', {
         method: 'POST',
         headers: {
@@ -27,7 +25,6 @@ export default function Header() {
         },
       });
 
-      // Clear local storage
       localStorage.removeItem('b2b_token');
       localStorage.removeItem('user');
       localStorage.removeItem('b2b_user');
@@ -37,10 +34,8 @@ export default function Header() {
         description: "You have been signed out.",
       });
 
-      // Redirect to login
       setLocation('/login');
     } catch (err) {
-      // Even if API fails, clear local storage and redirect
       console.error('Logout error:', err);
       localStorage.removeItem('b2b_token');
       localStorage.removeItem('user');
@@ -52,46 +47,32 @@ export default function Header() {
   };
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-gray-200 bg-white">
-      <div className="flex h-16 items-center px-4 md:px-6">
-        <div className="flex items-center space-x-4 md:ml-12">
-          <Link href="/" className="flex items-center space-x-2" data-testid="link-logo">
-            <span className="font-bold text-2xl tracking-tight text-black">feme</span>
-          </Link>
-        </div>
+    <header className="sticky top-0 z-40 w-full bg-white border-b border-gray-200">
+      <div className="flex h-14 items-center justify-between px-6">
+        <Link href="/" className="flex items-center" data-testid="link-logo">
+          <img src={femeLogo} alt="FEME" className="h-8" />
+        </Link>
 
-        <div className="ml-auto flex items-center space-x-2 md:space-x-4">
-          <MiniCart />
-          <CompanySwitcher />
-          {/* User Menu */}
+        <div className="flex items-center gap-6">
+          <Link href="/" className="text-sm font-medium text-gray-700 hover:text-black">
+            HOME
+          </Link>
+          <Link href="/cart" className="text-sm font-medium text-gray-700 hover:text-black">
+            CART
+          </Link>
+          
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="relative h-9 w-9 rounded-full" data-testid="header-user-menu">
-                <Avatar className="h-9 w-9">
-                  <AvatarFallback className="bg-black text-white text-sm">
-                    {user.name?.split(' ').map((n: string) => n[0]).join('') || user.email?.[0]?.toUpperCase() || 'U'}
-                  </AvatarFallback>
-                </Avatar>
+              <Button variant="ghost" className="h-auto p-0 hover:bg-transparent" data-testid="header-user-menu">
+                <span className="text-sm font-medium text-gray-700">{user.name || 'User'}</span>
+                <ChevronDown className="ml-1 h-4 w-4 text-gray-700" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent className="w-56" align="end" forceMount>
-              <div className="flex items-center justify-start gap-2 p-2">
-                <div className="flex flex-col space-y-1 leading-none">
-                  <p className="font-medium text-sm">{user.name || 'User'}</p>
-                  <p className="text-xs text-gray-600">{user.email || 'user@company.com'}</p>
-                </div>
+            <DropdownMenuContent className="w-48" align="end">
+              <div className="p-2">
+                <p className="text-sm font-medium">{user.name || 'User'}</p>
+                <p className="text-xs text-gray-500">{user.email || 'user@company.com'}</p>
               </div>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem asChild data-testid="menu-dashboard">
-                <Link href="/dashboard" className="cursor-pointer">
-                  Dashboard
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild data-testid="menu-company">
-                <Link href="/company" className="cursor-pointer">
-                  Company
-                </Link>
-              </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={handleLogout} disabled={loading} data-testid="menu-logout">
                 {loading ? 'Logging out...' : 'Log out'}

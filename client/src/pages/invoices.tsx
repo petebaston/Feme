@@ -92,7 +92,7 @@ export default function Invoices() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-normal text-white bg-blue-600 px-3 py-1 inline-block">
+        <h1 className="text-2xl font-normal text-white bg-[#6366F1] px-4 py-1 inline-block">
           Invoices
         </h1>
       </div>
@@ -105,10 +105,10 @@ export default function Invoices() {
             placeholder="Search"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10 h-10 bg-gray-100 border-0 focus-visible:ring-0"
+            className="pl-10 h-10 bg-gray-100 border-0 focus-visible:ring-0 rounded-none"
           />
         </div>
-        <button className="flex items-center justify-center w-10 h-10 border border-gray-300 rounded-md hover:bg-gray-50">
+        <button className="flex items-center justify-center w-10 h-10 border border-gray-300 hover:bg-gray-50">
           <SlidersHorizontal className="w-4 h-4" />
         </button>
       </div>
@@ -125,7 +125,7 @@ export default function Invoices() {
       </div>
 
       {/* Table */}
-      <div className="border border-gray-200 rounded-md bg-white">
+      <div className="border border-gray-200 bg-white">
         <Table>
           <TableHeader>
             <TableRow className="hover:bg-transparent">
@@ -203,7 +203,7 @@ export default function Invoices() {
                       />
                     </TableCell>
                     <TableCell>
-                      <span className={`inline-flex items-center px-3 py-1 rounded-md text-xs font-medium ${getStatusBadgeClass(invoice.status)}`}>
+                      <span className={`inline-flex items-center px-3 py-1 text-xs font-medium ${getStatusBadgeClass(invoice.status)}`}>
                         {invoice.status || 'Overdue'}
                       </span>
                     </TableCell>

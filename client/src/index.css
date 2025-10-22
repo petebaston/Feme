@@ -28,6 +28,21 @@
   --chart-4: hsl(217 91% 60%);
   --chart-5: hsl(262 83% 58%);
   --radius: 0.5rem;
+  
+  /* Feme Brand Colors */
+  --feme-pink: hsl(328 85% 52%);
+  --feme-sidebar-bg: hsl(0 0% 0%);
+  --feme-sidebar-text: hsl(0 0% 100%);
+  --feme-purple: hsl(250 67% 56%);
+  --feme-blue: hsl(205 78% 55%);
+  
+  /* Status Badge Colors */
+  --status-completed: hsl(84 81% 44%);
+  --status-awaiting-payment: hsl(25 95% 53%);
+  --status-awaiting-fulfillment: hsl(201 96% 32%);
+  --status-partially-shipped: hsl(266 58% 50%);
+  --status-overdue: hsl(0 72% 51%);
+  --status-paid: hsl(84 81% 44%);
 }
 
 .dark {

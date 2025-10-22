@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
+import femeLogo from "@assets/feme-logo.png";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -57,10 +58,8 @@ export default function Login() {
     <div className="min-h-screen flex items-center justify-center bg-white px-4 py-8">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center mb-3">
-            <div className="bg-gradient-to-br from-pink-500 to-pink-600 text-white px-3 py-2 rounded-md">
-              <span className="text-2xl font-bold tracking-tight">FEME</span>
-            </div>
+          <div className="inline-flex items-center justify-center mb-6">
+            <img src={femeLogo} alt="FEME" className="h-12" />
           </div>
           <p className="text-sm md:text-base text-gray-600">Sign in to your business account</p>
         </div>

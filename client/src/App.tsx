@@ -65,11 +65,11 @@ function Router() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-white">
       <Header />
       <div className="flex">
         <Sidebar />
-        <main className="flex-1 p-6">
+        <main className="flex-1 px-8 py-6 bg-gray-50">
           <Switch>
             <Route path="/" component={Orders} />
             <Route path="/orders/:id" component={OrderDetail} />

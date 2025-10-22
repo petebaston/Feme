@@ -28,7 +28,7 @@ export default function AccountSettings() {
     <div className="space-y-6 max-w-2xl">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-normal text-white bg-blue-600 px-3 py-1 inline-block">
+        <h1 className="text-2xl font-normal text-white bg-[#3B82F6] px-4 py-1 inline-block">
           Account settings
         </h1>
       </div>
@@ -98,7 +98,7 @@ export default function AccountSettings() {
           <Label className="text-sm font-medium text-gray-500">
             Company user 1234
           </Label>
-          <div className="h-11 px-3 py-2 bg-gray-100 border border-gray-300 rounded-md text-gray-500">
+          <div className="h-11 px-3 py-2 bg-gray-100 border border-gray-300 text-gray-500">
             Company user 1234
           </div>
         </div>
@@ -108,7 +108,7 @@ export default function AccountSettings() {
           <Label className="text-sm font-medium text-gray-500">
             Company
           </Label>
-          <div className="h-11 px-3 py-2 bg-gray-100 border border-gray-300 rounded-md text-gray-500">
+          <div className="h-11 px-3 py-2 bg-gray-100 border border-gray-300 text-gray-500">
             TEST Affro Wholesale Direct Ltd
           </div>
         </div>
@@ -118,7 +118,7 @@ export default function AccountSettings() {
           <Label className="text-sm font-medium text-gray-500">
             Role
           </Label>
-          <div className="h-11 px-3 py-2 bg-gray-100 border border-gray-300 rounded-md text-gray-500">
+          <div className="h-11 px-3 py-2 bg-gray-100 border border-gray-300 text-gray-500">
             Admin
           </div>
         </div>

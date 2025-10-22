@@ -41,7 +41,7 @@ export default function Orders() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-normal text-black">My orders</h1>
+        <h1 className="text-2xl font-semibold text-black">My orders</h1>
       </div>
 
       {/* Search and Filter */}
@@ -52,16 +52,16 @@ export default function Orders() {
             placeholder="Search"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10 h-10 bg-gray-100 border-0 focus-visible:ring-0"
+            className="pl-10 h-10 bg-gray-100 border-0 focus-visible:ring-0 rounded-none"
           />
         </div>
-        <button className="flex items-center justify-center w-10 h-10 border border-gray-300 rounded-md hover:bg-gray-50">
+        <button className="flex items-center justify-center w-10 h-10 border border-gray-300 hover:bg-gray-50">
           <SlidersHorizontal className="w-4 h-4" />
         </button>
       </div>
 
       {/* Table */}
-      <div className="border border-gray-200 rounded-md bg-white">
+      <div className="border border-gray-200 bg-white">
         <Table>
           <TableHeader>
             <TableRow className="hover:bg-transparent">
@@ -103,7 +103,7 @@ export default function Orders() {
                     {formatCurrency(order.total, order.money)}
                   </TableCell>
                   <TableCell>
-                    <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${getStatusBadgeClass(order.status)}`}>
+                    <span className={`inline-flex items-center px-3 py-1 text-xs font-medium ${getStatusBadgeClass(order.status)}`}>
                       {order.status || 'Completed'}
                     </span>
                   </TableCell>

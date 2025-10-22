@@ -33,7 +33,7 @@ export default function Addresses() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-normal text-black">Addresses</h1>
+        <h1 className="text-2xl font-semibold text-black">Addresses</h1>
       </div>
 
       {/* Search and Filter */}
@@ -44,10 +44,10 @@ export default function Addresses() {
             placeholder="Search"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10 h-10 bg-gray-100 border-0 focus-visible:ring-0"
+            className="pl-10 h-10 bg-gray-100 border-0 focus-visible:ring-0 rounded-none"
           />
         </div>
-        <button className="flex items-center justify-center w-10 h-10 border border-gray-300 rounded-md hover:bg-gray-50">
+        <button className="flex items-center justify-center w-10 h-10 border border-gray-300 hover:bg-gray-50">
           <SlidersHorizontal className="w-4 h-4" />
         </button>
       </div>
@@ -60,12 +60,12 @@ export default function Addresses() {
               {/* Badges */}
               <div className="flex flex-wrap gap-2 mb-4">
                 {address.isDefaultShipping && (
-                  <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-[#C4D600] text-black">
+                  <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-[#C4D600] text-black">
                     Default shipping
                   </span>
                 )}
                 {address.isDefaultBilling && (
-                  <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-[#C4D600] text-black">
+                  <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-[#C4D600] text-black">
                     Default billing
                   </span>
                 )}
