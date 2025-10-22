@@ -259,3 +259,33 @@
 2025-10-22 11:43:22:4322 [32mhttp[39m: [32mGET /@vite/client 304 - 1ms[39m
 2025-10-22 11:43:22:4322 [32mhttp[39m: [32mGET /@vite/client 304 - 1ms[39m
 2025-10-22 11:43:22:4322 [32mhttp[39m: [32mGET /src/main.tsx?v=40IQwYcqq5rLIIP0RBg1p 200 - 1ms[39m
+2025-10-22 11:36:37:3637 [32minfo[39m: [32m🚀 Server running on port 5000[39m
+2025-10-22 11:36:37:3637 [32minfo[39m: [32m📝 Environment: development[39m
+2025-10-22 11:36:37:3637 [32mhttp[39m: [32mGET / 200 - 113ms[39m
+2025-10-22 11:36:38:3638 [32mhttp[39m: [32mGET /@replit/vite-plugin-dev-banner/banner-script.js 200 - 1ms[39m
+2025-10-22 11:36:38:3638 [32mhttp[39m: [32mGET /src/main.tsx?v=ZQQmqnnbXJeaFFwI2kGhM 200 - 1ms[39m
+2025-10-22 11:36:45:3645 [32minfo[39m: [32m🚀 Server running on port 5000[39m
+2025-10-22 11:36:45:3645 [32minfo[39m: [32m📝 Environment: development[39m
+2025-10-22 11:36:47:3647 [32mhttp[39m: [32mGET / 200 - 71ms[39m
+2025-10-22 11:36:47:3647 [32mhttp[39m: [32mGET /@react-refresh 200 - 18ms[39m
+2025-10-22 11:36:47:3647 [32mhttp[39m: [32mGET /@replit/vite-plugin-dev-banner/banner-script.js 200 - 1ms[39m
+2025-10-22 11:36:47:3647 [32mhttp[39m: [32mGET /@vite/client 200 - 172ms[39m
+2025-10-22 11:37:00:370 [32minfo[39m: [32m🚀 Server running on port 5000[39m
+2025-10-22 11:37:00:370 [32minfo[39m: [32m📝 Environment: development[39m
+2025-10-22 11:37:00:370 [32mhttp[39m: [32mGET / 200 - 45ms[39m
+2025-10-22 11:37:01:371 [32mhttp[39m: [32mGET /@react-refresh 304 - 5ms[39m
+2025-10-22 11:37:01:371 [32mhttp[39m: [32mGET /@replit/vite-plugin-dev-banner/banner-script.js 200 - 1ms[39m
+2025-10-22 11:37:01:371 [32mhttp[39m: [32mGET /@vite/client 200 - 36ms[39m
+2025-10-22 11:37:08:378 [32minfo[39m: [32m🚀 Server running on port 5000[39m
+2025-10-22 11:37:08:378 [32minfo[39m: [32m📝 Environment: development[39m
+2025-10-22 11:37:09:379 [32mhttp[39m: [32mGET / 200 - 64ms[39m
+2025-10-22 11:37:09:379 [32mhttp[39m: [32mGET /@react-refresh 304 - 3ms[39m
+2025-10-22 11:37:09:379 [32mhttp[39m: [32mGET /@replit/vite-plugin-dev-banner/banner-script.js 200 - 1ms[39m
+2025-10-22 11:37:09:379 [32mhttp[39m: [32mGET /@vite/client 200 - 42ms[39m
+2025-10-22 11:37:10:3710 [32mhttp[39m: [32mGET / 200 - 851ms[39m
+2025-10-22 11:37:19:3719 [32minfo[39m: [32m🚀 Server running on port 5000[39m
+2025-10-22 11:37:19:3719 [32minfo[39m: [32m📝 Environment: development[39m
+2025-10-22 11:37:20:3720 [32mhttp[39m: [32mGET / 200 - 44ms[39m
+2025-10-22 11:37:20:3720 [32mhttp[39m: [32mGET /@react-refresh 304 - 2ms[39m
+2025-10-22 11:37:20:3720 [32mhttp[39m: [32mGET /@vite/client 200 - 25ms[39m
+2025-10-22 11:37:20:3720 [32mhttp[39m: [32mGET /@replit/vite-plugin-dev-banner/banner-script.js 200 - 0ms[39m
