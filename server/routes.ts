@@ -626,10 +626,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
           recent: recent === 'true',
         });
 
-        const invoices = response?.data?.list || response?.data || [];
+        const allInvoices = response?.data?.list || response?.data || [];
 
-        // BigCommerce API already filters by user's company via authentication/access token
-        res.json(invoices);
+        // SECURITY: Filter invoices to only show user's own invoices
+        const userInvoices = allInvoices.filter((invoice: any) => 
+          verifyResourceOwnership(invoice, req.user?.companyId, req.user?.role)
+        );
+
+        console.log(`[Invoices] Filtered ${allInvoices.length} invoices to ${userInvoices.length} for user ${req.user?.email}`);
+        res.json(userInvoices);
       } catch (error) {
         console.error("Invoices fetch error:", error);
         res.status(500).json({ message: "Failed to fetch invoices" });

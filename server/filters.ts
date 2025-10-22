@@ -32,7 +32,7 @@ export function filterByCompany<T extends { companyId?: string }>(
  * Verify single resource ownership
  * Returns true if user can access the resource
  */
-export function verifyResourceOwnership<T extends { companyId?: string }>(
+export function verifyResourceOwnership<T extends { companyId?: string; customerId?: string }>(
   resource: T | null,
   userCompanyId?: string,
   userRole?: string
@@ -47,13 +47,19 @@ export function verifyResourceOwnership<T extends { companyId?: string }>(
     return false;
   }
 
-  // Must have company association
-  if (!userCompanyId || !resource.companyId) {
+  // Must have company or customer association
+  if (!userCompanyId) {
     return false;
   }
 
-  // Company IDs must match
-  return resource.companyId === userCompanyId;
+  // Check both companyId and customerId fields (invoices use customerId)
+  const resourceId = (resource as any).companyId || (resource as any).customerId;
+  if (!resourceId) {
+    return false;
+  }
+
+  // IDs must match
+  return resourceId === userCompanyId;
 }
 
 /**

@@ -30,34 +30,43 @@ export default function Invoices() {
     return matchesSearch;
   }) || [];
 
-  // Calculate open and overdue totals
+  // Calculate aged invoice totals
   const calculateTotals = () => {
-    let openTotal = 0;
-    let overdueTotal = 0;
+    let aged1to30 = 0;
+    let aged30to60 = 0;
+    let aged60to90 = 0;
+    const today = new Date();
 
     filteredInvoices.forEach((invoice: any) => {
-      // Parse total from costLines if available
+      // Only calculate for unpaid invoices
+      if (invoice.status === 1) return; // Skip paid invoices
+
+      // Parse total from costLines
       const costLines = invoice.details?.header?.costLines || [];
       const subtotalLine = costLines.find((line: any) => line.description === 'Subtotal');
       const taxLine = costLines.find((line: any) => line.description === 'Sales Tax');
       const amount = (parseFloat(subtotalLine?.amount?.value || 0) + parseFloat(taxLine?.amount?.value || 0));
 
-      // Status is a number: 0 = open, 1 = paid, 2 = overdue (example mapping)
-      const status = invoice.status;
+      // Calculate days overdue from due date
+      const dueDate = invoice.dueDate ? new Date(invoice.dueDate * 1000) : null;
+      if (!dueDate) return;
 
-      if (status !== 1) { // Not paid
-        openTotal += amount;
-      }
+      const daysOverdue = Math.floor((today.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24));
 
-      if (status === 2) { // Overdue
-        overdueTotal += amount;
+      // Categorize into aging buckets
+      if (daysOverdue >= 1 && daysOverdue <= 30) {
+        aged1to30 += amount;
+      } else if (daysOverdue > 30 && daysOverdue <= 60) {
+        aged30to60 += amount;
+      } else if (daysOverdue > 60 && daysOverdue <= 90) {
+        aged60to90 += amount;
       }
     });
 
-    return { openTotal, overdueTotal };
+    return { aged1to30, aged30to60, aged60to90 };
   };
 
-  const { openTotal, overdueTotal } = calculateTotals();
+  const { aged1to30, aged30to60, aged60to90 } = calculateTotals();
 
   const getStatusBadgeClass = (status: number) => {
     // Status is numeric: 0 = open/pending, 1 = paid, 2 = overdue
@@ -127,14 +136,39 @@ export default function Invoices() {
         </button>
       </div>
 
-      {/* Summary Bar */}
-      <div className="flex items-center justify-between">
-        <div className="text-base">
-          <span className="text-gray-700">Open: </span>
-          <span className="font-semibold text-black">{formatCurrency(openTotal)}</span>
-          <span className="mx-2">|</span>
-          <span className="text-gray-700">Overdue: </span>
-          <span className="font-semibold text-red-600">{formatCurrency(overdueTotal)}</span>
+      {/* Summary Bar - Aged Invoices */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* 1-30 Days */}
+        <div className="bg-white border border-gray-200 p-6">
+          <div className="flex items-baseline justify-between">
+            <div>
+              <div className="text-sm font-medium text-gray-500 mb-1">1-30 DAYS</div>
+              <div className="text-3xl font-normal text-black">{formatCurrency(aged1to30)}</div>
+            </div>
+            <div className="w-3 h-3 bg-green-500"></div>
+          </div>
+        </div>
+
+        {/* 30-60 Days */}
+        <div className="bg-white border border-gray-200 p-6">
+          <div className="flex items-baseline justify-between">
+            <div>
+              <div className="text-sm font-medium text-gray-500 mb-1">30-60 DAYS</div>
+              <div className="text-3xl font-normal text-orange-600">{formatCurrency(aged30to60)}</div>
+            </div>
+            <div className="w-3 h-3 bg-orange-500"></div>
+          </div>
+        </div>
+
+        {/* 60-90 Days */}
+        <div className="bg-white border border-gray-200 p-6">
+          <div className="flex items-baseline justify-between">
+            <div>
+              <div className="text-sm font-medium text-gray-500 mb-1">60-90 DAYS</div>
+              <div className="text-3xl font-normal text-red-600">{formatCurrency(aged60to90)}</div>
+            </div>
+            <div className="w-3 h-3 bg-red-500"></div>
+          </div>
         </div>
       </div>
 
