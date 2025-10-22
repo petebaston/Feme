@@ -16,14 +16,23 @@ export default function InvoiceDetail() {
     enabled: !!id,
   });
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (status: number | string) => {
+    const statusMap: Record<number, string> = {
+      0: 'pending',
+      1: 'paid',
+      2: 'overdue',
+      3: 'cancelled',
+    };
+    
+    const statusStr = typeof status === 'number' ? statusMap[status] : status?.toLowerCase();
+    
     const colors: Record<string, string> = {
       paid: 'bg-green-100 text-green-800',
       pending: 'bg-yellow-100 text-yellow-800',
       overdue: 'bg-red-100 text-red-800',
       cancelled: 'bg-gray-100 text-gray-800',
     };
-    return colors[status?.toLowerCase()] || 'bg-gray-100 text-gray-800';
+    return colors[statusStr] || 'bg-gray-100 text-gray-800';
   };
 
   const getPaymentTermsColor = (terms: string) => {
