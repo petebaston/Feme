@@ -4,26 +4,50 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
-import { useLogout } from "@/hooks/use-graphql-auth";
 import { CompanySwitcher } from "@/components/b2b/company-switcher";
 import { MiniCart } from "./mini-cart";
 
 export default function Header() {
   const [, setLocation] = useLocation();
+  const [loading, setLoading] = useState(false);
   const { toast } = useToast();
-  const { logout, loading } = useLogout();
   const user = JSON.parse(localStorage.getItem('user') || localStorage.getItem('b2b_user') || '{}');
 
   const handleLogout = async () => {
+    setLoading(true);
     try {
-      await logout();
+      const token = localStorage.getItem('b2b_token');
+
+      // Call logout API
+      await fetch('/api/auth/logout', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      // Clear local storage
+      localStorage.removeItem('b2b_token');
+      localStorage.removeItem('user');
+      localStorage.removeItem('b2b_user');
+
       toast({
         title: "Logged out",
         description: "You have been signed out.",
       });
+
+      // Redirect to login
+      setLocation('/login');
     } catch (err) {
-      // Even if API fails, logout hook clears local storage and redirects
+      // Even if API fails, clear local storage and redirect
       console.error('Logout error:', err);
+      localStorage.removeItem('b2b_token');
+      localStorage.removeItem('user');
+      localStorage.removeItem('b2b_user');
+      setLocation('/login');
+    } finally {
+      setLoading(false);
     }
   };
 

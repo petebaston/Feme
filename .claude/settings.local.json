@@ -42,7 +42,21 @@
       "Bash(git push:*)",
       "Bash(git stash:*)",
       "Read(//c/Users/pete-home/Downloads/**)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(git add:*)",
+      "Bash(npm run build:*)",
+      "Bash(npm run dev:*)",
+      "Bash(if [ -f .env ])",
+      "Bash(then echo \"EXISTS\")",
+      "Bash(else echo \"NOT FOUND\")",
+      "Bash(fi)",
+      "Bash(taskkill:*)",
+      "Bash(netstat:*)",
+      "Bash(findstr:*)",
+      "Bash(npx vite)",
+      "Bash(powershell -Command \"(Get-Content App.tsx) -replace ''<ApolloProvider client=\\{graphqlClient\\}>'',''<QueryClientProvider client={queryClient}>'' -replace ''</ApolloProvider>'',''</QueryClientProvider>'' | Set-Content App.tsx.tmp && Move-Item -Force App.tsx.tmp App.tsx\")",
+      "Bash(git restore:*)",
+      "Bash(powershell -Command \"Get-Process -Name node -ErrorAction SilentlyContinue | Stop-Process -Force; if ($? { Write-Output ''Node processes killed'' } else { Write-Output ''No node processes running'' }\")"
     ],
     "deny": [],
     "ask": []

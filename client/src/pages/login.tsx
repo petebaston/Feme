@@ -1,35 +1,60 @@
 import { useState, useEffect } from "react";
+import { useLocation } from "wouter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
-import { useLogin } from "@/hooks/use-graphql-auth";
 
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [, setLocation] = useLocation();
   const { toast } = useToast();
-  const { login, loading, error: graphqlError } = useLogin();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    setLoading(true);
 
     try {
-      await login(email, password);
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Login failed');
+      }
+
+      // Store JWT token
+      localStorage.setItem('b2b_token', data.accessToken);
+
+      // Store user info
+      localStorage.setItem('user', JSON.stringify(data.user));
 
       toast({
         title: "Login Successful",
         description: "Welcome to your B2B portal!",
       });
+
+      // Navigate to dashboard
+      setLocation('/');
     } catch (err: any) {
-      const errorMessage = err.message || graphqlError?.message || 'An unexpected error occurred';
+      const errorMessage = err.message || 'An unexpected error occurred';
       toast({
         variant: "destructive",
         title: "Login Failed",
         description: errorMessage,
       });
+    } finally {
+      setLoading(false);
     }
   };
 
