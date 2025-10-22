@@ -2940,3 +2940,7 @@
 2025-10-22 12:38:29:3829 [32mhttp[39m: [32mGET /src/components/ui/separator.tsx 304 - 1ms[39m
 2025-10-22 12:38:29:3829 [32mhttp[39m: [32mGET /@fs/home/runner/workspace/attached_assets/feme-logo.png 304 - 0ms[39m
 2025-10-22 12:38:29:3829 [31merror[39m: [31mGET /api/orders 500 - 11ms[39m
+2025-10-22 12:39:24:3924 [32mhttp[39m: [32mGET /api/invoices 304 - 238ms[39m
+2025-10-22 12:39:25:3925 [31merror[39m: [31mGET /api/orders 500 - 2ms[39m
+2025-10-22 12:39:34:3934 [31merror[39m: [31mGET /api/orders 500 - 3ms[39m
+2025-10-22 12:39:42:3942 [31merror[39m: [31mGET /api/orders 500 - 2ms[39m
