@@ -3,6 +3,7 @@ import { eq, and, desc, asc, sql, or, like } from "drizzle-orm";
 import { 
   users, companies, orders, quotes, invoices, addresses, shoppingLists, shoppingListItems,
   bigcommerceOrdersCache,
+  bigcommerceTokens,
   type User, type InsertUser, 
   type Company, 
   type Order, 
@@ -76,12 +77,6 @@ export interface IStorage {
 
 export class DatabaseStorage implements IStorage {
   private companyCache: Company | null = null;
-  private userTokens = new Map<string, {
-    userId: string;
-    bcToken: string;
-    companyId?: string;
-    expiresAt: Date;
-  }>();
 
   constructor() {
     this.initializeDemoData();
@@ -754,26 +749,43 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  // BigCommerce Token Storage Methods
+  // BigCommerce Token Storage Methods - persisted to database
   async storeUserToken(userId: string, bcToken: string, companyId?: string): Promise<void> {
-    this.userTokens.set(userId, {
-      userId,
-      bcToken,
-      companyId,
-      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours (BigCommerce storefront tokens expire after 1 day)
-    });
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+    
+    await db.insert(bigcommerceTokens)
+      .values({
+        userId,
+        bcToken,
+        companyId,
+        expiresAt,
+      })
+      .onConflictDoUpdate({
+        target: bigcommerceTokens.userId,
+        set: {
+          bcToken,
+          companyId,
+          expiresAt,
+          updatedAt: new Date(),
+        }
+      });
   }
 
   async getUserToken(userId: string): Promise<string | null> {
-    const tokenData = this.userTokens.get(userId);
+    const result = await db.select()
+      .from(bigcommerceTokens)
+      .where(eq(bigcommerceTokens.userId, userId))
+      .limit(1);
 
-    if (!tokenData) {
+    if (result.length === 0) {
       return null;
     }
 
+    const tokenData = result[0];
+
     // Check if expired
     if (new Date() > tokenData.expiresAt) {
-      this.userTokens.delete(userId);
+      await this.clearUserToken(userId);
       return null;
     }
 
@@ -781,7 +793,8 @@ export class DatabaseStorage implements IStorage {
   }
 
   async clearUserToken(userId: string): Promise<void> {
-    this.userTokens.delete(userId);
+    await db.delete(bigcommerceTokens)
+      .where(eq(bigcommerceTokens.userId, userId));
   }
 }
 

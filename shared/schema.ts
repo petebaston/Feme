@@ -120,6 +120,16 @@ export const shoppingLists = pgTable("shopping_lists", {
   updatedAt: timestamp("updated_at").default(sql`now()`),
 });
 
+// BigCommerce tokens - persist across server restarts
+export const bigcommerceTokens = pgTable("bigcommerce_tokens", {
+  userId: varchar("user_id").primaryKey(),
+  bcToken: text("bc_token").notNull(),
+  companyId: varchar("company_id"),
+  expiresAt: timestamp("expires_at").notNull(),
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+});
+
 export const shoppingListItems = pgTable("shopping_list_items", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   listId: varchar("list_id").notNull(),
