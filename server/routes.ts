@@ -631,10 +631,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     async (req: AuthRequest, res) => {
       try {
-        const bcToken = await getBigCommerceToken(req);
+        // Invoices use server ACCESS_TOKEN (no user token needed)
         const { search, status, sortBy, limit, recent } = req.query;
 
-        const response = await bigcommerce.getInvoices(bcToken, {
+        const response = await bigcommerce.getInvoices(undefined, {
           search: search as string,
           status: status as string,
           sortBy: sortBy as string,
@@ -661,8 +661,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     async (req: AuthRequest, res) => {
       try {
-        const bcToken = await getBigCommerceToken(req);
-        const response = await bigcommerce.getInvoice(bcToken, req.params.id);
+        // Invoices use server ACCESS_TOKEN (no user token needed)
+        const response = await bigcommerce.getInvoice(undefined, req.params.id);
         const invoice = response?.data;
 
         // CRITICAL: Verify resource ownership
@@ -684,17 +684,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     async (req: AuthRequest, res) => {
       try {
-        const bcToken = await getBigCommerceToken(req);
+        // Invoices use server ACCESS_TOKEN (no user token needed)
 
         // First verify invoice ownership before generating PDF
-        const invoiceResponse = await bigcommerce.getInvoice(bcToken, req.params.id);
+        const invoiceResponse = await bigcommerce.getInvoice(undefined, req.params.id);
         const invoice = invoiceResponse?.data;
 
         if (invoice && !verifyResourceOwnership(invoice, req.user?.companyId, req.user?.role)) {
           return res.status(403).json({ message: 'Access denied to this invoice' });
         }
 
-        const pdfData = await bigcommerce.getInvoicePdf(bcToken, req.params.id);
+        const pdfData = await bigcommerce.getInvoicePdf(undefined, req.params.id);
 
         res.setHeader('Content-Type', 'application/pdf');
         res.setHeader('Content-Disposition', `attachment; filename=invoice-${req.params.id}.pdf`);

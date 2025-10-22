@@ -43,16 +43,9 @@ export class BigCommerceService {
       ...(options.headers || {}),
     };
 
-    // Use Management API token for v3 endpoints, otherwise use access token
-    if (endpoint.startsWith('/api/v3/io')) {
-      if (this.config.managementToken) {
-        headers['authToken'] = this.config.managementToken;
-      }
-    } else {
-      // Always add server access token for v2 endpoints
-      if (this.config.accessToken) {
-        headers['X-Auth-Token'] = this.config.accessToken;
-      }
+    // Use server ACCESS_TOKEN for all endpoints (unified API token)
+    if (this.config.accessToken) {
+      headers['X-Auth-Token'] = this.config.accessToken;
     }
 
     // Add user token for authenticated storefront requests
@@ -392,9 +385,9 @@ export class BigCommerceService {
     return this.request('/api/v2/addresses', { userToken });
   }
 
-  // Invoices - Use Management API v3 with correct endpoint per official spec
-  // Base path: /api/v3/io/invoice-management/
-  async getInvoices(userToken: string, params?: any) {
+  // Invoices - Use Management API v3 with server ACCESS_TOKEN (no user token needed)
+  // Correct endpoint: /api/v3/io/ip/invoices
+  async getInvoices(userToken?: string, params?: any) {
     const queryParams = new URLSearchParams();
     if (params?.search) queryParams.append('search', params.search);
     if (params?.status && params.status !== 'all') queryParams.append('status', params.status);
@@ -403,15 +396,17 @@ export class BigCommerceService {
     if (params?.offset) queryParams.append('offset', params.offset.toString());
 
     const query = queryParams.toString();
-    return this.request(`/api/v3/io/invoice-management/invoice${query ? `?${query}` : ''}`, { userToken });
+    // Uses server ACCESS_TOKEN via request method (v3 endpoints use X-Auth-Token)
+    return this.request(`/api/v3/io/ip/invoices${query ? `?${query}` : ''}`);
   }
 
-  async getInvoice(userToken: string, invoiceId: string) {
-    return this.request(`/api/v3/io/invoice-management/invoice/${invoiceId}`, { userToken });
+  async getInvoice(userToken: string | undefined, invoiceId: string) {
+    // Uses server ACCESS_TOKEN for Management API
+    return this.request(`/api/v3/io/ip/invoices/${invoiceId}`);
   }
 
-  async getInvoicePdf(userToken: string, invoiceId: string) {
-    return this.request(`/api/v3/io/invoice-management/invoice/${invoiceId}/pdf`, { userToken });
+  async getInvoicePdf(userToken: string | undefined, invoiceId: string) {
+    return this.request(`/api/v3/io/ip/invoices/${invoiceId}/pdf`);
   }
 
   // Products

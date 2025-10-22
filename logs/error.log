@@ -7,3 +7,5 @@
 2025-10-22 12:10:07:107 [31merror[39m: [31mGET /api/invoices 500 - 2ms[39m
 2025-10-22 12:11:33:1133 [31merror[39m: [31mGET /api/orders 500 - 2ms[39m
 2025-10-22 12:11:33:1133 [31merror[39m: [31mGET /api/invoices 500 - 2ms[39m
+2025-10-22 12:24:48:2448 [31merror[39m: [31mGET /api/invoices 500 - 5ms[39m
+2025-10-22 12:25:34:2534 [31merror[39m: [31mGET /api/orders 500 - 7ms[39m
