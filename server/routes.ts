@@ -670,16 +670,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     async (req: AuthRequest, res) => {
       try {
-        // Invoices use server ACCESS_TOKEN (no user token needed)
+        const bcToken = await getBigCommerceToken(req);
+        
+        // CRITICAL SECURITY: First get user's orders to verify they own this invoice
+        const ordersResponse = await bigcommerce.getOrders(bcToken, { limit: 1000 });
+        const userOrders = ordersResponse?.data?.list || ordersResponse?.data || [];
+        const userOrderNumbers = new Set(userOrders.map((o: any) => o.orderId));
+        const companyName = userOrders.length > 0 ? userOrders[0].companyName : null;
+        
+        // Fetch the invoice
         const response = await bigcommerce.getInvoice(undefined, req.params.id);
         const invoice = response?.data;
 
-        // CRITICAL: Verify resource ownership
-        if (invoice && !verifyResourceOwnership(invoice, req.user?.companyId, req.user?.role)) {
+        if (!invoice) {
+          return res.status(404).json({ message: 'Invoice not found' });
+        }
+
+        // CRITICAL SECURITY: Verify this invoice belongs to the user
+        const belongsToUser = (invoice.orderNumber && userOrderNumbers.has(invoice.orderNumber)) ||
+                             (companyName && invoice.details?.header?.billingAddress && 
+                              `${invoice.details.header.billingAddress.firstName || ''} ${invoice.details.header.billingAddress.lastName || ''}`.trim() === companyName);
+
+        if (!belongsToUser) {
+          console.warn(`[Invoices] Access denied: Invoice ${req.params.id} does not belong to user ${req.user?.email}`);
           return res.status(403).json({ message: 'Access denied to this invoice' });
         }
 
-        res.json(invoice || null);
+        res.json(invoice);
       } catch (error) {
         console.error("Invoice fetch error:", error);
         res.status(500).json({ message: "Failed to fetch invoice" });
