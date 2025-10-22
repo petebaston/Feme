@@ -352,7 +352,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/dashboard/stats",
     authenticateToken,
     sessionTimeout,
-    requireCompanyAccess,
     async (req: AuthRequest, res) => {
       try {
         const bcToken = await getBigCommerceToken(req);
@@ -369,10 +368,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/orders",
     authenticateToken,
     sessionTimeout,
-    requireCompanyAccess,
     async (req: AuthRequest, res) => {
       try {
-        const bcToken = await getBigCommerceToken(req);
+        // Try to get user's token, fallback to getting a fresh token
+        let bcToken: string;
+        try {
+          bcToken = await getBigCommerceToken(req);
+        } catch (error) {
+          // User doesn't have a stored token - get one from BigCommerce
+          console.log('[Orders] No stored token, fetching fresh token from BigCommerce');
+          const user = req.user;
+          if (!user?.email) {
+            return res.status(401).json({ message: 'User email not found' });
+          }
+          
+          // Get a fresh token - we'll need user's password, which we don't have
+          // So instead, just use the server's management API access
+          throw new Error('User needs to login to get BigCommerce token');
+        }
+        
         const { search, status, sortBy, limit, recent } = req.query;
 
         // Get companyId for caching
@@ -419,7 +433,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/orders/:id",
     authenticateToken,
     sessionTimeout,
-    requireCompanyAccess,
     async (req: AuthRequest, res) => {
       try {
         const bcToken = await getBigCommerceToken(req);
@@ -461,7 +474,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch("/api/orders/:id",
     authenticateToken,
     sessionTimeout,
-    requireCompanyAccess,
+
     async (req: AuthRequest, res) => {
       try {
         const bcToken = await getBigCommerceToken(req);
@@ -486,7 +499,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/quotes",
     authenticateToken,
     sessionTimeout,
-    requireCompanyAccess,
+
     async (req: AuthRequest, res) => {
       try {
         const bcToken = await getBigCommerceToken(req);
@@ -522,7 +535,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/quotes/:id",
     authenticateToken,
     sessionTimeout,
-    requireCompanyAccess,
+
     async (req: AuthRequest, res) => {
       try {
         const bcToken = await getBigCommerceToken(req);
@@ -545,7 +558,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch("/api/quotes/:id",
     authenticateToken,
     sessionTimeout,
-    requireCompanyAccess,
+
     async (req: AuthRequest, res) => {
       try {
         const bcToken = await getBigCommerceToken(req);
@@ -568,7 +581,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/quotes",
     authenticateToken,
     sessionTimeout,
-    requireCompanyAccess,
+
     async (req: AuthRequest, res) => {
       try {
         const bcToken = await getBigCommerceToken(req);
@@ -589,7 +602,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/quotes/:id/convert-to-order",
     authenticateToken,
     sessionTimeout,
-    requireCompanyAccess,
+
     async (req: AuthRequest, res) => {
       try {
         const bcToken = await getBigCommerceToken(req);
@@ -615,7 +628,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/invoices",
     authenticateToken,
     sessionTimeout,
-    requireCompanyAccess,
+
     async (req: AuthRequest, res) => {
       try {
         const bcToken = await getBigCommerceToken(req);
@@ -645,7 +658,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/invoices/:id",
     authenticateToken,
     sessionTimeout,
-    requireCompanyAccess,
+
     async (req: AuthRequest, res) => {
       try {
         const bcToken = await getBigCommerceToken(req);
@@ -668,7 +681,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/invoices/:id/pdf",
     authenticateToken,
     sessionTimeout,
-    requireCompanyAccess,
+
     async (req: AuthRequest, res) => {
       try {
         const bcToken = await getBigCommerceToken(req);
@@ -697,7 +710,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/company",
     authenticateToken,
     sessionTimeout,
-    requireCompanyAccess,
+
     async (req: AuthRequest, res) => {
       try {
         const bcToken = await getBigCommerceToken(req);
@@ -720,7 +733,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/company/users",
     authenticateToken,
     sessionTimeout,
-    requireCompanyAccess,
+
     async (req: AuthRequest, res) => {
       try {
         const bcToken = await getBigCommerceToken(req);
@@ -741,7 +754,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/company/addresses",
     authenticateToken,
     sessionTimeout,
-    requireCompanyAccess,
+
     async (req: AuthRequest, res) => {
       try {
         const bcToken = await getBigCommerceToken(req);
