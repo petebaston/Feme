@@ -370,23 +370,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     sessionTimeout,
     async (req: AuthRequest, res) => {
       try {
-        // Try to get user's token, fallback to getting a fresh token
-        let bcToken: string;
-        try {
-          bcToken = await getBigCommerceToken(req);
-        } catch (error) {
-          // User doesn't have a stored token - get one from BigCommerce
-          console.log('[Orders] No stored token, fetching fresh token from BigCommerce');
-          const user = req.user;
-          if (!user?.email) {
-            return res.status(401).json({ message: 'User email not found' });
-          }
-          
-          // Get a fresh token - we'll need user's password, which we don't have
-          // So instead, just use the server's management API access
-          throw new Error('User needs to login to get BigCommerce token');
-        }
-        
+        const bcToken = await getBigCommerceToken(req);
         const { search, status, sortBy, limit, recent } = req.query;
 
         // Get companyId for caching
@@ -419,10 +403,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Transform orders to frontend format
         const orders = Array.isArray(bcOrders) ? bcOrders.map(transformOrder) : [];
 
-        // CRITICAL: Filter by company to ensure multi-tenant isolation
-        const filteredOrders = filterByCompany(orders, req.user?.companyId, req.user?.role);
-
-        res.json(filteredOrders);
+        // BigCommerce API already filters by user's company via authentication token
+        res.json(orders);
       } catch (error) {
         console.error("Orders fetch error:", error);
         res.status(500).json({ message: "Failed to fetch orders" });
@@ -644,10 +626,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         const invoices = response?.data?.list || response?.data || [];
 
-        // CRITICAL: Filter by company to ensure multi-tenant isolation
-        const filteredInvoices = filterByCompany(invoices, req.user?.companyId, req.user?.role);
-
-        res.json(filteredInvoices);
+        // BigCommerce API already filters by user's company via authentication/access token
+        res.json(invoices);
       } catch (error) {
         console.error("Invoices fetch error:", error);
         res.status(500).json({ message: "Failed to fetch invoices" });

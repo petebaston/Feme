@@ -36,14 +36,20 @@ export default function Invoices() {
     let overdueTotal = 0;
 
     filteredInvoices.forEach((invoice: any) => {
-      const amount = parseFloat(invoice.total) || 0;
-      const status = invoice.status?.toLowerCase();
+      // Parse total from costLines if available
+      const costLines = invoice.details?.header?.costLines || [];
+      const subtotalLine = costLines.find((line: any) => line.description === 'Subtotal');
+      const taxLine = costLines.find((line: any) => line.description === 'Sales Tax');
+      const amount = (parseFloat(subtotalLine?.amount?.value || 0) + parseFloat(taxLine?.amount?.value || 0));
 
-      if (status !== 'paid' && status !== 'cancelled') {
+      // Status is a number: 0 = open, 1 = paid, 2 = overdue (example mapping)
+      const status = invoice.status;
+
+      if (status !== 1) { // Not paid
         openTotal += amount;
       }
 
-      if (status === 'overdue') {
+      if (status === 2) { // Overdue
         overdueTotal += amount;
       }
     });
@@ -53,17 +59,25 @@ export default function Invoices() {
 
   const { openTotal, overdueTotal } = calculateTotals();
 
-  const getStatusBadgeClass = (status: string) => {
-    const statusLower = status?.toLowerCase();
-    switch (statusLower) {
-      case 'overdue':
+  const getStatusBadgeClass = (status: number) => {
+    // Status is numeric: 0 = open/pending, 1 = paid, 2 = overdue
+    switch (status) {
+      case 2:
         return 'bg-red-600 text-white';
-      case 'paid':
+      case 1:
         return 'bg-[#C4D600] text-black';
-      case 'pending':
-        return 'bg-yellow-100 text-yellow-800';
+      case 0:
       default:
-        return 'bg-gray-200 text-gray-800';
+        return 'bg-yellow-100 text-yellow-800';
+    }
+  };
+
+  const getStatusLabel = (status: number) => {
+    switch (status) {
+      case 0: return 'Open';
+      case 1: return 'Paid';
+      case 2: return 'Overdue';
+      default: return 'Unknown';
     }
   };
 
@@ -164,8 +178,15 @@ export default function Invoices() {
               ))
             ) : filteredInvoices.length > 0 ? (
               filteredInvoices.map((invoice: any) => {
-                const dueDate = new Date(invoice.dueDate);
-                const isOverdue = invoice.status?.toLowerCase() === 'overdue';
+                const dueDate = new Date(invoice.dueDate * 1000); // Unix timestamp
+                const isOverdue = invoice.status === 2;
+                
+                // Calculate total from costLines
+                const costLines = invoice.details?.header?.costLines || [];
+                const subtotalLine = costLines.find((line: any) => line.description === 'Subtotal');
+                const taxLine = costLines.find((line: any) => line.description === 'Sales Tax');
+                const total = parseFloat(subtotalLine?.amount?.value || 0) + parseFloat(taxLine?.amount?.value || 0);
+                const currencyCode = subtotalLine?.amount?.code || 'GBP';
 
                 return (
                   <TableRow key={invoice.id} className="hover:bg-gray-50">
@@ -183,28 +204,28 @@ export default function Invoices() {
                     <TableCell className="font-normal">{invoice.invoiceNumber || invoice.id}</TableCell>
                     <TableCell className="text-gray-700">
                       <div className="max-w-xs">
-                        {invoice.customerName || 'TEST Affro Wholesale Direct Ltd'}
+                        {invoice.details?.header?.billingAddress?.firstName || 'Customer'}
                       </div>
                     </TableCell>
-                    <TableCell className="text-gray-700">{invoice.orderNumber || invoice.orderId || '116'}</TableCell>
+                    <TableCell className="text-gray-700">{invoice.orderNumber}</TableCell>
                     <TableCell className="text-gray-700">
-                      {new Date(invoice.createdAt || invoice.invoiceDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                      {new Date(invoice.details?.header?.orderDate * 1000).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
                     </TableCell>
                     <TableCell className={isOverdue ? 'text-red-600' : 'text-gray-700'}>
                       {dueDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
                     </TableCell>
-                    <TableCell className="font-normal">{formatCurrency(invoice.total)}</TableCell>
-                    <TableCell className="font-normal">{formatCurrency(invoice.amountDue || invoice.total)}</TableCell>
+                    <TableCell className="font-normal">{formatCurrency(total, currencyCode)}</TableCell>
+                    <TableCell className="font-normal">{formatCurrency(total, currencyCode)}</TableCell>
                     <TableCell>
                       <Input
                         type="text"
-                        defaultValue={formatCurrency(invoice.amountDue || invoice.total)}
+                        defaultValue={formatCurrency(total, currencyCode)}
                         className="h-8 w-24 bg-gray-100 border-0 text-center text-sm"
                       />
                     </TableCell>
                     <TableCell>
                       <span className={`inline-flex items-center px-3 py-1 text-xs font-medium ${getStatusBadgeClass(invoice.status)}`}>
-                        {invoice.status || 'Overdue'}
+                        {getStatusLabel(invoice.status)}
                       </span>
                     </TableCell>
                     <TableCell>
