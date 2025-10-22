@@ -139,7 +139,7 @@ export default function Invoices() {
       </div>
 
       {/* Table */}
-      <div className="border border-gray-200 bg-white">
+      <div className="border border-gray-200 bg-white overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow className="hover:bg-transparent">
@@ -178,15 +178,22 @@ export default function Invoices() {
               ))
             ) : filteredInvoices.length > 0 ? (
               filteredInvoices.map((invoice: any) => {
-                const dueDate = new Date(invoice.dueDate * 1000); // Unix timestamp
-                const isOverdue = invoice.status === 2;
-                
                 // Calculate total from costLines
                 const costLines = invoice.details?.header?.costLines || [];
                 const subtotalLine = costLines.find((line: any) => line.description === 'Subtotal');
                 const taxLine = costLines.find((line: any) => line.description === 'Sales Tax');
                 const total = parseFloat(subtotalLine?.amount?.value || 0) + parseFloat(taxLine?.amount?.value || 0);
-                const currencyCode = subtotalLine?.amount?.code || 'GBP';
+                
+                // Parse dates safely
+                const orderDate = invoice.details?.header?.orderDate;
+                const invoiceDate = orderDate ? new Date(orderDate * 1000) : null;
+                const dueDate = invoice.dueDate ? new Date(invoice.dueDate * 1000) : null;
+                const isOverdue = invoice.status === 2;
+                
+                // Get company name from billing address
+                const companyName = invoice.details?.header?.billingAddress?.firstName || 
+                                  invoice.details?.header?.billingAddress?.lastName || 
+                                  'Customer';
 
                 return (
                   <TableRow key={invoice.id} className="hover:bg-gray-50">
@@ -204,22 +211,22 @@ export default function Invoices() {
                     <TableCell className="font-normal">{invoice.invoiceNumber || invoice.id}</TableCell>
                     <TableCell className="text-gray-700">
                       <div className="max-w-xs">
-                        {invoice.details?.header?.billingAddress?.firstName || 'Customer'}
+                        {companyName}
                       </div>
                     </TableCell>
-                    <TableCell className="text-gray-700">{invoice.orderNumber}</TableCell>
+                    <TableCell className="text-gray-700">{invoice.orderNumber || '-'}</TableCell>
                     <TableCell className="text-gray-700">
-                      {new Date(invoice.details?.header?.orderDate * 1000).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                      {invoiceDate ? invoiceDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '-'}
                     </TableCell>
                     <TableCell className={isOverdue ? 'text-red-600' : 'text-gray-700'}>
-                      {dueDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                      {dueDate ? dueDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '-'}
                     </TableCell>
-                    <TableCell className="font-normal">{formatCurrency(total, currencyCode)}</TableCell>
-                    <TableCell className="font-normal">{formatCurrency(total, currencyCode)}</TableCell>
+                    <TableCell className="font-normal">{formatCurrency(total)}</TableCell>
+                    <TableCell className="font-normal">{formatCurrency(total)}</TableCell>
                     <TableCell>
                       <Input
                         type="text"
-                        defaultValue={formatCurrency(total, currencyCode)}
+                        defaultValue={formatCurrency(total)}
                         className="h-8 w-24 bg-gray-100 border-0 text-center text-sm"
                       />
                     </TableCell>
