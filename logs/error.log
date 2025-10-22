@@ -33,3 +33,10 @@
 2025-10-22 12:46:45:4645 [31merror[39m: [31mGET /api/orders 500 - 36ms[39m
 2025-10-22 12:48:24:4824 [31merror[39m: [31mGET /api/orders 500 - 8ms[39m
 2025-10-22 12:48:46:4846 [31merror[39m: [31mGET /api/orders 500 - 8ms[39m
+2025-10-22 12:49:07:497 [31merror[39m: [31mGET /api/orders 500 - 9ms[39m
+2025-10-22 12:49:24:4924 [31merror[39m: [31mGET /api/invoices 500 - 2ms[39m
+2025-10-22 12:53:15:5315 [31merror[39m: [31mGET /api/orders 500 - 32ms[39m
+2025-10-22 12:53:51:5351 [31merror[39m: [31mGET /api/orders 500 - 10ms[39m
+2025-10-22 12:53:59:5359 [31merror[39m: [31mGET /api/invoices 500 - 2ms[39m
+2025-10-22 12:56:10:5610 [31merror[39m: [31mGET /api/orders 500 - 12ms[39m
+2025-10-22 12:56:42:5642 [31merror[39m: [31mGET /api/orders 500 - 13ms[39m

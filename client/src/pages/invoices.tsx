@@ -173,8 +173,9 @@ export default function Invoices() {
       </div>
 
       {/* Table */}
-      <div className="border border-gray-200 bg-white overflow-x-auto relative">
-        <Table>
+      <div className="border border-gray-200 bg-white overflow-hidden">
+        <div className="overflow-x-auto">
+          <Table>
           <TableHeader>
             <TableRow className="hover:bg-transparent">
               <TableHead className="w-12">
@@ -296,6 +297,7 @@ export default function Invoices() {
             )}
           </TableBody>
         </Table>
+        </div>
       </div>
 
       {/* Footer */}

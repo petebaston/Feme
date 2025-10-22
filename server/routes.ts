@@ -615,11 +615,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     async (req: AuthRequest, res) => {
       try {
-        // Get user's BigCommerce token to fetch their invoices
+        // Get user's BigCommerce token
         const bcToken = await getBigCommerceToken(req);
         const { search, status, sortBy, limit, recent } = req.query;
 
-        // Use user's token to automatically filter invoices to their account
+        // CRITICAL SECURITY: Get user's orders first to know which invoices belong to them
+        // Orders API already filters by user automatically
+        const ordersResponse = await bigcommerce.getOrders(bcToken, { limit: 1000 });
+        const userOrders = ordersResponse?.data?.list || ordersResponse?.data || [];
+        const userOrderNumbers = new Set(userOrders.map((o: any) => o.orderId));
+        const companyName = userOrders.length > 0 ? userOrders[0].companyName : null;
+
+        console.log(`[Invoices] User ${req.user?.email} has ${userOrderNumbers.size} orders from company: ${companyName}`);
+
+        // Fetch all invoices
         const response = await bigcommerce.getInvoices(bcToken, {
           search: search as string,
           status: status as string,
@@ -628,10 +637,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
           recent: recent === 'true',
         });
 
-        const invoices = response?.data?.list || response?.data || [];
+        const allInvoices = response?.data?.list || response?.data || [];
 
-        console.log(`[Invoices] Returned ${invoices.length} invoices for user ${req.user?.email}`);
-        res.json(invoices);
+        // CRITICAL SECURITY: Filter invoices to only those matching user's order numbers
+        const userInvoices = allInvoices.filter((inv: any) => {
+          // Include if invoice has an order number that belongs to user
+          if (inv.orderNumber && userOrderNumbers.has(inv.orderNumber)) {
+            return true;
+          }
+          // Also check if company name matches (for invoices without order numbers)
+          if (companyName && inv.details?.header?.billingAddress) {
+            const invCompany = `${inv.details.header.billingAddress.firstName || ''} ${inv.details.header.billingAddress.lastName || ''}`.trim();
+            if (invCompany === companyName) {
+              return true;
+            }
+          }
+          return false;
+        });
+
+        console.log(`[Invoices] Filtered ${allInvoices.length} invoices to ${userInvoices.length} for company: ${companyName}`);
+        res.json(userInvoices);
       } catch (error) {
         console.error("Invoices fetch error:", error);
         res.status(500).json({ message: "Failed to fetch invoices" });

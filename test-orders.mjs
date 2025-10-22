@@ -75,8 +75,8 @@ async function testOrdersFlow() {
     console.log('   Count:', companyOrders.length);
   }
   
-  // Step 4: Fetch Invoices (for comparison)
-  console.log('\n4. Fetching invoices (for comparison)...');
+  // Step 4: Fetch Invoices
+  console.log('\n4. Fetching invoices...');
   const invoicesRes = await fetch(`${API_BASE}/api/invoices`, {
     headers: {
       'Authorization': `Bearer ${token}`,
@@ -86,10 +86,22 @@ async function testOrdersFlow() {
   
   if (!invoicesRes.ok) {
     console.error('❌ Invoices fetch failed:', invoicesRes.status);
+    const error = await invoicesRes.text();
+    console.error('Error:', error);
   } else {
     const invoices = await invoicesRes.json();
     console.log('✅ Invoices fetched successfully');
     console.log('   Count:', invoices.length);
+    
+    if (invoices.length > 0) {
+      console.log('\n📄 Sample Invoice:');
+      const invoice = invoices[0];
+      console.log('   Invoice #:', invoice.invoiceNumber);
+      console.log('   Customer ID:', invoice.customerId);
+      console.log('   Order #:', invoice.orderNumber);
+      console.log('   Status:', invoice.status);
+      console.log('   Due Date:', new Date(invoice.dueDate * 1000).toLocaleDateString());
+    }
   }
   
   console.log('\n=== Test Complete ===');
