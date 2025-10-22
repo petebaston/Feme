@@ -94,6 +94,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Get user from database to include in JWT
       let user = await storage.getUserByEmail(email);
+      
+      // Fetch company data from BigCommerce using the token
+      let companyId = user?.companyId;
+      try {
+        const companyData = await bigcommerce.getCompany(result.token);
+        if (companyData?.data?.companyId || companyData?.data?.id) {
+          companyId = companyData.data.companyId || companyData.data.id;
+        }
+      } catch (error) {
+        console.log('[Login] Could not fetch company data, using existing or undefined');
+      }
 
       // If user doesn't exist locally, create them
       if (!user) {
@@ -102,11 +113,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
           password: await bcrypt.hash(password, 10),
           name: email.split('@')[0],
           role: 'buyer',
+          companyId,
         });
+      } else if (companyId && user.companyId !== companyId) {
+        // Update company ID if changed
+        const updatedUser = await storage.updateUser(user.id, { companyId });
+        if (updatedUser) user = updatedUser;
+      }
+
+      // Ensure user exists at this point
+      if (!user) {
+        throw new Error('User creation failed');
       }
 
       // Store BigCommerce token server-side (two-token authentication system)
-      await storage.storeUserToken(user.id, result.token, user.companyId || undefined);
+      await storage.storeUserToken(user.id, result.token, companyId || undefined);
 
       // Generate JWT tokens
       const tokenPayload = {

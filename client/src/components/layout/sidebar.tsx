@@ -36,8 +36,8 @@ export default function Sidebar() {
       )}
 
       {/* Desktop Sidebar */}
-      <div className="hidden md:flex md:w-44 md:flex-col">
-        <div className="flex flex-col flex-grow pt-5 pb-4 overflow-y-auto bg-black">
+      <div className="hidden md:flex md:w-44 md:flex-col md:fixed md:inset-y-0 md:top-16">
+        <div className="flex flex-col flex-grow pt-5 pb-4 overflow-y-auto bg-white h-full">
           <nav className="flex-1 px-2 space-y-0.5">
             {navigation.map((item) => {
               const isActive = location === item.href || (item.href !== '/orders' && location?.startsWith(item.href));
@@ -49,8 +49,8 @@ export default function Sidebar() {
                   className={cn(
                     "block px-4 py-2.5 text-sm transition-colors",
                     isActive
-                      ? "bg-white text-black font-medium"
-                      : "text-white hover:bg-white/10"
+                      ? "bg-black text-white font-medium"
+                      : "text-black hover:bg-gray-100"
                   )}
                   data-testid={`nav-${item.name.toLowerCase().replace(/\s+/g, '-')}`}
                 >
@@ -65,7 +65,7 @@ export default function Sidebar() {
       {/* Mobile Sidebar */}
       <div
         className={cn(
-          "md:hidden fixed inset-y-0 left-0 z-40 w-64 bg-black transform transition-transform duration-300 ease-in-out",
+          "md:hidden fixed inset-y-0 left-0 z-40 w-64 bg-white transform transition-transform duration-300 ease-in-out",
           mobileMenuOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
@@ -82,8 +82,8 @@ export default function Sidebar() {
                   className={cn(
                     "block px-4 py-3 text-base transition-colors",
                     isActive
-                      ? "bg-white text-black font-medium"
-                      : "text-white hover:bg-white/10"
+                      ? "bg-black text-white font-medium"
+                      : "text-black hover:bg-gray-100"
                   )}
                   data-testid={`nav-mobile-${item.name.toLowerCase().replace(/\s+/g, '-')}`}
                 >

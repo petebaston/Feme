@@ -41,7 +41,7 @@ export default function Orders() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-semibold text-black">My orders</h1>
+        <h1 className="text-2xl font-normal text-black">My orders</h1>
       </div>
 
       {/* Search and Filter */}
