@@ -112,11 +112,16 @@ export const notFoundHandler = (req: Request, res: Response) => {
 // Best Practice: Process-level error handlers
 export const setupProcessErrorHandlers = () => {
   process.on('uncaughtException', (error: Error) => {
+    console.error('UNCAUGHT EXCEPTION! Shutting down...');
+    console.error('Error:', error.message);
+    console.error('Stack:', error.stack);
     logger.error('UNCAUGHT EXCEPTION! Shutting down...', { error: error.message, stack: error.stack });
     process.exit(1);
   });
 
   process.on('unhandledRejection', (reason: any) => {
+    console.error('UNHANDLED REJECTION! Shutting down...');
+    console.error('Reason:', reason);
     logger.error('UNHANDLED REJECTION! Shutting down...', { reason });
     process.exit(1);
   });
