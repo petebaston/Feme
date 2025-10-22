@@ -131,3 +131,43 @@ export function sessionTimeout(req: AuthRequest, res: Response, next: NextFuncti
   }
   next();
 }
+
+// Company-based authorization middleware
+export function requireCompanyAccess(req: AuthRequest, res: Response, next: NextFunction) {
+  if (!req.user) {
+    return res.status(401).json({ message: 'Authentication required' });
+  }
+
+  // Admins and superadmins can access all companies
+  if (req.user.role === 'admin' || req.user.role === 'superadmin') {
+    return next();
+  }
+
+  // Regular users must have a companyId
+  if (!req.user.companyId) {
+    return res.status(403).json({ message: 'No company association found' });
+  }
+
+  next();
+}
+
+// Verify resource belongs to user's company
+export function verifyCompanyOwnership(resourceCompanyId?: string) {
+  return (req: AuthRequest, res: Response, next: NextFunction) => {
+    if (!req.user) {
+      return res.status(401).json({ message: 'Authentication required' });
+    }
+
+    // Admins can access all resources
+    if (req.user.role === 'admin' || req.user.role === 'superadmin') {
+      return next();
+    }
+
+    // Verify company match
+    if (resourceCompanyId && resourceCompanyId !== req.user.companyId) {
+      return res.status(403).json({ message: 'Access denied to this resource' });
+    }
+
+    next();
+  };
+}

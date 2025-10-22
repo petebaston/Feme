@@ -44,7 +44,7 @@ export interface IStorage {
   getCompanyAddresses(): Promise<Address[]>;
   getAccessibleCompanies(userId: string): Promise<Company[]>;
   getCompanyHierarchy(companyId: string): Promise<{ parent: Company | null; children: Company[] }>;
-  
+
   // Addresses
   createAddress(address: Partial<Address>): Promise<Address>;
   updateAddress(id: string, address: Partial<Address>): Promise<Address | undefined>;
@@ -57,7 +57,7 @@ export interface IStorage {
   createShoppingList(list: InsertShoppingList): Promise<ShoppingList>;
   updateShoppingList(id: string, list: Partial<ShoppingList>): Promise<ShoppingList | undefined>;
   deleteShoppingList(id: string): Promise<boolean>;
-  
+
   // Shopping List Items
   getShoppingListItems(listId: string): Promise<ShoppingListItem[]>;
   addShoppingListItem(item: InsertShoppingListItem): Promise<ShoppingListItem>;
@@ -67,10 +67,21 @@ export interface IStorage {
   // BigCommerce Cache
   getCachedOrder(orderId: string, companyId: string): Promise<any | null>;
   setCachedOrders(orders: any[], companyId: string): Promise<void>;
+
+  // BigCommerce Token Storage (for two-token authentication system)
+  storeUserToken(userId: string, bcToken: string, companyId?: string): Promise<void>;
+  getUserToken(userId: string): Promise<string | null>;
+  clearUserToken(userId: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
   private companyCache: Company | null = null;
+  private userTokens = new Map<string, {
+    userId: string;
+    bcToken: string;
+    companyId?: string;
+    expiresAt: Date;
+  }>();
 
   constructor() {
     this.initializeDemoData();
@@ -724,7 +735,7 @@ export class DatabaseStorage implements IStorage {
     for (const order of orders) {
       const orderId = String(order.id);
       const orderData = JSON.stringify(order);
-      
+
       // Upsert: insert or update if exists
       await db.insert(bigcommerceOrdersCache)
         .values({
@@ -741,6 +752,36 @@ export class DatabaseStorage implements IStorage {
           }
         });
     }
+  }
+
+  // BigCommerce Token Storage Methods
+  async storeUserToken(userId: string, bcToken: string, companyId?: string): Promise<void> {
+    this.userTokens.set(userId, {
+      userId,
+      bcToken,
+      companyId,
+      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours (BigCommerce storefront tokens expire after 1 day)
+    });
+  }
+
+  async getUserToken(userId: string): Promise<string | null> {
+    const tokenData = this.userTokens.get(userId);
+
+    if (!tokenData) {
+      return null;
+    }
+
+    // Check if expired
+    if (new Date() > tokenData.expiresAt) {
+      this.userTokens.delete(userId);
+      return null;
+    }
+
+    return tokenData.bcToken;
+  }
+
+  async clearUserToken(userId: string): Promise<void> {
+    this.userTokens.delete(userId);
   }
 }
 

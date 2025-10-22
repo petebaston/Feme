@@ -9,17 +9,35 @@ import {
   verifyAccessToken,
   verifyRefreshToken,
   authenticateToken,
+  sessionTimeout,
+  requireCompanyAccess,
   trackSession,
   clearSession,
   type AuthRequest
 } from "./auth";
+import { filterByCompany, verifyResourceOwnership } from "./filters";
 
 const storage = new DatabaseStorage();
 
-// Helper to extract user token from request
+// Helper to extract user token from request (DEPRECATED - for backward compatibility only)
 function getUserToken(req: any): string {
   const authHeader = req.headers.authorization;
   return authHeader?.replace('Bearer ', '') || '';
+}
+
+// Helper to get BigCommerce token from server-side storage
+async function getBigCommerceToken(req: AuthRequest): Promise<string> {
+  if (!req.user) {
+    throw new Error('User not authenticated');
+  }
+
+  const bcToken = await storage.getUserToken(req.user.userId);
+
+  if (!bcToken) {
+    throw new Error('BigCommerce token not found for user. Please login again.');
+  }
+
+  return bcToken;
 }
 
 // Transform BigCommerce order to frontend format
@@ -87,6 +105,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
+      // Store BigCommerce token server-side (two-token authentication system)
+      await storage.storeUserToken(user.id, result.token, user.companyId || undefined);
+
       // Generate JWT tokens
       const tokenPayload = {
         userId: user.id,
@@ -122,7 +143,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           role: user.role,
           companyId: user.companyId,
         },
-        b2bToken: result.token, // BigCommerce B2B token
+        // BigCommerce token is now stored server-side, not returned to frontend
       });
     } catch (error: any) {
       console.error("[Login] Login failed:", error.message);
@@ -135,6 +156,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       if (req.user) {
         clearSession(req.user.userId);
+        // Clear BigCommerce token from server-side storage
+        await storage.clearUserToken(req.user.userId);
       }
       res.clearCookie('refreshToken');
       res.json({ message: "Logged out successfully" });
@@ -305,251 +328,415 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Dashboard stats
-  app.get("/api/dashboard/stats", async (req, res) => {
-    try {
-      const userToken = getUserToken(req);
-      const stats = await bigcommerce.getDashboardStats(userToken);
-      res.json(stats);
-    } catch (error) {
-      console.error("Dashboard stats error:", error);
-      res.status(500).json({ message: "Failed to fetch dashboard stats" });
+  app.get("/api/dashboard/stats",
+    authenticateToken,
+    sessionTimeout,
+    requireCompanyAccess,
+    async (req: AuthRequest, res) => {
+      try {
+        const bcToken = await getBigCommerceToken(req);
+        const stats = await bigcommerce.getDashboardStats(bcToken);
+        res.json(stats);
+      } catch (error) {
+        console.error("Dashboard stats error:", error);
+        res.status(500).json({ message: "Failed to fetch dashboard stats" });
+      }
     }
-  });
+  );
 
   // Orders endpoints
-  app.get("/api/orders", async (req, res) => {
-    try {
-      const userToken = getUserToken(req);
-      const { search, status, sortBy, limit, recent } = req.query;
-      
-      // Get companyId for caching
-      let companyId: string | undefined;
+  app.get("/api/orders",
+    authenticateToken,
+    sessionTimeout,
+    requireCompanyAccess,
+    async (req: AuthRequest, res) => {
       try {
-        const companyResponse = await bigcommerce.getCompany(userToken);
-        companyId = companyResponse?.data?.companyId || companyResponse?.data?.id;
-      } catch (e) {
-        console.log('[Orders] Could not fetch companyId for cache, continuing without cache');
-      }
-      
-      const response = await bigcommerce.getOrders(userToken, {
-        search: search as string,
-        status: status as string,
-        sortBy: sortBy as string,
-        limit: limit ? parseInt(limit as string) : undefined,
-        recent: recent === 'true',
-      }, companyId);
-      
-      // Check for BigCommerce error responses (they return 200 with errMsg)
-      if (response?.errMsg || response?.error) {
-        console.warn("[Orders] BigCommerce returned error:", response.errMsg || response.error);
-        return res.json([]);
-      }
-      
-      // Extract data from BigCommerce response format
-      // /api/v2/ returns {data: {list: [...], pagination: {...}}}
-      const bcOrders = response?.data?.list || response?.data || [];
-      
-      // Transform orders to frontend format
-      const orders = Array.isArray(bcOrders) ? bcOrders.map(transformOrder) : [];
-      
-      res.json(orders);
-    } catch (error) {
-      console.error("Orders fetch error:", error);
-      res.status(500).json({ message: "Failed to fetch orders" });
-    }
-  });
+        const bcToken = await getBigCommerceToken(req);
+        const { search, status, sortBy, limit, recent } = req.query;
 
-  app.get("/api/orders/:id", async (req, res) => {
-    try {
-      const userToken = getUserToken(req);
-      
-      // Get companyId for caching
-      let companyId: string | undefined;
+        // Get companyId for caching
+        let companyId: string | undefined;
+        try {
+          const companyResponse = await bigcommerce.getCompany(bcToken);
+          companyId = companyResponse?.data?.companyId || companyResponse?.data?.id;
+        } catch (e) {
+          console.log('[Orders] Could not fetch companyId for cache, continuing without cache');
+        }
+
+        const response = await bigcommerce.getOrders(bcToken, {
+          search: search as string,
+          status: status as string,
+          sortBy: sortBy as string,
+          limit: limit ? parseInt(limit as string) : undefined,
+          recent: recent === 'true',
+        }, companyId);
+
+        // Check for BigCommerce error responses (they return 200 with errMsg)
+        if (response?.errMsg || response?.error) {
+          console.warn("[Orders] BigCommerce returned error:", response.errMsg || response.error);
+          return res.json([]);
+        }
+
+        // Extract data from BigCommerce response format
+        // /api/v2/ returns {data: {list: [...], pagination: {...}}}
+        const bcOrders = response?.data?.list || response?.data || [];
+
+        // Transform orders to frontend format
+        const orders = Array.isArray(bcOrders) ? bcOrders.map(transformOrder) : [];
+
+        // CRITICAL: Filter by company to ensure multi-tenant isolation
+        const filteredOrders = filterByCompany(orders, req.user?.companyId, req.user?.role);
+
+        res.json(filteredOrders);
+      } catch (error) {
+        console.error("Orders fetch error:", error);
+        res.status(500).json({ message: "Failed to fetch orders" });
+      }
+    }
+  );
+
+  app.get("/api/orders/:id",
+    authenticateToken,
+    sessionTimeout,
+    requireCompanyAccess,
+    async (req: AuthRequest, res) => {
       try {
-        const companyResponse = await bigcommerce.getCompany(userToken);
-        companyId = companyResponse?.data?.companyId || companyResponse?.data?.id;
-      } catch (e) {
-        console.log('[Order] Could not fetch companyId for cache, continuing without cache');
-      }
-      
-      const response = await bigcommerce.getOrder(userToken, req.params.id, companyId);
-      const bcOrder = response?.data;
-      if (!bcOrder) {
-        return res.status(404).json({ message: "Order not found" });
-      }
-      res.json(transformOrder(bcOrder));
-    } catch (error: any) {
-      console.error("Order fetch error:", error);
-      // If order not found, return 404
-      if (error.message && error.message.includes('Order not found')) {
-        return res.status(404).json({ message: "Order not found" });
-      }
-      res.status(500).json({ message: "Failed to fetch order" });
-    }
-  });
+        const bcToken = await getBigCommerceToken(req);
 
-  app.patch("/api/orders/:id", async (req, res) => {
-    try {
-      const userToken = getUserToken(req);
-      const response = await bigcommerce.updateOrder(userToken, req.params.id, req.body);
-      res.json(response?.data || null);
-    } catch (error) {
-      console.error("Order update error:", error);
-      res.status(500).json({ message: "Failed to update order" });
+        // Get companyId for caching
+        let companyId: string | undefined;
+        try {
+          const companyResponse = await bigcommerce.getCompany(bcToken);
+          companyId = companyResponse?.data?.companyId || companyResponse?.data?.id;
+        } catch (e) {
+          console.log('[Order] Could not fetch companyId for cache, continuing without cache');
+        }
+
+        const response = await bigcommerce.getOrder(bcToken, req.params.id, companyId);
+        const bcOrder = response?.data;
+        if (!bcOrder) {
+          return res.status(404).json({ message: "Order not found" });
+        }
+
+        const order = transformOrder(bcOrder);
+
+        // CRITICAL: Verify resource ownership
+        if (!verifyResourceOwnership(order, req.user?.companyId, req.user?.role)) {
+          return res.status(403).json({ message: 'Access denied to this order' });
+        }
+
+        res.json(order);
+      } catch (error: any) {
+        console.error("Order fetch error:", error);
+        // If order not found, return 404
+        if (error.message && error.message.includes('Order not found')) {
+          return res.status(404).json({ message: "Order not found" });
+        }
+        res.status(500).json({ message: "Failed to fetch order" });
+      }
     }
-  });
+  );
+
+  app.patch("/api/orders/:id",
+    authenticateToken,
+    sessionTimeout,
+    requireCompanyAccess,
+    async (req: AuthRequest, res) => {
+      try {
+        const bcToken = await getBigCommerceToken(req);
+        const response = await bigcommerce.updateOrder(bcToken, req.params.id, req.body);
+
+        const order = response?.data;
+
+        // CRITICAL: Verify resource ownership before allowing update
+        if (order && !verifyResourceOwnership(order, req.user?.companyId, req.user?.role)) {
+          return res.status(403).json({ message: 'Access denied to this order' });
+        }
+
+        res.json(order || null);
+      } catch (error) {
+        console.error("Order update error:", error);
+        res.status(500).json({ message: "Failed to update order" });
+      }
+    }
+  );
 
   // Quotes endpoints
-  app.get("/api/quotes", async (req, res) => {
-    try {
-      const userToken = getUserToken(req);
-      const { search, status, sortBy, limit, recent } = req.query;
-      
-      const response = await bigcommerce.getQuotes(userToken, {
-        search: search as string,
-        status: status as string,
-        sortBy: sortBy as string,
-        limit: limit ? parseInt(limit as string) : undefined,
-        recent: recent === 'true',
-      });
-      
-      // Check for BigCommerce error responses (they return 200 with errMsg)
-      if (response?.errMsg || response?.error) {
-        console.warn("[Quotes] BigCommerce returned error:", response.errMsg || response.error);
-        return res.json([]);
+  app.get("/api/quotes",
+    authenticateToken,
+    sessionTimeout,
+    requireCompanyAccess,
+    async (req: AuthRequest, res) => {
+      try {
+        const bcToken = await getBigCommerceToken(req);
+        const { search, status, sortBy, limit, recent } = req.query;
+
+        const response = await bigcommerce.getQuotes(bcToken, {
+          search: search as string,
+          status: status as string,
+          sortBy: sortBy as string,
+          limit: limit ? parseInt(limit as string) : undefined,
+          recent: recent === 'true',
+        });
+
+        // Check for BigCommerce error responses (they return 200 with errMsg)
+        if (response?.errMsg || response?.error) {
+          console.warn("[Quotes] BigCommerce returned error:", response.errMsg || response.error);
+          return res.json([]);
+        }
+
+        const quotes = response?.data?.list || response?.data || [];
+
+        // CRITICAL: Filter by company to ensure multi-tenant isolation
+        const filteredQuotes = filterByCompany(quotes, req.user?.companyId, req.user?.role);
+
+        res.json(filteredQuotes);
+      } catch (error) {
+        console.error("Quotes fetch error:", error);
+        res.status(500).json({ message: "Failed to fetch quotes" });
       }
-      
-      // /api/v2/ returns {data: {list: [...], pagination: {...}}}
-      res.json(response?.data?.list || response?.data || []);
-    } catch (error) {
-      console.error("Quotes fetch error:", error);
-      res.status(500).json({ message: "Failed to fetch quotes" });
     }
-  });
+  );
 
-  app.get("/api/quotes/:id", async (req, res) => {
-    try {
-      const userToken = getUserToken(req);
-      const response = await bigcommerce.getQuote(userToken, req.params.id);
-      res.json(response?.data || null);
-    } catch (error) {
-      console.error("Quote fetch error:", error);
-      res.status(500).json({ message: "Failed to fetch quote" });
-    }
-  });
+  app.get("/api/quotes/:id",
+    authenticateToken,
+    sessionTimeout,
+    requireCompanyAccess,
+    async (req: AuthRequest, res) => {
+      try {
+        const bcToken = await getBigCommerceToken(req);
+        const response = await bigcommerce.getQuote(bcToken, req.params.id);
+        const quote = response?.data;
 
-  app.patch("/api/quotes/:id", async (req, res) => {
-    try {
-      const userToken = getUserToken(req);
-      const response = await bigcommerce.updateQuote(userToken, req.params.id, req.body);
-      res.json(response?.data || null);
-    } catch (error) {
-      console.error("Quote update error:", error);
-      res.status(500).json({ message: "Failed to update quote" });
-    }
-  });
+        // CRITICAL: Verify resource ownership
+        if (quote && !verifyResourceOwnership(quote, req.user?.companyId, req.user?.role)) {
+          return res.status(403).json({ message: 'Access denied to this quote' });
+        }
 
-  app.post("/api/quotes", async (req, res) => {
-    try {
-      const userToken = getUserToken(req);
-      const response = await bigcommerce.createQuote(userToken, req.body);
-      res.json(response?.data || null);
-    } catch (error) {
-      console.error("Quote creation error:", error);
-      res.status(500).json({ message: "Failed to create quote" });
+        res.json(quote || null);
+      } catch (error) {
+        console.error("Quote fetch error:", error);
+        res.status(500).json({ message: "Failed to fetch quote" });
+      }
     }
-  });
+  );
 
-  app.post("/api/quotes/:id/convert-to-order", async (req, res) => {
-    try {
-      const userToken = getUserToken(req);
-      const response = await bigcommerce.convertQuoteToOrder(userToken, req.params.id);
-      res.json(response?.data || null);
-    } catch (error) {
-      console.error("Quote conversion error:", error);
-      res.status(500).json({ message: "Failed to convert quote to order" });
+  app.patch("/api/quotes/:id",
+    authenticateToken,
+    sessionTimeout,
+    requireCompanyAccess,
+    async (req: AuthRequest, res) => {
+      try {
+        const bcToken = await getBigCommerceToken(req);
+        const response = await bigcommerce.updateQuote(bcToken, req.params.id, req.body);
+        const quote = response?.data;
+
+        // CRITICAL: Verify resource ownership
+        if (quote && !verifyResourceOwnership(quote, req.user?.companyId, req.user?.role)) {
+          return res.status(403).json({ message: 'Access denied to this quote' });
+        }
+
+        res.json(quote || null);
+      } catch (error) {
+        console.error("Quote update error:", error);
+        res.status(500).json({ message: "Failed to update quote" });
+      }
     }
-  });
+  );
+
+  app.post("/api/quotes",
+    authenticateToken,
+    sessionTimeout,
+    requireCompanyAccess,
+    async (req: AuthRequest, res) => {
+      try {
+        const bcToken = await getBigCommerceToken(req);
+        // Associate quote with user's company
+        const quoteData = {
+          ...req.body,
+          companyId: req.user?.companyId,
+        };
+        const response = await bigcommerce.createQuote(bcToken, quoteData);
+        res.json(response?.data || null);
+      } catch (error) {
+        console.error("Quote creation error:", error);
+        res.status(500).json({ message: "Failed to create quote" });
+      }
+    }
+  );
+
+  app.post("/api/quotes/:id/convert-to-order",
+    authenticateToken,
+    sessionTimeout,
+    requireCompanyAccess,
+    async (req: AuthRequest, res) => {
+      try {
+        const bcToken = await getBigCommerceToken(req);
+
+        // First verify quote ownership
+        const quoteResponse = await bigcommerce.getQuote(bcToken, req.params.id);
+        const quote = quoteResponse?.data;
+
+        if (quote && !verifyResourceOwnership(quote, req.user?.companyId, req.user?.role)) {
+          return res.status(403).json({ message: 'Access denied to this quote' });
+        }
+
+        const response = await bigcommerce.convertQuoteToOrder(bcToken, req.params.id);
+        res.json(response?.data || null);
+      } catch (error) {
+        console.error("Quote conversion error:", error);
+        res.status(500).json({ message: "Failed to convert quote to order" });
+      }
+    }
+  );
 
   // Invoices endpoints
-  app.get("/api/invoices", async (req, res) => {
-    try {
-      const userToken = getUserToken(req);
-      const { search, status, sortBy, limit, recent } = req.query;
-      
-      const response = await bigcommerce.getInvoices(userToken, {
-        search: search as string,
-        status: status as string,
-        sortBy: sortBy as string,
-        limit: limit ? parseInt(limit as string) : undefined,
-        recent: recent === 'true',
-      });
-      
-      res.json(response?.data?.list || response?.data || []);
-    } catch (error) {
-      console.error("Invoices fetch error:", error);
-      res.status(500).json({ message: "Failed to fetch invoices" });
-    }
-  });
+  app.get("/api/invoices",
+    authenticateToken,
+    sessionTimeout,
+    requireCompanyAccess,
+    async (req: AuthRequest, res) => {
+      try {
+        const bcToken = await getBigCommerceToken(req);
+        const { search, status, sortBy, limit, recent } = req.query;
 
-  app.get("/api/invoices/:id", async (req, res) => {
-    try {
-      const userToken = getUserToken(req);
-      const response = await bigcommerce.getInvoice(userToken, req.params.id);
-      res.json(response?.data || null);
-    } catch (error) {
-      console.error("Invoice fetch error:", error);
-      res.status(500).json({ message: "Failed to fetch invoice" });
-    }
-  });
+        const response = await bigcommerce.getInvoices(bcToken, {
+          search: search as string,
+          status: status as string,
+          sortBy: sortBy as string,
+          limit: limit ? parseInt(limit as string) : undefined,
+          recent: recent === 'true',
+        });
 
-  app.get("/api/invoices/:id/pdf", async (req, res) => {
-    try {
-      const userToken = getUserToken(req);
-      const pdfData = await bigcommerce.getInvoicePdf(userToken, req.params.id);
-      
-      res.setHeader('Content-Type', 'application/pdf');
-      res.setHeader('Content-Disposition', `attachment; filename=invoice-${req.params.id}.pdf`);
-      res.send(pdfData);
-    } catch (error) {
-      console.error("Invoice PDF error:", error);
-      res.status(500).json({ message: "Failed to generate invoice PDF" });
+        const invoices = response?.data?.list || response?.data || [];
+
+        // CRITICAL: Filter by company to ensure multi-tenant isolation
+        const filteredInvoices = filterByCompany(invoices, req.user?.companyId, req.user?.role);
+
+        res.json(filteredInvoices);
+      } catch (error) {
+        console.error("Invoices fetch error:", error);
+        res.status(500).json({ message: "Failed to fetch invoices" });
+      }
     }
-  });
+  );
+
+  app.get("/api/invoices/:id",
+    authenticateToken,
+    sessionTimeout,
+    requireCompanyAccess,
+    async (req: AuthRequest, res) => {
+      try {
+        const bcToken = await getBigCommerceToken(req);
+        const response = await bigcommerce.getInvoice(bcToken, req.params.id);
+        const invoice = response?.data;
+
+        // CRITICAL: Verify resource ownership
+        if (invoice && !verifyResourceOwnership(invoice, req.user?.companyId, req.user?.role)) {
+          return res.status(403).json({ message: 'Access denied to this invoice' });
+        }
+
+        res.json(invoice || null);
+      } catch (error) {
+        console.error("Invoice fetch error:", error);
+        res.status(500).json({ message: "Failed to fetch invoice" });
+      }
+    }
+  );
+
+  app.get("/api/invoices/:id/pdf",
+    authenticateToken,
+    sessionTimeout,
+    requireCompanyAccess,
+    async (req: AuthRequest, res) => {
+      try {
+        const bcToken = await getBigCommerceToken(req);
+
+        // First verify invoice ownership before generating PDF
+        const invoiceResponse = await bigcommerce.getInvoice(bcToken, req.params.id);
+        const invoice = invoiceResponse?.data;
+
+        if (invoice && !verifyResourceOwnership(invoice, req.user?.companyId, req.user?.role)) {
+          return res.status(403).json({ message: 'Access denied to this invoice' });
+        }
+
+        const pdfData = await bigcommerce.getInvoicePdf(bcToken, req.params.id);
+
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename=invoice-${req.params.id}.pdf`);
+        res.send(pdfData);
+      } catch (error) {
+        console.error("Invoice PDF error:", error);
+        res.status(500).json({ message: "Failed to generate invoice PDF" });
+      }
+    }
+  );
 
   // Company endpoints
-  app.get("/api/company", async (req, res) => {
-    try {
-      const userToken = getUserToken(req);
-      const response = await bigcommerce.getCompany(userToken);
-      res.json(response?.data || {});
-    } catch (error) {
-      console.error("Company fetch error:", error);
-      res.status(500).json({ message: "Failed to fetch company" });
-    }
-  });
+  app.get("/api/company",
+    authenticateToken,
+    sessionTimeout,
+    requireCompanyAccess,
+    async (req: AuthRequest, res) => {
+      try {
+        const bcToken = await getBigCommerceToken(req);
+        const response = await bigcommerce.getCompany(bcToken);
+        const company = response?.data;
 
-  app.get("/api/company/users", async (req, res) => {
-    try {
-      const userToken = getUserToken(req);
-      const response = await bigcommerce.getCompanyUsers(userToken);
-      res.json(response?.data?.list || response?.data || []);
-    } catch (error) {
-      console.error("Company users fetch error:", error);
-      res.status(500).json({ message: "Failed to fetch company users" });
-    }
-  });
+        // Users can only view their own company (unless admin)
+        if (company && !verifyResourceOwnership(company, req.user?.companyId, req.user?.role)) {
+          return res.status(403).json({ message: 'Access denied to this company' });
+        }
 
-  app.get("/api/company/addresses", async (req, res) => {
-    try {
-      const userToken = getUserToken(req);
-      const response = await bigcommerce.getCompanyAddresses(userToken);
-      res.json(response?.data?.list || response?.data || []);
-    } catch (error) {
-      console.error("Company addresses fetch error:", error);
-      res.status(500).json({ message: "Failed to fetch company addresses" });
+        res.json(company || {});
+      } catch (error) {
+        console.error("Company fetch error:", error);
+        res.status(500).json({ message: "Failed to fetch company" });
+      }
     }
-  });
+  );
+
+  app.get("/api/company/users",
+    authenticateToken,
+    sessionTimeout,
+    requireCompanyAccess,
+    async (req: AuthRequest, res) => {
+      try {
+        const bcToken = await getBigCommerceToken(req);
+        const response = await bigcommerce.getCompanyUsers(bcToken);
+        const users = response?.data?.list || response?.data || [];
+
+        // CRITICAL: Filter users by company
+        const filteredUsers = filterByCompany(users, req.user?.companyId, req.user?.role);
+
+        res.json(filteredUsers);
+      } catch (error) {
+        console.error("Company users fetch error:", error);
+        res.status(500).json({ message: "Failed to fetch company users" });
+      }
+    }
+  );
+
+  app.get("/api/company/addresses",
+    authenticateToken,
+    sessionTimeout,
+    requireCompanyAccess,
+    async (req: AuthRequest, res) => {
+      try {
+        const bcToken = await getBigCommerceToken(req);
+        const response = await bigcommerce.getCompanyAddresses(bcToken);
+        const addresses = response?.data?.list || response?.data || [];
+
+        // CRITICAL: Filter addresses by company
+        const filteredAddresses = filterByCompany(addresses, req.user?.companyId, req.user?.role);
+
+        res.json(filteredAddresses);
+      } catch (error) {
+        console.error("Company addresses fetch error:", error);
+        res.status(500).json({ message: "Failed to fetch company addresses" });
+      }
+    }
+  );
 
   // Accessible companies endpoint (Item 12)
   app.get("/api/company/accessible", authenticateToken, async (req: AuthRequest, res) => {
