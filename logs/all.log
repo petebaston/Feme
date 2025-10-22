@@ -1322,3 +1322,8 @@
 2025-10-22 11:53:12:5312 [32mhttp[39m: [32mGET /src/components/ui/badge.tsx 304 - 0ms[39m
 2025-10-22 11:53:12:5312 [32mhttp[39m: [32mGET /src/components/ui/separator.tsx 304 - 0ms[39m
 2025-10-22 11:53:12:5312 [32mhttp[39m: [32mGET /@fs/home/runner/workspace/attached_assets/feme-logo.png 304 - 1ms[39m
+2025-10-22 11:56:59:5659 [33mwarn[39m: [33mPOST /api/auth/login 401 - 302ms[39m
+2025-10-22 11:57:13:5713 [32mhttp[39m: [32mPOST /api/auth/login 200 - 969ms[39m
+2025-10-22 11:58:02:582 [32mhttp[39m: [32mPOST /api/auth/login 200 - 623ms[39m
+2025-10-22 11:58:02:582 [32mhttp[39m: [32mGET /src/pages/login.tsx?t=1761134282142 200 - 257ms[39m
+2025-10-22 11:58:03:583 [32mhttp[39m: [32mGET /src/index.css?t=1761134282142&v=BNAmmLww7b8Yd1PRP6bPu 200 - 488ms[39m

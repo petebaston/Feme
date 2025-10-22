@@ -41,7 +41,8 @@ export default function Login() {
         description: "Welcome to your B2B portal!",
       });
 
-      setLocation('/');
+      // Reload to trigger auth check
+      window.location.href = '/';
     } catch (err: any) {
       const errorMessage = err.message || 'An unexpected error occurred';
       toast({
