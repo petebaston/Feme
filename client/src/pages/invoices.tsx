@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
@@ -15,6 +16,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 export default function Invoices() {
+  const [, setLocation] = useLocation();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedInvoices, setSelectedInvoices] = useState<string[]>([]);
 
@@ -239,11 +241,21 @@ export default function Invoices() {
                       />
                     </TableCell>
                     <TableCell>
-                      <button className="hover:bg-gray-100 p-1 rounded">
+                      <button 
+                        onClick={() => setLocation(`/invoices/${invoice.id}`)}
+                        className="hover:bg-gray-100 p-1 rounded"
+                      >
                         <ChevronRight className="w-4 h-4 text-gray-600" />
                       </button>
                     </TableCell>
-                    <TableCell className="font-normal">{invoice.invoiceNumber || invoice.id}</TableCell>
+                    <TableCell className="font-normal">
+                      <button 
+                        onClick={() => setLocation(`/invoices/${invoice.id}`)}
+                        className="hover:underline text-left"
+                      >
+                        {invoice.invoiceNumber || invoice.id}
+                      </button>
+                    </TableCell>
                     <TableCell className="text-gray-700">
                       <div className="max-w-xs">
                         {companyName}
@@ -278,10 +290,11 @@ export default function Invoices() {
                           </button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem>View Details</DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => setLocation(`/invoices/${invoice.id}`)}>
+                            View Details
+                          </DropdownMenuItem>
                           <DropdownMenuItem>Mark as Paid</DropdownMenuItem>
                           <DropdownMenuItem>Download PDF</DropdownMenuItem>
-                          <DropdownMenuItem className="text-red-600">Delete</DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>
