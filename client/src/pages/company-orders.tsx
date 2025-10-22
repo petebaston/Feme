@@ -6,7 +6,7 @@ import { Search, SlidersHorizontal, ChevronDown } from "lucide-react";
 import { formatCurrency } from "@/lib/currency";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
-export default function Orders() {
+export default function CompanyOrders() {
   const [searchTerm, setSearchTerm] = useState("");
 
   const { data: orders, isLoading } = useQuery<any[]>({
@@ -41,7 +41,7 @@ export default function Orders() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-normal text-black">My orders</h1>
+        <h1 className="text-3xl font-normal text-black">Company orders</h1>
       </div>
 
       {/* Search and Filter */}
@@ -75,6 +75,7 @@ export default function Orders() {
               <TableHead className="font-medium">PO / Reference</TableHead>
               <TableHead className="font-medium">Grand total</TableHead>
               <TableHead className="font-medium">Order status</TableHead>
+              <TableHead className="font-medium">Placed by</TableHead>
               <TableHead className="font-medium">Created on</TableHead>
             </TableRow>
           </TableHeader>
@@ -82,7 +83,7 @@ export default function Orders() {
             {isLoading ? (
               Array.from({ length: 8 }).map((_, i) => (
                 <TableRow key={i}>
-                  <TableCell colSpan={6}>
+                  <TableCell colSpan={7}>
                     <Skeleton className="h-8 w-full" />
                   </TableCell>
                 </TableRow>
@@ -108,13 +109,16 @@ export default function Orders() {
                     </span>
                   </TableCell>
                   <TableCell className="text-gray-700">
+                    {order.placedBy || 'Joe Blogs'}
+                  </TableCell>
+                  <TableCell className="text-gray-700">
                     {new Date(order.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }).replace(/ /g, ' ')}
                   </TableCell>
                 </TableRow>
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-12 text-gray-500">
+                <TableCell colSpan={7} className="text-center py-12 text-gray-500">
                   No orders found
                 </TableCell>
               </TableRow>

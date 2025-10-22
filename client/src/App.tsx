@@ -13,15 +13,12 @@ import Login from "@/pages/login";
 import Dashboard from "@/pages/dashboard";
 import Orders from "@/pages/orders";
 import OrderDetail from "@/pages/order-detail";
-import QuickOrder from "@/pages/quick-order";
-import Analytics from "@/pages/analytics";
-import Quotes from "@/pages/quotes";
+import CompanyOrders from "@/pages/company-orders";
 import Invoices from "@/pages/invoices";
 import InvoiceDetail from "@/pages/invoice-detail";
-import ShoppingLists from "@/pages/shopping-lists";
-import Company from "@/pages/company";
-import Cart from "@/pages/cart";
-import Checkout from "@/pages/checkout";
+import Addresses from "@/pages/addresses";
+import UserManagement from "@/pages/user-management";
+import AccountSettings from "@/pages/account-settings";
 import Header from "@/components/layout/header";
 import Sidebar from "@/components/layout/sidebar";
 
@@ -74,19 +71,15 @@ function Router() {
         <Sidebar />
         <main className="flex-1 p-6">
           <Switch>
-            <Route path="/" component={Dashboard} />
-            <Route path="/dashboard" component={Dashboard} />
+            <Route path="/" component={Orders} />
             <Route path="/orders/:id" component={OrderDetail} />
             <Route path="/orders" component={Orders} />
-            <Route path="/quick-order" component={QuickOrder} />
-            <Route path="/cart" component={Cart} />
-            <Route path="/checkout" component={Checkout} />
-            <Route path="/analytics" component={Analytics} />
-            <Route path="/quotes" component={Quotes} />
-            <Route path="/invoices" component={Invoices} />
+            <Route path="/company-orders" component={CompanyOrders} />
             <Route path="/invoices/:id" component={InvoiceDetail} />
-            <Route path="/shopping-lists" component={ShoppingLists} />
-            <Route path="/company" component={Company} />
+            <Route path="/invoices" component={Invoices} />
+            <Route path="/addresses" component={Addresses} />
+            <Route path="/user-management" component={UserManagement} />
+            <Route path="/account-settings" component={AccountSettings} />
             <Route component={NotFound} />
           </Switch>
         </main>

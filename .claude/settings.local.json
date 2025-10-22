@@ -28,7 +28,20 @@
       "Bash(cat:*)",
       "Bash(npm start)",
       "Bash(npx tsx:*)",
-      "Bash(npx dotenv:*)"
+      "Bash(npx dotenv:*)",
+      "Bash(git for-each-ref:*)",
+      "Bash(git update-ref:*)",
+      "Bash(git reflog:*)",
+      "Bash(git gc:*)",
+      "Bash(git rev-list:*)",
+      "Bash(while read commit)",
+      "Bash(do git ls-tree -r $commit)",
+      "Bash(echo:*)",
+      "Bash(break)",
+      "Bash(done)",
+      "Bash(git push:*)",
+      "Bash(git stash:*)",
+      "Read(//c/Users/pete-home/Downloads/**)"
     ],
     "deny": [],
     "ask": []
