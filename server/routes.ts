@@ -137,7 +137,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         role: user.role || 'buyer',
       };
 
-      const accessToken = generateAccessToken(tokenPayload);
+      const accessToken = generateAccessToken(tokenPayload, rememberMe);
       const refreshToken = generateRefreshToken(tokenPayload);
 
       // Track session
@@ -149,7 +149,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           httpOnly: true,
           secure: process.env.NODE_ENV === 'production',
           sameSite: 'strict',
-          maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+          maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days to match token expiry
         });
       }
 

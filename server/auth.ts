@@ -18,8 +18,9 @@ export interface AuthRequest extends Request {
 }
 
 // Generate access token
-export function generateAccessToken(payload: JWTPayload): string {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
+export function generateAccessToken(payload: JWTPayload, rememberMe?: boolean): string {
+  const expiresIn = rememberMe ? '30d' : JWT_EXPIRES_IN;
+  return jwt.sign(payload, JWT_SECRET, { expiresIn });
 }
 
 // Generate refresh token
