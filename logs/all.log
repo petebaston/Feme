@@ -14004,3 +14004,5 @@
 2025-10-24 15:55:04:554 [32mhttp[39m: [32mGET /api/invoices 200 - 328ms[39m
 2025-10-24 15:55:04:554 [32mhttp[39m: [32mGET /favicon.ico 200 - 5ms[39m
 2025-10-24 15:55:04:554 [32mhttp[39m: [32mGET /api/invoices 200 - 215ms[39m
+2025-10-24 15:58:39:5839 [32mhttp[39m: [32mPOST /api/auth/login 200 - 1202ms[39m
+2025-10-24 15:58:41:5841 [32mhttp[39m: [32mGET /api/orders 200 - 1596ms[39m
