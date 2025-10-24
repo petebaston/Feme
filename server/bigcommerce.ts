@@ -573,6 +573,25 @@ export class BigCommerceService {
     return this.request(`/api/v3/io/users${query ? `?${query}` : ''}`);
   }
 
+  async getCompanyCustomerIds(userToken: string, companyId: string): Promise<number[]> {
+    // Fetch all users for the company and extract their BigCommerce customer IDs
+    // These customer IDs are used to filter standard BigCommerce API orders
+    console.log(`[BigCommerce] Fetching customer IDs for company ${companyId}`);
+    const response = await this.getCompanyUsers(userToken, companyId);
+    
+    if (!response?.data || !Array.isArray(response.data)) {
+      console.warn('[BigCommerce] No users found for company');
+      return [];
+    }
+    
+    const customerIds = response.data
+      .map((user: any) => user.customerId)
+      .filter((id: any) => id !== undefined && id !== null);
+    
+    console.log(`[BigCommerce] Found ${customerIds.length} customer IDs for company ${companyId}:`, customerIds);
+    return customerIds;
+  }
+
   async getCompanyAddresses(userToken: string, companyId?: string) {
     // Management API v3 endpoint - per official B2B Edition documentation  
     // GET /api/v3/io/addresses - Get All Addresses
