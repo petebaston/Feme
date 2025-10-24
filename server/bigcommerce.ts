@@ -515,19 +515,35 @@ export class BigCommerceService {
             email
             firstName
             lastName
+            companyInfo {
+              companyId
+              companyName
+            }
           }
         }
       `;
       const result = await this.graphqlRequest(query, {}, userToken);
       
+      console.log('[BigCommerce] GraphQL Response:', JSON.stringify(result, null, 2));
+      
       // Return in expected format
+      const currentUser = result?.data?.currentUser;
+      const actualCompanyId = currentUser?.companyInfo?.companyId || currentUser?.id;
+      
+      console.log('[BigCommerce] Company data:', {
+        userId: currentUser?.id,
+        companyId: actualCompanyId,
+        companyName: currentUser?.companyInfo?.companyName,
+        fullUser: currentUser,
+      });
+      
       return {
         code: 200,
         data: {
-          id: result?.data?.currentUser?.id,
-          companyId: result?.data?.currentUser?.id,
-          email: result?.data?.currentUser?.email,
-          name: `${result?.data?.currentUser?.firstName || ''} ${result?.data?.currentUser?.lastName || ''}`.trim(),
+          id: actualCompanyId,
+          companyId: actualCompanyId,
+          email: currentUser?.email,
+          name: currentUser?.companyInfo?.companyName || `${currentUser?.firstName || ''} ${currentUser?.lastName || ''}`.trim(),
         }
       };
     } catch (error: any) {

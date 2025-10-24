@@ -46,19 +46,22 @@ Preferred communication style: Simple, everyday language.
 1. Endpoints `/api/v2/users` and `/api/v2/addresses` returned 404 Not Found.
 2. Frontend displayed empty results despite successful API calls.
 3. Browser cache was returning stale empty responses (304 Not Modified).
+4. Company ID mismatch: System was using user ID (12140869) instead of actual company ID (8810354).
 
 **Root Causes:** 
 1. Using incorrect V2 REST API paths instead of B2B Edition Management API v3 paths.
 2. Browser caching stale responses from before the fix was implemented.
+3. GraphQL query fetched `currentUser.id` as companyId instead of `currentUser.companyInfo.companyId`.
 
 **Solution Implemented:**
 - **API Endpoints:** Updated to use Management API v3 (`/api/v3/io/users`, `/api/v3/io/addresses`)
 - **Authentication:** Both endpoints use OAuth token (`BIGCOMMERCE_ACCESS_TOKEN`)
 - **Cache Control:** Added cache-busting headers (`Cache-Control: no-store, no-cache, must-revalidate`) to prevent stale data
+- **Company ID Fix:** Updated GraphQL query to fetch actual company ID from `companyInfo.companyId` field
 - **Company Filtering:** Regular users see only their company's data; admins see all companies
-- **Direct API Tests:** Confirmed 15 users and 19 addresses successfully retrieved
+- **Verified Results:** 1 address, 1 user, and 3 invoices successfully retrieved for company 8810354
 
-**Current Status:** ✅ Both endpoints working correctly, filtering by company, with proper cache control headers.
+**Current Status:** ✅ All endpoints working correctly with real data, filtering by actual company ID (8810354), with proper cache control headers.
 
 ### Required Secret Configuration
 **Currently Configured:** ✅
