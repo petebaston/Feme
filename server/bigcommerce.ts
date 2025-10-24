@@ -59,7 +59,7 @@ export class BigCommerceService {
                                   options.requireManagementToken;
 
     if (isManagementEndpoint) {
-      // Management API: requires B2B Management Token
+      // Management API: requires B2B Management Token via X-Auth-Token header (per official B2B Edition API docs)
       if (this.config.managementToken) {
         headers['X-Auth-Token'] = this.config.managementToken;
       }
@@ -528,8 +528,8 @@ export class BigCommerceService {
     return this.request('/api/v2/addresses', { userToken });
   }
 
-  // Invoices - Use Management API v3 with server ACCESS_TOKEN (no user token needed)
-  // Correct endpoint: /api/v3/io/ip/invoices
+  // Invoices - Use Management API v3 with server B2B Management Token
+  // Correct endpoint: /api/v3/io/ip/invoices (per official B2B Edition API docs)
   async getInvoices(userToken?: string, params?: any) {
     const queryParams = new URLSearchParams();
     if (params?.search) queryParams.append('search', params.search);
@@ -539,12 +539,12 @@ export class BigCommerceService {
     if (params?.offset) queryParams.append('offset', params.offset.toString());
 
     const query = queryParams.toString();
-    // Uses server ACCESS_TOKEN via request method (v3 endpoints use X-Auth-Token)
+    // Uses B2B Management Token via request method (v3/io/ip endpoints use X-Auth-Token)
     return this.request(`/api/v3/io/ip/invoices${query ? `?${query}` : ''}`);
   }
 
   async getInvoice(userToken: string | undefined, invoiceId: string) {
-    // Uses server ACCESS_TOKEN for Management API
+    // Uses B2B Management Token for Management API
     return this.request(`/api/v3/io/ip/invoices/${invoiceId}`);
   }
 

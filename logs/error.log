@@ -54,3 +54,8 @@
 2025-10-24 10:49:55:4955 [31merror[39m: [31mGET /api/company/addresses 500 - 206ms[39m
 2025-10-24 10:49:56:4956 [31merror[39m: [31mGET /api/company/users 500 - 155ms[39m
 2025-10-24 10:52:42:5242 [31merror[39m: [31mGET /api/invoices 500 - 824ms[39m
+2025-10-24 11:11:18:1118 [31merror[39m: [31mGET /api/company/addresses 500 - 90ms[39m
+2025-10-24 11:11:20:1120 [31merror[39m: [31mGET /api/invoices 500 - 566ms[39m
+2025-10-24 11:13:38:1338 [31merror[39m: [31mGET /api/invoices 500 - 482ms[39m
+2025-10-24 11:16:33:1633 [31merror[39m: [31mGET /api/invoices 500 - 750ms[39m
+2025-10-24 11:19:55:1955 [31merror[39m: [31mGET /api/invoices 500 - 502ms[39m
