@@ -411,27 +411,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const bcOrders = response?.data?.list || response?.data || [];
         const allOrders = Array.isArray(bcOrders) ? bcOrders.map(transformOrder) : [];
 
-        // Get company info for additional filtering
-        const companyResponse = await bigcommerce.getCompany(bcToken);
-        const companyName = companyResponse?.data?.companyName;
+        // Get company users to check their emails  
+        const companyUsersResponse = await bigcommerce.getCompanyUsers(bcToken, companyId);
+        const companyUsers = companyUsersResponse?.data || [];
+        const companyEmails = companyUsers.map((u: any) => u.email?.toLowerCase()).filter(Boolean);
 
-        // Filter orders by customer IDs AND company name in billing address
+        // Filter orders by customer IDs AND company in billing address
         const companyOrders = allOrders.filter((order: any) => {
           const orderCustomerId = order.customer_id || order.customerId;
           const billingCompany = order.billingAddress?.company || order.companyName || '';
+          const billingEmail = order.billingAddress?.email?.toLowerCase() || '';
+          const billingName = `${order.billingAddress?.first_name || ''} ${order.billingAddress?.last_name || ''}`.trim().toLowerCase();
           
           // Must match customer ID
           if (!customerIds.includes(orderCustomerId)) {
             return false;
           }
           
-          // Must have company ID or company name in billing address (for B2B orders)
-          // OR be from B2B Edition API (has companyId field)
-          const hasCompanyInBilling = billingCompany.includes(companyId) || 
-                                      (companyName && billingCompany.includes(companyName));
+          // Include if: has company ID in billing, OR is B2B order, 
+          // OR (placed by company user AND billing name matches user name)
+          const hasCompanyInBilling = billingCompany.includes(companyId);
           const isB2BOrder = !!order.companyId;
           
-          return hasCompanyInBilling || isB2BOrder;
+          // Only include orders placed by company users if the NAME also matches (not just email)
+          let placedByVerifiedCompanyUser = false;
+          if (companyEmails.includes(billingEmail)) {
+            // Find the matching company user
+            const matchingUser = companyUsers.find((u: any) => u.email?.toLowerCase() === billingEmail);
+            if (matchingUser) {
+              const userName = `${matchingUser.firstName || ''} ${matchingUser.lastName || ''}`.trim().toLowerCase();
+              placedByVerifiedCompanyUser = billingName === userName;
+            }
+          }
+          
+          return hasCompanyInBilling || isB2BOrder || placedByVerifiedCompanyUser;
         });
 
         res.json(companyOrders);

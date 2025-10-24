@@ -79,6 +79,7 @@ export default function Orders() {
                   <ChevronDown className="w-4 h-4" />
                 </div>
               </TableHead>
+              <TableHead className="font-medium">Placed by</TableHead>
               <TableHead className="font-medium">Company</TableHead>
               <TableHead className="font-medium">PO / Reference</TableHead>
               <TableHead className="font-medium">Grand total</TableHead>
@@ -90,7 +91,7 @@ export default function Orders() {
             {isLoading ? (
               Array.from({ length: 8 }).map((_, i) => (
                 <TableRow key={i}>
-                  <TableCell colSpan={6}>
+                  <TableCell colSpan={7}>
                     <Skeleton className="h-8 w-full" />
                   </TableCell>
                 </TableRow>
@@ -101,7 +102,14 @@ export default function Orders() {
                   <TableCell className="font-normal">{order.id}</TableCell>
                   <TableCell className="text-gray-700">
                     <div className="max-w-xs">
-                      {order.customerName || 'TEST Affro Wholesale Direct Ltd'}
+                      {order.billingAddress?.first_name && order.billingAddress?.last_name 
+                        ? `${order.billingAddress.first_name} ${order.billingAddress.last_name}`.trim()
+                        : order.customerName || '–'}
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-gray-700">
+                    <div className="max-w-xs">
+                      {order.billingAddress?.company || order.companyName || '–'}
                     </div>
                   </TableCell>
                   <TableCell className="text-gray-700">
@@ -127,7 +135,7 @@ export default function Orders() {
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-12 text-gray-500">
+                <TableCell colSpan={7} className="text-center py-12 text-gray-500">
                   No orders found
                 </TableCell>
               </TableRow>

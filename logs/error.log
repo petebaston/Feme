@@ -63,3 +63,5 @@
 2025-10-24 12:47:13:4713 [31merror[39m: [31mGET /api/invoices/7329752/pdf 500 - 2907ms[39m
 2025-10-24 13:02:11:211 [31merror[39m: [31mGET /api/company/addresses 500 - 229ms[39m
 2025-10-24 14:31:11:3111 [31merror[39m: [31mUNCAUGHT EXCEPTION! Shutting down...[39m
+2025-10-24 15:52:43:5243 [31merror[39m: [31mGET /api/orders 500 - 1722ms[39m
+2025-10-24 15:52:56:5256 [31merror[39m: [31mGET /api/orders 500 - 1548ms[39m
