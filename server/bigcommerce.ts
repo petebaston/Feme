@@ -5,6 +5,7 @@ interface BigCommerceConfig {
   accessToken: string;
   managementToken: string;
   b2bApiUrl: string;
+  standardApiUrl: string;
   clientId: string;
   clientSecret: string;
 }
@@ -13,11 +14,14 @@ export class BigCommerceService {
   private config: BigCommerceConfig;
 
   constructor() {
+    const storeHash = process.env.BIGCOMMERCE_STORE_HASH || process.env.VITE_STORE_HASH || '';
+    
     this.config = {
-      storeHash: process.env.BIGCOMMERCE_STORE_HASH || process.env.VITE_STORE_HASH || '',
+      storeHash,
       accessToken: process.env.BIGCOMMERCE_ACCESS_TOKEN || '',
       managementToken: process.env.BIGCOMMERCE_B2B_MANAGEMENT_TOKEN || '',
       b2bApiUrl: 'https://api-b2b.bigcommerce.com',
+      standardApiUrl: `https://api.bigcommerce.com/stores/${storeHash}`,
       clientId: process.env.BIGCOMMERCE_CLIENT_ID || '',
       clientSecret: process.env.BIGCOMMERCE_CLIENT_SECRET || '',
     };
@@ -25,6 +29,7 @@ export class BigCommerceService {
     console.log('[BigCommerce] Initialized with:', {
       storeHash: this.config.storeHash,
       b2bApiUrl: this.config.b2bApiUrl,
+      standardApiUrl: this.config.standardApiUrl,
       hasAccessToken: !!this.config.accessToken,
       hasManagementToken: !!this.config.managementToken,
       hasClientId: !!this.config.clientId,
@@ -178,6 +183,97 @@ export class BigCommerceService {
     }
   }
 
+  // Fetch orders from standard BigCommerce API (fallback)
+  private async getStandardBigCommerceOrders(params?: any) {
+    const url = `${this.config.standardApiUrl}/v2/orders`;
+    const queryParams = new URLSearchParams();
+    
+    if (params?.limit) queryParams.append('limit', params.limit.toString());
+    if (params?.page) queryParams.append('page', params.page.toString());
+    if (params?.min_id) queryParams.append('min_id', params.min_id.toString());
+    if (params?.max_id) queryParams.append('max_id', params.max_id.toString());
+    if (params?.status_id) queryParams.append('status_id', params.status_id.toString());
+    
+    const fullUrl = queryParams.toString() ? `${url}?${queryParams}` : url;
+    
+    console.log(`[BigCommerce Standard API] GET ${fullUrl}`);
+    
+    const response = await fetch(fullUrl, {
+      headers: {
+        'X-Auth-Token': this.config.accessToken,
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+    });
+    
+    if (!response.ok) {
+      console.error(`[BigCommerce Standard API] Error ${response.status}:`, response.statusText);
+      throw new Error(`BigCommerce Standard API Error: ${response.status} ${response.statusText}`);
+    }
+    
+    const orders = await response.json();
+    console.log(`[BigCommerce Standard API] Retrieved ${orders.length} orders`);
+    
+    // Transform to B2B Edition format
+    return {
+      code: 200,
+      message: 'SUCCESS',
+      data: {
+        list: orders.map((order: any) => ({
+          orderId: order.id,
+          id: order.id,
+          bcOrderId: order.id,
+          createdAt: new Date(order.date_created).getTime() / 1000,
+          updatedAt: new Date(order.date_modified).getTime() / 1000,
+          status: this.mapStandardStatus(order.status_id),
+          statusId: order.status_id,
+          money: {
+            currency: {
+              code: order.currency_code || 'USD',
+            },
+            value: order.total_inc_tax?.toString() || '0',
+          },
+          totalIncTax: order.total_inc_tax,
+          totalExTax: order.total_ex_tax,
+          customerName: `${order.billing_address?.first_name || ''} ${order.billing_address?.last_name || ''}`.trim(),
+          companyName: order.billing_address?.company || '',
+          billingAddress: order.billing_address,
+          shippingAddress: Array.isArray(order.shipping_addresses) && order.shipping_addresses.length > 0 
+            ? order.shipping_addresses[0] 
+            : order.shipping_address || {},
+          poNumber: order.staff_notes || '',
+          source: 'standard_api', // Mark as from standard API
+        })),
+        paginator: {
+          totalCount: orders.length,
+          offset: 0,
+          limit: orders.length,
+        },
+      },
+    };
+  }
+  
+  private mapStandardStatus(statusId: number): string {
+    const statusMap: Record<number, string> = {
+      0: 'Incomplete',
+      1: 'Pending',
+      2: 'Shipped',
+      3: 'Partially Shipped',
+      4: 'Refunded',
+      5: 'Cancelled',
+      6: 'Declined',
+      7: 'Awaiting Payment',
+      8: 'Awaiting Pickup',
+      9: 'Awaiting Shipment',
+      10: 'Completed',
+      11: 'Awaiting Fulfillment',
+      12: 'Manual Verification Required',
+      13: 'Disputed',
+      14: 'Partially Refunded',
+    };
+    return statusMap[statusId] || 'Unknown';
+  }
+
   // Orders
   async getOrders(userToken: string, params?: any, companyId?: string) {
     const queryParams = new URLSearchParams();
@@ -199,9 +295,28 @@ export class BigCommerceService {
     if (response?.data) {
       const list = response.data.list || response.data || [];
       const total = response.data.paginator?.totalCount || list.length;
-      console.log(`[BigCommerce] Orders API returned ${list.length} orders (total: ${total})`);
-      if (total === 0) {
-        console.warn('[BigCommerce] ⚠️ No orders found - this may indicate B2B Edition orders need to be imported/linked from BigCommerce store');
+      console.log(`[BigCommerce B2B API] Returned ${list.length} orders (total: ${total})`);
+      
+      // FALLBACK: If B2B Edition returns 0 orders, try standard API
+      if (total === 0 && this.config.accessToken) {
+        console.log('[BigCommerce] No B2B orders found, falling back to standard BigCommerce API...');
+        try {
+          const standardResponse = await this.getStandardBigCommerceOrders({
+            limit: 250, // BigCommerce V2 API max limit is 250
+          });
+          
+          if (standardResponse?.data?.list?.length > 0) {
+            console.log(`[BigCommerce] ✅ Retrieved ${standardResponse.data.list.length} orders from standard API`);
+            // Cache these orders too
+            if (companyId) {
+              await storage.setCachedOrders(standardResponse.data.list, companyId);
+              console.log(`[Cache] Stored ${standardResponse.data.list.length} standard API orders for company ${companyId}`);
+            }
+            return standardResponse;
+          }
+        } catch (fallbackError: any) {
+          console.error('[BigCommerce] Standard API fallback failed:', fallbackError.message);
+        }
       }
     }
     

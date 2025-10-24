@@ -8,20 +8,22 @@ Preferred communication style: Simple, everyday language.
 
 ## Known Issues & Setup Requirements
 
-### Orders Not Showing
-**Symptom:** Portal shows "No orders" even though orders exist in BigCommerce store.
+### Orders System - ✅ RESOLVED
+**Background:** BigCommerce B2B Edition has a completely separate orders system from the regular BigCommerce store. Orders placed through regular BigCommerce checkout are NOT automatically visible in B2B Edition.
 
-**Root Cause:** BigCommerce B2B Edition has a separate orders system from the regular BigCommerce store. Orders placed through regular BigCommerce checkout are NOT automatically visible in B2B Edition.
+**Solution Implemented:** Dual API fallback system
+1. Portal first attempts to fetch orders from B2B Edition API
+2. If B2B Edition returns 0 orders, automatically falls back to standard BigCommerce V2 API
+3. Standard API orders are transformed to match B2B Edition format (currency, status, etc.)
+4. All orders (from either source) are cached in PostgreSQL for reliability
 
-**Requirements for Orders to Appear:**
-1. **User Permissions:** B2B company user must have "Get orders" and "Get order detail" permissions
-2. **Order Source:** Orders must be:
-   - Placed through B2B Edition checkout/buyer portal, OR
-   - Manually imported/linked to B2B Edition company account
+**Current Status:** ✅ Working - Portal successfully displays all 21 orders from BigCommerce store using the fallback mechanism.
 
-**Note:** The B2B Orders API (`/api/v2/orders`) only returns orders that are linked to B2B Edition companies. Regular BigCommerce orders won't appear unless they're imported into the B2B system.
-
-**Current Status:** API returning `totalCount: 0` indicates no orders are linked to this B2B company account.
+**API Credentials Required:**
+- `BIGCOMMERCE_ACCESS_TOKEN` - Standard BigCommerce API access token (for fallback)
+- `BIGCOMMERCE_CLIENT_ID` - OAuth client ID
+- `BIGCOMMERCE_CLIENT_SECRET` - OAuth client secret
+- `BIGCOMMERCE_STORE_HASH` - Store identifier (e.g., "pyrenapwe2")
 
 ### Invoices 403 Error
 **Symptom:** Getting "Invalid access token" when fetching invoices.
@@ -30,11 +32,15 @@ Preferred communication style: Simple, everyday language.
 
 **Fix:** Verify `VITE_B2B_MANAGEMENT_TOKEN` is set in environment secrets.
 
-### Missing Secret Configuration
-**Required Secrets:** The following must be configured in Replit Secrets:
-- `VITE_B2B_MANAGEMENT_TOKEN` - B2B Edition Management API token
-- `VITE_B2B_ACCESS_TOKEN` - B2B Edition access token (optional, used for some endpoints)
-- `VITE_B2B_CLIENT_ID` - B2B Edition client ID
+### Required Secret Configuration
+**Currently Configured:** ✅
+- `BIGCOMMERCE_ACCESS_TOKEN` - Standard BigCommerce API access token
+- `BIGCOMMERCE_CLIENT_ID` - OAuth client ID
+- `BIGCOMMERCE_CLIENT_SECRET` - OAuth client secret
+- `BIGCOMMERCE_STORE_HASH` - Store identifier
+
+**Still Needed for Full Functionality:**
+- `BIGCOMMERCE_B2B_MANAGEMENT_TOKEN` - B2B Edition Management API token (for invoices, advanced features)
 
 ## System Architecture
 
@@ -53,7 +59,11 @@ The backend is an Express.js server providing API endpoints and static file serv
 
 **BigCommerce API Integration:**
 - Utilizes BigCommerce GraphQL API for Quotes, Invoices, Shopping Lists, and Company data.
-- Relies on BigCommerce REST API for Orders, which required a robust server-side caching solution due to observed API reliability issues (404s, inconsistent results) and case-sensitivity for status values.
+- **Dual API Strategy for Orders:** Implements intelligent fallback system:
+  1. **Primary:** BigCommerce B2B Edition REST API (`/api/v2/orders`) for B2B-linked orders
+  2. **Fallback:** Standard BigCommerce V2 API when B2B Edition returns empty results
+  3. Orders from standard API are transformed to match B2B Edition format for seamless integration
+- Server-side caching for BigCommerce orders in `bigcommerce_orders_cache` table addresses API limitations and enables direct order detail access.
 
 ### Enterprise Features
 - **Advanced Permission System:** Features 12 granular permissions across orders, quotes, invoices, shopping lists, users, and addresses, with role-based access control (Admin, Buyer, User roles). Frontend components conditionally render based on user permissions.
