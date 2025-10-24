@@ -845,6 +845,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     async (req: AuthRequest, res) => {
       try {
+        // Disable caching to prevent stale data
+        res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+        res.set('Pragma', 'no-cache');
+        res.set('Expires', '0');
+
         const bcToken = await getBigCommerceToken(req);
         const response = await bigcommerce.getCompanyUsers(bcToken);
         const users = response?.data?.list || response?.data || [];
@@ -864,6 +869,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     async (req: AuthRequest, res) => {
       try {
+        // Disable caching to prevent stale data
+        res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+        res.set('Pragma', 'no-cache');
+        res.set('Expires', '0');
+
         const bcToken = await getBigCommerceToken(req);
         const response = await bigcommerce.getCompanyAddresses(bcToken);
         const addresses = response?.data?.list || response?.data || [];
