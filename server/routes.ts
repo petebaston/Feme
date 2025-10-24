@@ -730,20 +730,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const bcToken = await getBigCommerceToken(req);
         const { search, status, sortBy, limit, recent } = req.query;
 
-        // CRITICAL SECURITY: Get user's company ID for filtering
-        // Per BigCommerce best practice: filter at API level using customerId parameter
-        if (!req.user?.companyId) {
-          console.warn(`[Invoices] No company ID for user ${req.user?.email}`);
-          return res.json([]); // No company = no invoices
-        }
+        console.log(`[Invoices] Fetching ALL invoices for user: ${req.user?.email}`);
 
-        console.log(`[Invoices] Fetching invoices for company ID: ${req.user.companyId}, user: ${req.user?.email}`);
-
-        // Fetch invoices filtered by company ID (BigCommerce best practice)
+        // Fetch ALL invoices (no company filtering)
         let invoices: any[] = [];
         try {
           const response = await bigcommerce.getInvoices(bcToken, {
-            customerId: req.user.companyId, // CRITICAL: Filter by company at API level
             search: search as string,
             status: status as string,
             sortBy: sortBy as string,
@@ -761,7 +753,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         }
 
-        console.log(`[Invoices] Retrieved ${invoices.length} invoices for company ${req.user.companyId}`);
+        console.log(`[Invoices] Retrieved ${invoices.length} total invoices`);
         res.json(invoices);
       } catch (error) {
         console.error("Invoices fetch error:", error);
@@ -778,25 +770,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       try {
         const bcToken = await getBigCommerceToken(req);
         
-        // CRITICAL SECURITY: Verify user has company ID
-        if (!req.user?.companyId) {
-          console.warn(`[Invoices] No company ID for user ${req.user?.email}`);
-          return res.status(403).json({ message: 'Access denied' });
-        }
-        
-        // Fetch the invoice
+        // Fetch the invoice (no company restriction)
         const response = await bigcommerce.getInvoice(undefined, req.params.id);
         const invoice = response?.data;
 
         if (!invoice) {
           return res.status(404).json({ message: 'Invoice not found' });
-        }
-
-        // CRITICAL SECURITY: Verify this invoice belongs to the user's company
-        // BigCommerce invoices have customerId field that matches company ID
-        if (invoice.customerId !== req.user.companyId) {
-          console.warn(`[Invoices] Access denied: Invoice ${req.params.id} (company: ${invoice.customerId}) does not belong to user's company ${req.user.companyId}`);
-          return res.status(403).json({ message: 'Access denied to this invoice' });
         }
 
         res.json(invoice);
@@ -815,24 +794,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       try {
         const bcToken = await getBigCommerceToken(req);
         
-        // CRITICAL SECURITY: Verify user has company ID
-        if (!req.user?.companyId) {
-          console.warn(`[Invoices] No company ID for user ${req.user?.email}`);
-          return res.status(403).json({ message: 'Access denied' });
-        }
-        
-        // Fetch invoice to verify ownership
+        // Fetch invoice (no company restriction)
         const invoiceResponse = await bigcommerce.getInvoice(undefined, req.params.id);
         const invoice = invoiceResponse?.data;
 
         if (!invoice) {
           return res.status(404).json({ message: 'Invoice not found' });
-        }
-
-        // CRITICAL SECURITY: Verify invoice belongs to user's company
-        if (invoice.customerId !== req.user.companyId) {
-          console.warn(`[Invoices] PDF access denied: Invoice ${req.params.id} (company: ${invoice.customerId}) does not belong to user's company ${req.user.companyId}`);
-          return res.status(403).json({ message: 'Access denied to this invoice' });
         }
 
         const pdfData = await bigcommerce.getInvoicePdf(undefined, req.params.id);
