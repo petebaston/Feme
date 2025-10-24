@@ -759,9 +759,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
 
         console.log(`[Invoices] Retrieved ${invoices.length} total invoices`);
+        console.log(`[Invoices] User companyId: ${req.user?.companyId}, role: ${req.user?.role}`);
 
         // Filter invoices by logged-in user's company
-        const filteredInvoices = filterByCompany(invoices, req.user?.companyId, req.user?.role);
+        // Invoices use customerId field instead of companyId
+        const filteredInvoices = invoices.filter(invoice => {
+          // Admins see all invoices
+          if (req.user?.role === 'admin' || req.user?.role === 'superadmin') {
+            return true;
+          }
+          
+          // Regular users only see invoices for their company
+          if (!req.user?.companyId) {
+            return false;
+          }
+          
+          const invoiceCompanyId = invoice.companyId || invoice.customerId;
+          return String(invoiceCompanyId) === String(req.user.companyId);
+        });
 
         console.log(`[Invoices] Filtered to ${filteredInvoices.length} invoices for company ${req.user?.companyId}`);
         res.json(filteredInvoices);
