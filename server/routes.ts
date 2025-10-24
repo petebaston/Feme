@@ -864,9 +864,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const response = await bigcommerce.getCompanyUsers(bcToken);
         const users = response?.data?.list || response?.data || [];
 
+        console.log(`[Users] Total users fetched: ${users.length}`);
+        console.log(`[Users] User companyId: ${req.user?.companyId}, role: ${req.user?.role}`);
+
         // Filter users by logged-in user's company
         const filteredUsers = filterByCompany(users, req.user?.companyId, req.user?.role);
 
+        console.log(`[Users] Filtered to ${filteredUsers.length} users`);
         res.json(filteredUsers);
       } catch (error) {
         console.error("Company users fetch error:", error);
@@ -890,9 +894,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const response = await bigcommerce.getCompanyAddresses(bcToken);
         const addresses = response?.data?.list || response?.data || [];
 
+        console.log(`[Addresses] Total addresses fetched: ${addresses.length}`);
+        console.log(`[Addresses] User companyId: ${req.user?.companyId}, role: ${req.user?.role}`);
+
         // Filter addresses by logged-in user's company
         const filteredAddresses = filterByCompany(addresses, req.user?.companyId, req.user?.role);
 
+        console.log(`[Addresses] Filtered to ${filteredAddresses.length} addresses`);
         res.json(filteredAddresses);
       } catch (error) {
         console.error("Company addresses fetch error:", error);

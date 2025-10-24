@@ -10,9 +10,9 @@ export interface FilterOptions {
  * Filter data array by company
  * Admins see all data, regular users only see their company's data
  */
-export function filterByCompany<T extends { companyId?: string }>(
+export function filterByCompany<T extends { companyId?: string | number }>(
   data: T[],
-  userCompanyId?: string,
+  userCompanyId?: string | number,
   userRole?: string
 ): T[] {
   // Admins and superadmins see all data
@@ -25,16 +25,22 @@ export function filterByCompany<T extends { companyId?: string }>(
     return [];
   }
 
-  return data.filter(item => item.companyId === userCompanyId);
+  // Convert to string for comparison (handles both string and number IDs)
+  const userCompanyStr = String(userCompanyId);
+  
+  return data.filter(item => {
+    if (!item.companyId) return false;
+    return String(item.companyId) === userCompanyStr;
+  });
 }
 
 /**
  * Verify single resource ownership
  * Returns true if user can access the resource
  */
-export function verifyResourceOwnership<T extends { companyId?: string; customerId?: string }>(
+export function verifyResourceOwnership<T extends { companyId?: string | number; customerId?: string | number }>(
   resource: T | null,
-  userCompanyId?: string,
+  userCompanyId?: string | number,
   userRole?: string
 ): boolean {
   // Admins can access anything
@@ -58,8 +64,8 @@ export function verifyResourceOwnership<T extends { companyId?: string; customer
     return false;
   }
 
-  // IDs must match
-  return resourceId === userCompanyId;
+  // IDs must match (convert both to string for comparison)
+  return String(resourceId) === String(userCompanyId);
 }
 
 /**
