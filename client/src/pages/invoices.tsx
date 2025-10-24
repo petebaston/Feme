@@ -285,6 +285,10 @@ export default function Invoices() {
                 const companyName = invoice.details?.header?.billingAddress?.firstName || 
                                   invoice.details?.header?.billingAddress?.lastName || 
                                   'Customer';
+                
+                // Get Sales Order number from extraFields
+                const salesOrderField = invoice.extraFields?.find((field: any) => field.fieldName === 'Our Ref');
+                const salesOrder = salesOrderField?.fieldValue || '-';
 
                 return (
                   <Fragment key={invoice.id}>
@@ -327,7 +331,7 @@ export default function Invoices() {
                         {companyName}
                       </div>
                     </TableCell>
-                    <TableCell className="text-gray-700">{invoice.orderNumber || '-'}</TableCell>
+                    <TableCell className="text-gray-700">{salesOrder}</TableCell>
                     <TableCell className="text-gray-700">
                       {invoiceDate ? invoiceDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '-'}
                     </TableCell>

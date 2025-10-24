@@ -830,12 +830,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.status(404).json({ message: 'Invoice not found' });
         }
 
-        // Use BigCommerce's native PDF download endpoint
-        const pdfData = await bigcommerce.getInvoicePdf(undefined, req.params.id);
+        // Get PDF URL from BigCommerce
+        const pdfResponse = await bigcommerce.getInvoicePdf(undefined, req.params.id);
+        const pdfUrl = pdfResponse?.data?.url;
+
+        if (!pdfUrl) {
+          return res.status(404).json({ message: 'PDF not available for this invoice' });
+        }
+
+        // Fetch the actual PDF file from S3
+        const pdfFileResponse = await fetch(pdfUrl);
+        
+        if (!pdfFileResponse.ok) {
+          throw new Error('Failed to download PDF from storage');
+        }
+
+        const pdfBuffer = await pdfFileResponse.arrayBuffer();
 
         res.setHeader('Content-Type', 'application/pdf');
-        res.setHeader('Content-Disposition', `attachment; filename=invoice-${invoice.invoiceNumber || req.params.id}.pdf`);
-        res.send(pdfData);
+        res.setHeader('Content-Disposition', `inline; filename=invoice-${invoice.invoiceNumber || req.params.id}.pdf`);
+        res.send(Buffer.from(pdfBuffer));
       } catch (error: any) {
         console.error("Invoice PDF error:", error);
         res.status(500).json({ message: error.message || "Failed to generate invoice PDF" });
