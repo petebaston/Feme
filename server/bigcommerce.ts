@@ -38,21 +38,27 @@ export class BigCommerceService {
   }
 
   // Generate Server-to-Server Token for Management API
-  // Per docs: https://developer.bigcommerce.com/b2b-edition/apis/rest-management/authentication#get-a-server-to-server-token
+  // Per BigCommerce: As of Sept 2025, use standard BigCommerce OAuth X-Auth-Token for B2B Edition
   private async getServerToServerToken(): Promise<string> {
     // Return cached token if available
     if (this.serverToServerToken) {
       return this.serverToServerToken;
     }
 
-    // Use the management token directly if provided (it IS a server-to-server token)
+    // Use standard BigCommerce OAuth access token (works for both standard and B2B Edition APIs)
+    if (this.config.accessToken) {
+      this.serverToServerToken = this.config.accessToken;
+      return this.serverToServerToken;
+    }
+
+    // Fallback to B2B-specific management token if provided
     if (this.config.managementToken) {
       this.serverToServerToken = this.config.managementToken;
       return this.serverToServerToken;
     }
 
-    console.error('[BigCommerce] No B2B Management Token configured');
-    throw new Error('B2B Management Token not configured');
+    console.error('[BigCommerce] No authentication token configured');
+    throw new Error('Authentication token not configured');
   }
 
   private async request(endpoint: string, options: any = {}) {

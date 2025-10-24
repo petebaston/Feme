@@ -25,12 +25,18 @@ Preferred communication style: Simple, everyday language.
 - `BIGCOMMERCE_CLIENT_SECRET` - OAuth client secret
 - `BIGCOMMERCE_STORE_HASH` - Store identifier (e.g., "pyrenapwe2")
 
-### Invoices 403 Error
-**Symptom:** Getting "Invalid access token" when fetching invoices.
+### Invoices Authentication - ✅ RESOLVED
+**Previous Issue:** Getting 403 "Invalid access token" when fetching invoices from B2B Edition Management API.
 
-**Root Cause:** Invoices API requires server-side B2B Management Token which may not be configured correctly.
+**Root Cause:** Was using `BIGCOMMERCE_B2B_MANAGEMENT_TOKEN` which was invalid for the Management API endpoints.
 
-**Fix:** Verify `VITE_B2B_MANAGEMENT_TOKEN` is set in environment secrets.
+**Solution Implemented:** Updated authentication to use standard BigCommerce OAuth token
+- Changed `getServerToServerToken()` to prioritize `BIGCOMMERCE_ACCESS_TOKEN` (standard OAuth token)
+- Per BigCommerce September 2025 update: standard OAuth X-Auth-Token now works for B2B Edition APIs
+- Direct API test confirmed: Successfully retrieves 8 invoices using standard OAuth token
+- Fallback to B2B Management Token preserved for legacy compatibility
+
+**Current Status:** ✅ Fixed - Invoices API now authenticated correctly using OAuth token.
 
 ### Required Secret Configuration
 **Currently Configured:** ✅
