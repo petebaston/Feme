@@ -466,8 +466,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const bcOrders = response?.data?.list || response?.data || [];
         const orders = Array.isArray(bcOrders) ? bcOrders.map(transformOrder) : [];
 
-        // CRITICAL: Filter by company to ensure multi-tenant isolation (same as invoices)
-        const filteredOrders = filterByCompany(orders, req.user?.companyId, req.user?.role);
+        // CRITICAL: Filter by company to ensure multi-tenant isolation
+        // Note: Standard BigCommerce API orders don't have companyId, so filterByCompany would exclude them all
+        // For B2B Edition orders, use filterByCompany; for standard API, return all (single-company scenario)
+        let filteredOrders: any[];
+        
+        // Check if orders have companyId (B2B Edition) or not (standard API)
+        const hasCompanyIds = orders.length > 0 && orders.some(order => order.companyId);
+        
+        if (hasCompanyIds) {
+          // B2B Edition orders - filter by company
+          filteredOrders = filterByCompany(orders, req.user?.companyId, req.user?.role);
+        } else {
+          // Standard API orders - return all (no company-level filtering available)
+          // In single-company scenario, all orders belong to the company
+          filteredOrders = orders;
+        }
 
         console.log(`[Company Orders] Filtered ${orders.length} total orders to ${filteredOrders.length} company orders`);
         res.json(filteredOrders);

@@ -10827,3 +10827,8 @@
 2025-10-24 15:19:45:1945 [32mhttp[39m: [32mGET /@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-separator.js?v=2d4ba003 200 - 1ms[39m
 2025-10-24 15:19:45:1945 [32mhttp[39m: [32mGET /@fs/home/runner/workspace/attached_assets/feme-logo.png 200 - 4ms[39m
 2025-10-24 15:19:45:1945 [32mhttp[39m: [32mGET /favicon.ico 200 - 20ms[39m
+2025-10-24 15:20:20:2020 [32mhttp[39m: [32mGET /favicon.ico 200 - 5ms[39m
+2025-10-24 15:20:20:2020 [32mhttp[39m: [32mGET /api/invoices/7880025 200 - 334ms[39m
+2025-10-24 15:20:23:2023 [32mhttp[39m: [32mGET /favicon.ico 200 - 5ms[39m
+2025-10-24 15:20:24:2024 [32mhttp[39m: [32mGET /favicon.ico 200 - 4ms[39m
+2025-10-24 15:20:26:2026 [32mhttp[39m: [32mGET /api/company-orders 304 - 1438ms[39m
