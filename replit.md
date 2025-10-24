@@ -37,31 +37,28 @@ Preferred communication style: Simple, everyday language.
 - Direct API test confirmed: Successfully retrieves 8 invoices using standard OAuth token
 - **PDF Download:** Fixed endpoint to use `/download-pdf` (per official documentation)
 - **PDF Preview:** Added expandable inline PDF preview in invoices table (click arrow to expand)
+- **Company Filtering:** Invoices now filtered by user's companyId (regular users see only their company's invoices, admins see all)
 
-**Invoice Access Control:**
-- Invoices endpoint shows ALL invoices (no company filtering)
-- Suitable for wholesale/admin portal where users need visibility across all companies
-- 8 total invoices exist across multiple companies (6254969, 8528412, 8757474, 8780493, 8810354, 9546850)
-
-**Current Status:** ✅ Fixed - Invoices API authenticated correctly, PDF downloads working, inline preview implemented.
+**Current Status:** ✅ Fixed - Invoices API authenticated correctly, PDF downloads working, inline preview implemented, company filtering active.
 
 ### Users & Addresses - ✅ RESOLVED
 **Previous Issues:** 
 1. Endpoints `/api/v2/users` and `/api/v2/addresses` returned 404 Not Found.
 2. Frontend displayed empty results despite successful API calls.
+3. Browser cache was returning stale empty responses (304 Not Modified).
 
 **Root Causes:** 
 1. Using incorrect V2 REST API paths instead of B2B Edition Management API v3 paths.
-2. Company filtering was removing all results (wholesale portal should show ALL companies).
+2. Browser caching stale responses from before the fix was implemented.
 
 **Solution Implemented:**
 - **API Endpoints:** Updated to use Management API v3 (`/api/v3/io/users`, `/api/v3/io/addresses`)
 - **Authentication:** Both endpoints use OAuth token (`BIGCOMMERCE_ACCESS_TOKEN`)
-- **Company Filtering:** Removed company filtering to align with wholesale/admin portal design
+- **Cache Control:** Added cache-busting headers (`Cache-Control: no-store, no-cache, must-revalidate`) to prevent stale data
+- **Company Filtering:** Regular users see only their company's data; admins see all companies
 - **Direct API Tests:** Confirmed 15 users and 19 addresses successfully retrieved
-- **Frontend Display:** Data now displays correctly across all companies
 
-**Current Status:** ✅ Both endpoints working correctly, displaying all data across companies as designed for wholesale portal.
+**Current Status:** ✅ Both endpoints working correctly, filtering by company, with proper cache control headers.
 
 ### Required Secret Configuration
 **Currently Configured:** ✅

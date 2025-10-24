@@ -726,13 +726,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     async (req: AuthRequest, res) => {
       try {
+        // Disable caching to prevent stale data
+        res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+        res.set('Pragma', 'no-cache');
+        res.set('Expires', '0');
+
         // Get user's BigCommerce token
         const bcToken = await getBigCommerceToken(req);
         const { search, status, sortBy, limit, recent } = req.query;
 
-        console.log(`[Invoices] Fetching ALL invoices for user: ${req.user?.email}`);
+        console.log(`[Invoices] Fetching invoices for user: ${req.user?.email} (Company: ${req.user?.companyId})`);
 
-        // Fetch ALL invoices (no company filtering)
+        // Fetch invoices from BigCommerce
         let invoices: any[] = [];
         try {
           const response = await bigcommerce.getInvoices(bcToken, {
@@ -754,7 +759,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
 
         console.log(`[Invoices] Retrieved ${invoices.length} total invoices`);
-        res.json(invoices);
+
+        // Filter invoices by logged-in user's company
+        const filteredInvoices = filterByCompany(invoices, req.user?.companyId, req.user?.role);
+
+        console.log(`[Invoices] Filtered to ${filteredInvoices.length} invoices for company ${req.user?.companyId}`);
+        res.json(filteredInvoices);
       } catch (error) {
         console.error("Invoices fetch error:", error);
         res.status(500).json({ message: "Failed to fetch invoices" });

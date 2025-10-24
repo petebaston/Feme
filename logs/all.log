@@ -8481,3 +8481,10 @@
 2025-10-24 13:24:31:2431 [32mhttp[39m: [32mGET /src/components/ui/separator.tsx 304 - 0ms[39m
 2025-10-24 13:24:31:2431 [32mhttp[39m: [32mGET /@fs/home/runner/workspace/attached_assets/feme-logo.png 304 - 1ms[39m
 2025-10-24 13:24:31:2431 [32mhttp[39m: [32mGET /favicon.ico 200 - 21ms[39m
+2025-10-24 13:36:08:368 [32mhttp[39m: [32mGET /api/company/addresses 304 - 303ms[39m
+2025-10-24 13:36:10:3610 [32mhttp[39m: [32mGET /api/invoices 304 - 167ms[39m
+2025-10-24 13:36:30:3630 [33mwarn[39m: [33mGET /api/invoices/7442704/pdf 403 - 1ms[39m
+2025-10-24 13:39:55:3955 [33mwarn[39m: [33mGET /api/company/users 403 - 4ms[39m
+2025-10-24 13:41:12:4112 [33mwarn[39m: [33mGET /api/invoices 403 - 1ms[39m
+2025-10-24 13:41:14:4114 [33mwarn[39m: [33mGET /api/company/addresses 403 - 1ms[39m
+2025-10-24 13:41:15:4115 [33mwarn[39m: [33mGET /api/invoices 403 - 1ms[39m
