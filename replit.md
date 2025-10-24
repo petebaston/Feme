@@ -46,18 +46,22 @@ Preferred communication style: Simple, everyday language.
 **Current Status:** ✅ Fixed - Invoices API authenticated correctly, PDF downloads working, inline preview implemented.
 
 ### Users & Addresses - ✅ RESOLVED
-**Previous Issue:** Endpoints `/api/v2/users` and `/api/v2/addresses` returned 404 Not Found.
+**Previous Issues:** 
+1. Endpoints `/api/v2/users` and `/api/v2/addresses` returned 404 Not Found.
+2. Frontend displayed empty results despite successful API calls.
 
-**Root Cause:** Using incorrect V2 REST API paths instead of B2B Edition Management API v3 paths.
+**Root Causes:** 
+1. Using incorrect V2 REST API paths instead of B2B Edition Management API v3 paths.
+2. Company filtering was removing all results (wholesale portal should show ALL companies).
 
 **Solution Implemented:**
-- **Users:** Updated to use `/api/v3/io/users` (Management API v3)
-- **Addresses:** Updated to use `/api/v3/io/addresses` (Management API v3)
-- Both endpoints use OAuth authentication (`BIGCOMMERCE_ACCESS_TOKEN`) - same as invoices
-- Support company filtering via `companyId` query parameter
-- Direct API tests confirmed: 15 users and 19 addresses successfully retrieved
+- **API Endpoints:** Updated to use Management API v3 (`/api/v3/io/users`, `/api/v3/io/addresses`)
+- **Authentication:** Both endpoints use OAuth token (`BIGCOMMERCE_ACCESS_TOKEN`)
+- **Company Filtering:** Removed company filtering to align with wholesale/admin portal design
+- **Direct API Tests:** Confirmed 15 users and 19 addresses successfully retrieved
+- **Frontend Display:** Data now displays correctly across all companies
 
-**Current Status:** ✅ Both endpoints working correctly with proper authentication.
+**Current Status:** ✅ Both endpoints working correctly, displaying all data across companies as designed for wholesale portal.
 
 ### Required Secret Configuration
 **Currently Configured:** ✅
