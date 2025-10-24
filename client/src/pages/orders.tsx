@@ -108,7 +108,12 @@ export default function Orders() {
                     {order.poNumber || '–'}
                   </TableCell>
                   <TableCell className="font-normal">
-                    {formatCurrency(order.total, order.money)}
+                    {(() => {
+                      const currencyCode = order.money?.currency?.code || 'USD';
+                      const symbol = currencyCode === 'GBP' ? '£' : '$';
+                      const amount = parseFloat(order.money?.value || order.totalIncTax || '0');
+                      return `${symbol}${amount.toFixed(2)}`;
+                    })()}
                   </TableCell>
                   <TableCell>
                     <span className={`inline-flex items-center px-3 py-1 text-xs font-medium ${getStatusBadgeClass(order.status)}`}>

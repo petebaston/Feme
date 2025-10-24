@@ -53,3 +53,4 @@
 2025-10-24 10:49:40:4940 [31merror[39m: [31mGET /api/invoices 500 - 813ms[39m
 2025-10-24 10:49:55:4955 [31merror[39m: [31mGET /api/company/addresses 500 - 206ms[39m
 2025-10-24 10:49:56:4956 [31merror[39m: [31mGET /api/company/users 500 - 155ms[39m
+2025-10-24 10:52:42:5242 [31merror[39m: [31mGET /api/invoices 500 - 824ms[39m
