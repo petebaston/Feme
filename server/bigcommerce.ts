@@ -588,7 +588,8 @@ export class BigCommerceService {
   }
 
   async getInvoicePdf(userToken: string | undefined, invoiceId: string) {
-    return this.request(`/api/v3/io/ip/invoices/${invoiceId}/pdf`);
+    // Correct endpoint per BigCommerce documentation
+    return this.request(`/api/v3/io/ip/invoices/${invoiceId}/download-pdf`);
   }
 
   // Products
