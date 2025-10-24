@@ -63,12 +63,45 @@ export default function InvoiceDetail() {
   };
 
   const handleDownloadPDF = async () => {
-    // PDF endpoint not available in BigCommerce B2B Edition API
-    toast({
-      title: "Not Available",
-      description: "PDF download is not available for this invoice. Please contact support for invoice PDFs.",
-      variant: "destructive",
-    });
+    try {
+      const token = localStorage.getItem('b2b_token');
+      if (!token) {
+        throw new Error('Not authenticated');
+      }
+
+      const response = await fetch(`/api/invoices/${id}/pdf`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || 'Failed to download PDF');
+      }
+      
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `invoice-${invoice?.invoiceNumber || id}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      
+      toast({
+        title: "Success",
+        description: "Invoice PDF downloaded successfully",
+      });
+    } catch (error: any) {
+      console.error('PDF download error:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to download invoice PDF",
+        variant: "destructive",
+      });
+    }
   };
 
   if (isLoading) {

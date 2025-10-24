@@ -7791,3 +7791,8 @@
 2025-10-24 12:51:11:5111 [32mhttp[39m: [32mGET /@fs/home/runner/workspace/node_modules/.vite/deps/chunk-QX3GELDJ.js?v=dad8e203 200 - 0ms[39m
 2025-10-24 12:51:11:5111 [32mhttp[39m: [32mGET /@fs/home/runner/workspace/attached_assets/feme-logo.png 200 - 22ms[39m
 2025-10-24 12:51:11:5111 [32mhttp[39m: [32mGET /favicon.ico 200 - 16ms[39m
+2025-10-24 12:55:49:5549 [32mhttp[39m: [32mGET /api/invoices 304 - 756ms[39m
+2025-10-24 12:55:51:5551 [32mhttp[39m: [32mGET /api/invoices/8248017 304 - 177ms[39m
+2025-10-24 12:57:20:5720 [33mwarn[39m: [33mGET /api/invoices/7329752 403 - 2ms[39m
+2025-10-24 12:58:07:587 [32mhttp[39m: [32mGET /src/pages/invoice-detail.tsx?t=1761310687279 200 - 295ms[39m
+2025-10-24 12:58:07:587 [32mhttp[39m: [32mGET /src/index.css?t=1761310687279&v=7pIsamqeeV5oEZP01k9iz 200 - 182ms[39m

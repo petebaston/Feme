@@ -794,7 +794,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       try {
         const bcToken = await getBigCommerceToken(req);
         
-        // Fetch invoice (no company restriction)
+        // Fetch invoice
         const invoiceResponse = await bigcommerce.getInvoice(undefined, req.params.id);
         const invoice = invoiceResponse?.data;
 
@@ -802,11 +802,104 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.status(404).json({ message: 'Invoice not found' });
         }
 
-        const pdfData = await bigcommerce.getInvoicePdf(undefined, req.params.id);
+        // Generate PDF using built-in generator
+        const PDFDocument = require('pdfkit');
+        const doc = new PDFDocument({ margin: 50 });
 
+        // Set response headers
         res.setHeader('Content-Type', 'application/pdf');
-        res.setHeader('Content-Disposition', `attachment; filename=invoice-${req.params.id}.pdf`);
-        res.send(pdfData);
+        res.setHeader('Content-Disposition', `attachment; filename=invoice-${invoice.invoiceNumber || req.params.id}.pdf`);
+
+        // Pipe PDF directly to response
+        doc.pipe(res);
+
+        // Extract data
+        const costLines = invoice.details?.header?.costLines || [];
+        const getCostValue = (description: string) => {
+          const line = costLines.find((l: any) => l.description?.toLowerCase().includes(description.toLowerCase()));
+          return line?.amount?.value || 0;
+        };
+        const subtotal = getCostValue('subtotal');
+        const tax = getCostValue('tax');
+        const freight = getCostValue('freight');
+        const total = costLines.reduce((sum: number, line: any) => sum + (parseFloat(line.amount?.value) || 0), 0);
+        const currency = costLines[0]?.amount?.code || 'GBP';
+        const currencySymbol = currency === 'USD' ? '$' : '£';
+
+        // Header
+        doc.fontSize(20).text('INVOICE', { align: 'right' });
+        doc.fontSize(10).text(`Invoice #${invoice.invoiceNumber}`, { align: 'right' });
+        doc.moveDown();
+
+        // Company info
+        const billingAddr = invoice.details?.header?.billingAddress;
+        if (billingAddr) {
+          doc.fontSize(12).text(`Bill To:`, { continued: false });
+          doc.fontSize(10);
+          if (billingAddr.firstName || billingAddr.lastName) {
+            doc.text(`${billingAddr.firstName || ''} ${billingAddr.lastName || ''}`.trim());
+          }
+          if (billingAddr.street1) doc.text(billingAddr.street1);
+          if (billingAddr.street2) doc.text(billingAddr.street2);
+          doc.text(`${billingAddr.city || ''}, ${billingAddr.state || ''} ${billingAddr.zipCode || ''}`.trim());
+          if (billingAddr.country) doc.text(billingAddr.country);
+        }
+        doc.moveDown();
+
+        // Invoice details
+        doc.fontSize(10);
+        if (invoice.details?.header?.orderDate) {
+          doc.text(`Invoice Date: ${new Date(invoice.details.header.orderDate * 1000).toLocaleDateString()}`);
+        }
+        if (invoice.dueDate) {
+          doc.text(`Due Date: ${new Date(invoice.dueDate * 1000).toLocaleDateString()}`);
+        }
+        if (invoice.orderNumber) {
+          doc.text(`Order Number: ${invoice.orderNumber}`);
+        }
+        doc.moveDown(2);
+
+        // Line items table
+        const lineItems = invoice.details?.details?.lineItems || [];
+        if (lineItems.length > 0) {
+          doc.fontSize(12).text('Items', { underline: true });
+          doc.moveDown(0.5);
+          doc.fontSize(9);
+
+          lineItems.forEach((item: any) => {
+            const itemTotal = parseFloat(item.unitPrice?.value || 0) * parseFloat(item.quantity || 0);
+            doc.text(`${item.description || item.sku}`, { continued: true });
+            doc.text(`Qty: ${item.quantity}  ${currencySymbol}${parseFloat(item.unitPrice?.value || 0).toFixed(2)}  ${currencySymbol}${itemTotal.toFixed(2)}`, { align: 'right' });
+          });
+          doc.moveDown();
+        }
+
+        // Totals
+        doc.moveDown();
+        doc.fontSize(10);
+        const startY = doc.y;
+        if (subtotal > 0) {
+          doc.text(`Subtotal:`, 350, startY);
+          doc.text(`${currencySymbol}${subtotal.toFixed(2)}`, { align: 'right' });
+        }
+        if (tax > 0) {
+          doc.text(`Tax:`, 350);
+          doc.text(`${currencySymbol}${tax.toFixed(2)}`, { align: 'right' });
+        }
+        if (freight > 0) {
+          doc.text(`Freight:`, 350);
+          doc.text(`${currencySymbol}${freight.toFixed(2)}`, { align: 'right' });
+        }
+        doc.moveDown(0.5);
+        doc.fontSize(12).font('Helvetica-Bold');
+        doc.text(`Total:`, 350);
+        doc.text(`${currencySymbol}${total.toFixed(2)}`, { align: 'right' });
+
+        // Footer
+        doc.fontSize(8).font('Helvetica').text('Thank you for your business!', 50, doc.page.height - 50, { align: 'center' });
+
+        // Finalize PDF
+        doc.end();
       } catch (error: any) {
         console.error("Invoice PDF error:", error);
         res.status(500).json({ message: error.message || "Failed to generate invoice PDF" });
