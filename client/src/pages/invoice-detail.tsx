@@ -6,6 +6,19 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ArrowLeft, Download } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
+// Helper to extract cost values from BigCommerce costLines structure
+const getCostValue = (costLines: any[], description: string): number => {
+  if (!Array.isArray(costLines)) return 0;
+  const line = costLines.find(l => l.description?.toLowerCase().includes(description.toLowerCase()));
+  return line?.amount?.value || 0;
+};
+
+// Helper to get total from costLines
+const calculateTotal = (costLines: any[]): number => {
+  if (!Array.isArray(costLines)) return 0;
+  return costLines.reduce((sum, line) => sum + (line.amount?.value || 0), 0);
+};
+
 export default function InvoiceDetail() {
   const { id } = useParams();
   const [, setLocation] = useLocation();
@@ -50,45 +63,12 @@ export default function InvoiceDetail() {
   };
 
   const handleDownloadPDF = async () => {
-    try {
-      const token = localStorage.getItem('b2b_token');
-      if (!token) {
-        throw new Error('Not authenticated');
-      }
-
-      const response = await fetch(`/api/invoices/${id}/pdf`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || 'Failed to download PDF');
-      }
-      
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `invoice-${invoice?.invoiceNumber || id}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-      
-      toast({
-        title: "Success",
-        description: "Invoice PDF downloaded successfully",
-      });
-    } catch (error: any) {
-      console.error('PDF download error:', error);
-      toast({
-        title: "Error",
-        description: error.message || "Failed to download invoice PDF",
-        variant: "destructive",
-      });
-    }
+    // PDF endpoint not available in BigCommerce B2B Edition API
+    toast({
+      title: "Not Available",
+      description: "PDF download is not available for this invoice. Please contact support for invoice PDFs.",
+      variant: "destructive",
+    });
   };
 
   if (isLoading) {
@@ -209,26 +189,43 @@ export default function InvoiceDetail() {
             <CardTitle className="text-lg">Amount Details</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex justify-between">
-              <p className="text-sm text-gray-500">Subtotal</p>
-              <p className="font-medium" data-testid="subtotal">£{parseFloat(invoice.subtotal).toLocaleString()}</p>
-            </div>
-            {invoice.tax && (
-              <div className="flex justify-between">
-                <p className="text-sm text-gray-500">Tax</p>
-                <p className="font-medium" data-testid="tax">£{parseFloat(invoice.tax).toLocaleString()}</p>
-              </div>
-            )}
-            {invoice.shipping && (
-              <div className="flex justify-between">
-                <p className="text-sm text-gray-500">Shipping</p>
-                <p className="font-medium" data-testid="shipping">£{parseFloat(invoice.shipping).toLocaleString()}</p>
-              </div>
-            )}
-            <div className="flex justify-between pt-4 border-t border-gray-200">
-              <p className="text-base font-semibold">Total</p>
-              <p className="text-xl font-bold" data-testid="total">£{parseFloat(invoice.total).toLocaleString()}</p>
-            </div>
+            {(() => {
+              // Extract cost values from BigCommerce API structure
+              const costLines = invoice.details?.header?.costLines || [];
+              const subtotal = getCostValue(costLines, 'subtotal');
+              const tax = getCostValue(costLines, 'tax');
+              const freight = getCostValue(costLines, 'freight');
+              const total = calculateTotal(costLines);
+              const currencyCode = costLines[0]?.amount?.code || 'GBP';
+              const currencySymbol = currencyCode === 'USD' ? '$' : '£';
+
+              return (
+                <>
+                  {subtotal > 0 && (
+                    <div className="flex justify-between">
+                      <p className="text-sm text-gray-500">Subtotal</p>
+                      <p className="font-medium" data-testid="subtotal">{currencySymbol}{subtotal.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                    </div>
+                  )}
+                  {tax > 0 && (
+                    <div className="flex justify-between">
+                      <p className="text-sm text-gray-500">Tax</p>
+                      <p className="font-medium" data-testid="tax">{currencySymbol}{tax.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                    </div>
+                  )}
+                  {freight > 0 && (
+                    <div className="flex justify-between">
+                      <p className="text-sm text-gray-500">Freight</p>
+                      <p className="font-medium" data-testid="shipping">{currencySymbol}{freight.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                    </div>
+                  )}
+                  <div className="flex justify-between pt-4 border-t border-gray-200">
+                    <p className="text-base font-semibold">Total</p>
+                    <p className="text-xl font-bold" data-testid="total">{currencySymbol}{total.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                  </div>
+                </>
+              );
+            })()}
           </CardContent>
         </Card>
       </div>
