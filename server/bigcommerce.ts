@@ -45,11 +45,12 @@ export class BigCommerceService {
 
     // CRITICAL: Separate Storefront vs Management API authentication
     // Storefront APIs (orders, quotes, company, shopping lists): USER TOKEN ONLY via Authorization header
-    // Management APIs (invoices, payments, admin): MANAGEMENT TOKEN via X-Auth-Token header
+    // Management APIs (invoices, payments, admin, company users): MANAGEMENT TOKEN via X-Auth-Token header
     const isManagementEndpoint = endpoint.includes('/api/v3/io/') || 
                                   endpoint.includes('/api/v3/payments') ||
                                   endpoint.includes('/api/v3/super-admin') ||
                                   endpoint.includes('/api/v3/users') ||
+                                  endpoint.includes('/api/v2/users') ||
                                   options.requireManagementToken;
 
     if (isManagementEndpoint) {
