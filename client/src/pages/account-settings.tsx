@@ -28,7 +28,7 @@ export default function AccountSettings() {
     <div className="space-y-6 max-w-2xl">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-normal text-white bg-[#3B82F6] px-4 py-1 inline-block">
+        <h1 className="text-2xl font-normal text-black">
           Account settings
         </h1>
       </div>
@@ -123,6 +123,16 @@ export default function AccountSettings() {
           </div>
         </div>
 
+        {/* Credit Limit (Disabled) */}
+        <div className="space-y-2">
+          <Label className="text-sm font-medium text-gray-500">
+            Credit limit
+          </Label>
+          <div className="h-11 px-3 py-2 bg-gray-100 border border-gray-300 text-gray-500">
+            £25,000.00
+          </div>
+        </div>
+
         {/* Current Password */}
         <div className="space-y-2">
           <Label htmlFor="currentPassword" className="text-sm font-medium text-gray-700">
@@ -133,7 +143,7 @@ export default function AccountSettings() {
             type="password"
             value={formData.currentPassword}
             onChange={(e) => setFormData({ ...formData, currentPassword: e.target.value })}
-            className="h-11 border-gray-300 bg-blue-50"
+            className="h-11 border-gray-300 bg-gray-100"
             disabled
           />
         </div>

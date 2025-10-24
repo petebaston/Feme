@@ -37,8 +37,9 @@ export default function Invoices() {
   // Calculate aged invoice totals
   const calculateTotals = () => {
     let aged1to30 = 0;
-    let aged30to60 = 0;
-    let aged60to90 = 0;
+    let aged31to60 = 0;
+    let aged61to90 = 0;
+    let aged90plus = 0;
     const today = new Date();
 
     filteredInvoices.forEach((invoice: any) => {
@@ -60,17 +61,19 @@ export default function Invoices() {
       // Categorize into aging buckets
       if (daysOverdue >= 1 && daysOverdue <= 30) {
         aged1to30 += amount;
-      } else if (daysOverdue > 30 && daysOverdue <= 60) {
-        aged30to60 += amount;
-      } else if (daysOverdue > 60 && daysOverdue <= 90) {
-        aged60to90 += amount;
+      } else if (daysOverdue >= 31 && daysOverdue <= 60) {
+        aged31to60 += amount;
+      } else if (daysOverdue >= 61 && daysOverdue <= 90) {
+        aged61to90 += amount;
+      } else if (daysOverdue > 90) {
+        aged90plus += amount;
       }
     });
 
-    return { aged1to30, aged30to60, aged60to90 };
+    return { aged1to30, aged31to60, aged61to90, aged90plus };
   };
 
-  const { aged1to30, aged30to60, aged60to90 } = calculateTotals();
+  const { aged1to30, aged31to60, aged61to90, aged90plus } = calculateTotals();
 
   const getStatusBadgeClass = (status: number) => {
     // Status is numeric: 0 = open/pending, 1 = paid, 2 = overdue
@@ -120,7 +123,7 @@ export default function Invoices() {
     if (pdfBlobUrls[invoiceId]) return; // Already loaded
 
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('b2b_token') || localStorage.getItem('token');
       const response = await fetch(`/api/invoices/${invoiceId}/pdf`, {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -144,7 +147,7 @@ export default function Invoices() {
     <div className="space-y-6 max-w-full">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-normal text-white bg-[#6366F1] px-4 py-1 inline-block">
+        <h1 className="text-2xl font-normal text-black">
           Invoices
         </h1>
       </div>
@@ -165,8 +168,21 @@ export default function Invoices() {
         </button>
       </div>
 
+      {/* Credit Limit */}
+      <div className="bg-white border border-gray-200 p-6">
+        <div className="flex items-baseline justify-between">
+          <div>
+            <div className="text-sm font-medium text-gray-500 mb-1">CREDIT LIMIT</div>
+            <div className="text-3xl font-normal text-black">{formatCurrency(25000)}</div>
+          </div>
+          <div className="text-sm text-gray-600">
+            <div>Available: {formatCurrency(25000 - aged1to30 - aged31to60 - aged61to90 - aged90plus)}</div>
+          </div>
+        </div>
+      </div>
+
       {/* Summary Bar - Aged Invoices */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         {/* 1-30 Days */}
         <div className="bg-white border border-gray-200 p-6">
           <div className="flex items-baseline justify-between">
@@ -178,25 +194,36 @@ export default function Invoices() {
           </div>
         </div>
 
-        {/* 30-60 Days */}
+        {/* 31-60 Days */}
         <div className="bg-white border border-gray-200 p-6">
           <div className="flex items-baseline justify-between">
             <div>
-              <div className="text-sm font-medium text-gray-500 mb-1">30-60 DAYS</div>
-              <div className="text-3xl font-normal text-orange-600">{formatCurrency(aged30to60)}</div>
+              <div className="text-sm font-medium text-gray-500 mb-1">31-60 DAYS</div>
+              <div className="text-3xl font-normal text-orange-600">{formatCurrency(aged31to60)}</div>
             </div>
             <div className="w-3 h-3 bg-orange-500"></div>
           </div>
         </div>
 
-        {/* 60-90 Days */}
+        {/* 61-90 Days */}
         <div className="bg-white border border-gray-200 p-6">
           <div className="flex items-baseline justify-between">
             <div>
-              <div className="text-sm font-medium text-gray-500 mb-1">60-90 DAYS</div>
-              <div className="text-3xl font-normal text-red-600">{formatCurrency(aged60to90)}</div>
+              <div className="text-sm font-medium text-gray-500 mb-1">61-90 DAYS</div>
+              <div className="text-3xl font-normal text-red-600">{formatCurrency(aged61to90)}</div>
             </div>
             <div className="w-3 h-3 bg-red-500"></div>
+          </div>
+        </div>
+
+        {/* 90+ Days */}
+        <div className="bg-white border border-gray-200 p-6">
+          <div className="flex items-baseline justify-between">
+            <div>
+              <div className="text-sm font-medium text-gray-500 mb-1">90+ DAYS</div>
+              <div className="text-3xl font-normal text-red-700">{formatCurrency(aged90plus)}</div>
+            </div>
+            <div className="w-3 h-3 bg-red-700"></div>
           </div>
         </div>
       </div>
@@ -221,7 +248,7 @@ export default function Invoices() {
                 </div>
               </TableHead>
               <TableHead className="font-medium">Company</TableHead>
-              <TableHead className="font-medium">Order</TableHead>
+              <TableHead className="font-medium">Sales Order</TableHead>
               <TableHead className="font-medium">Invoice date</TableHead>
               <TableHead className="font-medium">Due date</TableHead>
               <TableHead className="font-medium">Invoice total</TableHead>
@@ -348,7 +375,7 @@ export default function Invoices() {
                             <Button
                               variant="outline"
                               onClick={async () => {
-                                const token = localStorage.getItem('token');
+                                const token = localStorage.getItem('b2b_token') || localStorage.getItem('token');
                                 const response = await fetch(`/api/invoices/${invoice.id}/pdf`, {
                                   headers: { 'Authorization': `Bearer ${token}` }
                                 });

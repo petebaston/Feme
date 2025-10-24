@@ -155,6 +155,23 @@ export default function Login() {
           </CardContent>
         </Card>
 
+        <Card className="border border-gray-200 shadow-sm mt-6">
+          <CardContent className="pt-6">
+            <div className="text-center space-y-2">
+              <p className="text-sm text-gray-600">Don't have an account?</p>
+              <Button
+                variant="outline"
+                className="w-full h-11 border-gray-300 hover:bg-gray-50"
+                onClick={() => window.open('https://example.com/register', '_blank')}
+                data-testid="button-register"
+              >
+                Register for an Account
+              </Button>
+              <p className="text-xs text-gray-500 mt-2">You'll be redirected to our registration site</p>
+            </div>
+          </CardContent>
+        </Card>
+
         <div className="text-center mt-6 text-sm text-gray-500">
           <p>Powered by BigCommerce B2B Edition GraphQL API</p>
         </div>

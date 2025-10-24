@@ -466,8 +466,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const bcOrders = response?.data?.list || response?.data || [];
         const orders = Array.isArray(bcOrders) ? bcOrders.map(transformOrder) : [];
 
-        console.log(`[Company Orders] Returning ${orders.length} company orders`);
-        res.json(orders);
+        // CRITICAL: Filter by company to ensure multi-tenant isolation (same as invoices)
+        const filteredOrders = filterByCompany(orders, req.user?.companyId, req.user?.role);
+
+        console.log(`[Company Orders] Filtered ${orders.length} total orders to ${filteredOrders.length} company orders`);
+        res.json(filteredOrders);
       } catch (error) {
         console.error("Company Orders fetch error:", error);
         res.status(500).json({ message: "Failed to fetch company orders" });

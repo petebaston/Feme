@@ -37,7 +37,7 @@ export default function Sidebar() {
 
       {/* Desktop Sidebar */}
       <div className="hidden md:flex md:w-44 md:flex-col md:fixed md:inset-y-0 md:top-16">
-        <div className="flex flex-col flex-grow pt-5 pb-4 overflow-y-auto bg-[#FAFAF5] h-full">
+        <div className="flex flex-col flex-grow pt-5 pb-4 overflow-y-auto bg-white border-r border-gray-200 h-full">
           <nav className="flex-1 px-2 space-y-0.5">
             {navigation.map((item) => {
               const isActive = location === item.href || (item.href !== '/orders' && location?.startsWith(item.href));
@@ -65,7 +65,7 @@ export default function Sidebar() {
       {/* Mobile Sidebar */}
       <div
         className={cn(
-          "md:hidden fixed inset-y-0 left-0 z-40 w-64 bg-[#FAFAF5] transform transition-transform duration-300 ease-in-out",
+          "md:hidden fixed inset-y-0 left-0 z-40 w-64 bg-white border-r border-gray-200 transform transition-transform duration-300 ease-in-out",
           mobileMenuOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >

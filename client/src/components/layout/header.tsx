@@ -47,7 +47,7 @@ export default function Header() {
   };
 
   return (
-    <header className="sticky top-0 z-40 w-full bg-[#FAFAF5]">
+    <header className="sticky top-0 z-40 w-full bg-white border-b border-gray-200">
       <div className="flex h-16 items-center justify-between px-6">
         <Link href="/" className="flex items-center" data-testid="link-logo">
           <img src={femeLogo} alt="FEME" className="h-8" />
