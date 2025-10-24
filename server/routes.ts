@@ -411,10 +411,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const bcOrders = response?.data?.list || response?.data || [];
         const allOrders = Array.isArray(bcOrders) ? bcOrders.map(transformOrder) : [];
 
-        // Filter orders by customer IDs (matching invoices approach)
+        // Get company info for additional filtering
+        const companyResponse = await bigcommerce.getCompany(bcToken);
+        const companyName = companyResponse?.data?.companyName;
+
+        // Filter orders by customer IDs AND company name in billing address
         const companyOrders = allOrders.filter((order: any) => {
           const orderCustomerId = order.customer_id || order.customerId;
-          return customerIds.includes(orderCustomerId);
+          const billingCompany = order.billingAddress?.company || order.companyName || '';
+          
+          // Must match customer ID
+          if (!customerIds.includes(orderCustomerId)) {
+            return false;
+          }
+          
+          // Must have company ID or company name in billing address (for B2B orders)
+          // OR be from B2B Edition API (has companyId field)
+          const hasCompanyInBilling = billingCompany.includes(companyId) || 
+                                      (companyName && billingCompany.includes(companyName));
+          const isB2BOrder = !!order.companyId;
+          
+          return hasCompanyInBilling || isB2BOrder;
         });
 
         res.json(companyOrders);
