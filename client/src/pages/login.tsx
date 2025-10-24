@@ -1,18 +1,29 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import femeLogo from "@assets/feme-logo.png";
 
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+
+  // Load remembered email on component mount
+  useEffect(() => {
+    const rememberedEmail = localStorage.getItem('remembered_email');
+    if (rememberedEmail) {
+      setEmail(rememberedEmail);
+      setRememberMe(true);
+    }
+  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,6 +46,13 @@ export default function Login() {
 
       localStorage.setItem('b2b_token', data.accessToken);
       localStorage.setItem('user', JSON.stringify(data.user));
+
+      // Save email if remember me is checked
+      if (rememberMe) {
+        localStorage.setItem('remembered_email', email);
+      } else {
+        localStorage.removeItem('remembered_email');
+      }
 
       toast({
         title: "Login Successful",
@@ -100,6 +118,22 @@ export default function Login() {
                   className="h-11 border-gray-300 focus:border-black focus:ring-black"
                   data-testid="input-password"
                 />
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="remember"
+                  checked={rememberMe}
+                  onCheckedChange={(checked) => setRememberMe(checked as boolean)}
+                  className="border-gray-300 data-[state=checked]:bg-black data-[state=checked]:border-black"
+                  data-testid="checkbox-remember"
+                />
+                <Label
+                  htmlFor="remember"
+                  className="text-sm font-normal text-gray-700 cursor-pointer"
+                >
+                  Remember me
+                </Label>
               </div>
 
               <Button
