@@ -13,7 +13,6 @@ import Login from "@/pages/login";
 import Dashboard from "@/pages/dashboard";
 import Orders from "@/pages/orders";
 import OrderDetail from "@/pages/order-detail";
-import CompanyOrders from "@/pages/company-orders";
 import Invoices from "@/pages/invoices";
 import InvoiceDetail from "@/pages/invoice-detail";
 import Addresses from "@/pages/addresses";
@@ -74,7 +73,6 @@ function Router() {
             <Route path="/" component={Orders} />
             <Route path="/orders/:id" component={OrderDetail} />
             <Route path="/orders" component={Orders} />
-            <Route path="/company-orders" component={CompanyOrders} />
             <Route path="/invoices/:id" component={InvoiceDetail} />
             <Route path="/invoices" component={Invoices} />
             <Route path="/addresses" component={Addresses} />

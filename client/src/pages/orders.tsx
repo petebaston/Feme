@@ -9,8 +9,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 export default function Orders() {
   const [searchTerm, setSearchTerm] = useState("");
 
-  const { data: orders, isLoading, error } = useQuery<any[]>({
-    queryKey: ['/api/my-orders'],
+  const { data: orders, isLoading, error} = useQuery<any[]>({
+    queryKey: ['/api/orders'],
     staleTime: 300000,
     retry: false,
   });
@@ -49,7 +49,7 @@ export default function Orders() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-normal text-black">My orders</h1>
+        <h1 className="text-2xl font-normal text-black">Orders</h1>
       </div>
 
       {/* Search and Filter */}
