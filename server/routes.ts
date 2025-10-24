@@ -466,24 +466,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const bcOrders = response?.data?.list || response?.data || [];
         const orders = Array.isArray(bcOrders) ? bcOrders.map(transformOrder) : [];
 
-        // CRITICAL: Filter by company to ensure multi-tenant isolation
-        // Note: Standard BigCommerce API orders don't have companyId, so filterByCompany would exclude them all
-        // For B2B Edition orders, use filterByCompany; for standard API, return all (single-company scenario)
-        let filteredOrders: any[];
-        
-        // Check if orders have companyId (B2B Edition) or not (standard API)
+        console.log(`[Company Orders] Retrieved ${orders.length} orders`);
+        if (orders.length > 0) {
+          console.log(`[Company Orders] First order sample:`, JSON.stringify(orders[0]).substring(0, 500));
+          console.log(`[Company Orders] Has companyId:`, orders[0].companyId ? 'YES' : 'NO');
+        }
+
+        // Standard BigCommerce API orders don't have companyId - return all for single-company
+        // B2B Edition orders have companyId - filter by company for multi-tenant
         const hasCompanyIds = orders.length > 0 && orders.some(order => order.companyId);
+        console.log(`[Company Orders] hasCompanyIds: ${hasCompanyIds}`);
         
+        let filteredOrders: any[];
         if (hasCompanyIds) {
           // B2B Edition orders - filter by company
           filteredOrders = filterByCompany(orders, req.user?.companyId, req.user?.role);
         } else {
-          // Standard API orders - return all (no company-level filtering available)
-          // In single-company scenario, all orders belong to the company
+          // Standard API orders - return all
           filteredOrders = orders;
         }
 
-        console.log(`[Company Orders] Filtered ${orders.length} total orders to ${filteredOrders.length} company orders`);
+        console.log(`[Company Orders] Returning ${filteredOrders.length} company orders`);
         res.json(filteredOrders);
       } catch (error) {
         console.error("Company Orders fetch error:", error);
