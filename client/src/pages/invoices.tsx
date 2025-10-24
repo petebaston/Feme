@@ -124,22 +124,34 @@ export default function Invoices() {
 
     try {
       const token = localStorage.getItem('b2b_token') || localStorage.getItem('token');
+      console.log('[PDF] Fetching PDF for invoice:', invoiceId);
+      
       const response = await fetch(`/api/invoices/${invoiceId}/pdf`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
       });
 
+      console.log('[PDF] Response status:', response.status);
+      console.log('[PDF] Content-Type:', response.headers.get('Content-Type'));
+
       if (!response.ok) {
-        throw new Error('Failed to load PDF');
+        const text = await response.text();
+        console.error('[PDF] Error response:', text);
+        throw new Error(`Failed to load PDF: ${response.status}`);
       }
 
-      const blob = await response.blob();
+      const arrayBuffer = await response.arrayBuffer();
+      console.log('[PDF] Received', arrayBuffer.byteLength, 'bytes');
+      
+      const blob = new Blob([arrayBuffer], { type: 'application/pdf' });
       const blobUrl = URL.createObjectURL(blob);
+      console.log('[PDF] Created blob URL:', blobUrl);
       
       setPdfBlobUrls(prev => ({ ...prev, [invoiceId]: blobUrl }));
     } catch (error) {
-      console.error('Error loading PDF:', error);
+      console.error('[PDF] Error loading PDF:', error);
+      setPdfBlobUrls(prev => ({ ...prev, [invoiceId]: 'ERROR' }));
     }
   };
 
@@ -399,7 +411,11 @@ export default function Invoices() {
                             </Button>
                           </div>
                           <div className="border border-gray-300 bg-white" style={{ height: '600px' }}>
-                            {pdfBlobUrls[invoice.id] ? (
+                            {pdfBlobUrls[invoice.id] === 'ERROR' ? (
+                              <div className="flex items-center justify-center h-full">
+                                <p className="text-red-600">Failed to load PDF. Check console for details.</p>
+                              </div>
+                            ) : pdfBlobUrls[invoice.id] ? (
                               <iframe
                                 src={pdfBlobUrls[invoice.id]}
                                 className="w-full h-full"
