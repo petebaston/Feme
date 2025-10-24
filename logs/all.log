@@ -10688,3 +10688,9 @@
 2025-10-24 15:13:02:132 [32mhttp[39m: [32mGET /favicon.ico 200 - 6ms[39m
 2025-10-24 15:13:02:132 [32mhttp[39m: [32mGET /api/invoices 200 - 243ms[39m
 2025-10-24 15:13:05:135 [32mhttp[39m: [32mGET /api/invoices/7880025/pdf 200 - 1810ms[39m
+2025-10-24 15:13:30:1330 [32mhttp[39m: [32mGET /api/invoices/7329752/pdf 200 - 1950ms[39m
+2025-10-24 15:13:42:1342 [32mhttp[39m: [32mGET /api/invoices/7442704/pdf 200 - 2119ms[39m
+2025-10-24 15:13:49:1349 [32mhttp[39m: [32mGET /favicon.ico 200 - 5ms[39m
+2025-10-24 15:13:51:1351 [32mhttp[39m: [32mGET /api/company-orders 200 - 1448ms[39m
+2025-10-24 15:13:52:1352 [32mhttp[39m: [32mGET /favicon.ico 200 - 3ms[39m
+2025-10-24 15:15:32:1532 [32mhttp[39m: [32mGET /api/company-orders 200 - 4026ms[39m
