@@ -12,6 +12,7 @@ interface BigCommerceConfig {
 
 export class BigCommerceService {
   private config: BigCommerceConfig;
+  private serverToServerToken: string = '';
 
   constructor() {
     const storeHash = process.env.BIGCOMMERCE_STORE_HASH || process.env.VITE_STORE_HASH || '';
@@ -34,6 +35,24 @@ export class BigCommerceService {
       hasManagementToken: !!this.config.managementToken,
       hasClientId: !!this.config.clientId,
     });
+  }
+
+  // Generate Server-to-Server Token for Management API
+  // Per docs: https://developer.bigcommerce.com/b2b-edition/apis/rest-management/authentication#get-a-server-to-server-token
+  private async getServerToServerToken(): Promise<string> {
+    // Return cached token if available
+    if (this.serverToServerToken) {
+      return this.serverToServerToken;
+    }
+
+    // Use the management token directly if provided (it IS a server-to-server token)
+    if (this.config.managementToken) {
+      this.serverToServerToken = this.config.managementToken;
+      return this.serverToServerToken;
+    }
+
+    console.error('[BigCommerce] No B2B Management Token configured');
+    throw new Error('B2B Management Token not configured');
   }
 
   private async request(endpoint: string, options: any = {}) {
@@ -59,9 +78,12 @@ export class BigCommerceService {
                                   options.requireManagementToken;
 
     if (isManagementEndpoint) {
-      // Management API: requires B2B Management Token via X-Auth-Token header (per official B2B Edition API docs)
-      if (this.config.managementToken) {
-        headers['X-Auth-Token'] = this.config.managementToken;
+      // Management API: requires B2B Server-to-Server Token via X-Auth-Token header
+      try {
+        const serverToken = await this.getServerToServerToken();
+        headers['X-Auth-Token'] = serverToken;
+      } catch (error: any) {
+        console.error('[BigCommerce] Failed to get server-to-server token:', error.message);
       }
     }
 

@@ -740,15 +740,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log(`[Invoices] User ${req.user?.email} has ${userOrderNumbers.size} orders from company: ${companyName}`);
 
         // Fetch all invoices
-        const response = await bigcommerce.getInvoices(bcToken, {
-          search: search as string,
-          status: status as string,
-          sortBy: sortBy as string,
-          limit: limit ? parseInt(limit as string) : undefined,
-          recent: recent === 'true',
-        });
-
-        const allInvoices = response?.data?.list || response?.data || [];
+        let allInvoices: any[] = [];
+        try {
+          const response = await bigcommerce.getInvoices(bcToken, {
+            search: search as string,
+            status: status as string,
+            sortBy: sortBy as string,
+            limit: limit ? parseInt(limit as string) : undefined,
+            recent: recent === 'true',
+          });
+          allInvoices = response?.data?.list || response?.data || [];
+        } catch (invoiceError: any) {
+          // Handle 403 as "no invoices available" (common when B2B Edition has no invoices created)
+          if (invoiceError.message?.includes('403') || invoiceError.message?.includes('Forbidden')) {
+            console.log('[Invoices] 403 error - likely no invoices in system or insufficient permissions');
+            allInvoices = [];
+          } else {
+            throw invoiceError; // Re-throw other errors
+          }
+        }
 
         // CRITICAL SECURITY: Filter invoices to only those matching user's order numbers
         const userInvoices = allInvoices.filter((inv: any) => {
