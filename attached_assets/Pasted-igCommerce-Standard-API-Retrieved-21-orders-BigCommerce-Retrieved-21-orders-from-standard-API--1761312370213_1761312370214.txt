@@ -1,0 +1,74 @@
+igCommerce Standard API] Retrieved 21 orders
+[BigCommerce] ✅ Retrieved 21 orders from standard API
+[Cache] Stored 21 standard API orders for company 12140869
+[Company Orders] Returning 21 company orders
+2025-10-24 13:22:16:2216 http: GET /api/company-orders 200 - 1355ms
+1:22:16 PM [express] GET /api/company-orders 200 in 1355ms :: [{"id":100,"bcOrderId":100,"customerNa…
+[Invoices] Fetching ALL invoices for user: afrowholesaledirect@FEME.com
+[BigCommerce] GET https://api-b2b.bigcommerce.com/api/v3/io/ip/invoices
+[BigCommerce] Headers: {
+  "Content-Type": "application/json",
+  "X-Store-Hash": "pyrenapwe2",
+  "X-Channel-Id": "1",
+  "X-Auth-Token": "***"
+}
+[BigCommerce] Response Status: 200 OK
+[BigCommerce] Response Body: {"code":200,"data":[{"id":8248017,"customerId":"9546850","externalId":null,"externalCustomerId":null,"invoiceNumber":"68098","type":"Invoice","dueDate":1760659200,"status":0,"orderNumber":118,"purchaseOrderNumber":null,"details":{"header":{"costLines":[{"amount":{"code":"GBP","value":33.14},"description":"Subtotal"},{"amount":{"code":"GBP","value":0.0},"description":"Freight"},{"amount":{"code":"GBP","value":6.6},"description":"Sales Tax"}],"billingAddress":{"city":"Sheffield","state":"","countr...
+[Invoices] Retrieved 8 total invoices
+2025-10-24 13:22:18:2218 http: GET /api/invoices 200 - 181ms
+1:22:18 PM [express] GET /api/invoices 200 in 182ms :: [{"id":8248017,"customerId":"9546850","extern…
+[BigCommerce] GET https://api-b2b.bigcommerce.com/api/v3/io/addresses
+[BigCommerce] Headers: {
+  "Content-Type": "application/json",
+  "X-Store-Hash": "pyrenapwe2",
+  "X-Channel-Id": "1",
+  "X-Auth-Token": "***"
+}
+[BigCommerce] Response Status: 200 OK
+[BigCommerce] Response Body: {"code":200,"data":[{"addressId":26849767,"firstName":"Laura","lastName":"Imani","phoneNumber":null,"zipCode":"93000","addressLine1":"19 rue Eugene Henaff","addressLine2":null,"city":"Bobigny","stateName":null,"countryName":"France","stateCode":null,"countryCode":"FR","companyId":"9652040","isBilling":true,"isShipping":true,"isDefaultBilling":true,"isDefaultShipping":true,"label":null,"externalId":"20197"},{"addressId":26515154,"firstName":"Sam","lastName":"Pal-Byrne","phoneNumber":null,"zipCode...
+2025-10-24 13:22:21:2221 http: GET /api/company/addresses 304 - 195ms
+1:22:21 PM [express] GET /api/company/addresses 304 in 195ms :: []
+[BigCommerce] GET https://api-b2b.bigcommerce.com/api/v3/io/users
+[BigCommerce] Headers: {
+  "Content-Type": "application/json",
+  "X-Store-Hash": "pyrenapwe2",
+  "X-Channel-Id": "1",
+  "X-Auth-Token": "***"
+}
+[BigCommerce] Response Status: 200 OK
+[BigCommerce] Response Body: {"code":200,"data":[{"id":10774467,"createdAt":1745404019,"updatedAt":1755255092,"firstName":"PAUL","lastName":"Oladapo","email":"paul.oladapo@feme.com","phoneNumber":"07984936161","role":2,"customerId":10,"companyId":7780711,"uuid":"","channelList":[],"companyRoleId":22083,"companyRoleName":"Store Owner"},{"id":10789508,"createdAt":1745503869,"updatedAt":1755502846,"firstName":"BigCommerce","lastName":"Testing","email":"t2@bigcommerce.com","phoneNumber":"5192214871","role":0,"customerId":11,"co...
+2025-10-24 13:22:26:2226 http: GET /api/company/users 304 - 3918ms
+1:22:26 PM [express] GET /api/company/users 304 in 3919ms :: []
+2025-10-24 13:24:28:2428 http: GET /addresses 200 - 18ms
+2025-10-24 13:24:28:2428 http: GET /@vite/client 200 - 21ms
+2025-10-24 13:24:28:2428 http: GET /@replit/vite-plugin-dev-banner/banner-script.js 200 - 1ms
+2025-10-24 13:24:28:2428 http: GET /src/main.tsx?v=F3FJEnYiVOHF4AasYXUOZ 200 - 1ms
+2025-10-24 13:24:28:2428 http: GET /@react-refresh 200 - 12ms
+2025-10-24 13:24:28:2428 http: GET /@fs/home/runner/workspace/node_modules/vite/dist/client/env.mjs 200 - 1ms
+2025-10-24 13:24:28:2428 http: GET /@fs/home/runner/workspace/node_modules/.vite/deps/react_jsx-dev-runtime.js?v=2d4ba003 200 - 1ms
+2025-10-24 13:24:28:2428 http: GET /@fs/home/runner/workspace/node_modules/.vite/deps/react-dom_client.js?v=2d4ba003 200 - 1ms
+2025-10-24 13:24:28:2428 http: GET /src/App.tsx?t=1761311239250&v=F3FJEnYiVOHF4AasYXUOZ 200 - 0ms
+2025-10-24 13:24:28:2428 http: GET /src/index.css?t=1761311239250&v=F3FJEnYiVOHF4AasYXUOZ 200 - 1ms
+2025-10-24 13:24:28:2428 http: GET /@fs/home/runner/workspace/node_modules/.vite/deps/chunk-QCHXOAYK.js?v=2d4ba003 200 - 0ms
+2025-10-24 13:24:28:2428 http: GET /@fs/home/runner/workspace/node_modules/.vite/deps/chunk-WOOG5QLI.js?v=2d4ba003 200 - 0ms
+2025-10-24 13:24:28:2428 http: GET /@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js?v=2d4ba003 200 - 13ms
+2025-10-24 13:24:28:2428 http: GET /@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=2d4ba003 200 - 0ms
+2025-10-24 13:24:28:2428 http: GET /src/lib/queryClient.ts 200 - 1ms
+2025-10-24 13:24:28:2428 http: GET /@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=2d4ba003 200 - 0ms
+2025-10-24 13:24:28:2428 http: GET /@fs/home/runner/workspace/node_modules/.vite/deps/@apollo_client_react.js?v=2d4ba003 200 - 0ms
+2025-10-24 13:24:28:2428 http: GET /src/lib/graphql-client.ts 200 - 0ms
+2025-10-24 13:24:28:2428 http: GET /src/components/ui/toaster.tsx 200 - 1ms
+2025-10-24 13:24:28:2428 http: GET /src/components/ui/tooltip.tsx 200 - 0ms
+2025-10-24 13:24:28:2428 http: GET /src/components/error-boundary.tsx 200 - 2ms
+2025-10-24 13:24:28:2428 http: GET /@fs/home/runner/workspace/node_modules/.vite/deps/react.js?v=2d4ba003 200 - 2ms
+2025-10-24 13:24:28:2428 http: GET /src/pages/not-found.tsx 200 - 1ms
+2025-10-24 13:24:28:2428 http: GET /src/pages/login.tsx 200 - 0ms
+2025-10-24 13:24:28:2428 http: GET /src/pages/orders.tsx 200 - 0ms
+2025-10-24 13:24:28:2428 http: GET /src/pages/order-detail.tsx 200 - 3ms
+2025-10-24 13:24:28:2428 http: GET /src/pages/company-orders.tsx 200 - 1ms
+2025-10-24 13:24:28:2428 http: GET /src/pages/invoices.tsx?t=1761311239250 200 - 1ms
+2025-10-24 13:24:28:2428 http: GET /src/pages/invoice-detail.tsx 200 - 2ms
+2025-10-24 13:24:28:2428 http: GET /src/pages/addresses.tsx 200 - 1ms
+2025-10-24 13:24:28:2428 http: GET /src/pages/user-management.tsx 200 - 3ms
+2025-10-24 13:24:28:2428 http: GET /src/pages/account-settings.tsx 200 - 1ms
+2025-10-24 13:24:28:2428 http: GET /src/compone
