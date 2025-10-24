@@ -7653,3 +7653,5 @@
 2025-10-24 12:44:28:4428 [32mhttp[39m: [32mGET /src/components/ui/separator.tsx 304 - 0ms[39m
 2025-10-24 12:44:28:4428 [32mhttp[39m: [32mGET /@fs/home/runner/workspace/attached_assets/feme-logo.png 304 - 1ms[39m
 2025-10-24 12:44:28:4428 [32mhttp[39m: [32mGET /favicon.ico 200 - 8ms[39m
+2025-10-24 12:45:22:4522 [32mhttp[39m: [32mGET /api/invoices 200 - 702ms[39m
+2025-10-24 12:45:25:4525 [32mhttp[39m: [32mGET /api/invoices/7329752 200 - 182ms[39m
