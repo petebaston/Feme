@@ -251,6 +251,7 @@ export class BigCommerceService {
           orderId: order.id,
           id: order.id,
           bcOrderId: order.id,
+          customer_id: order.customer_id,  // CRITICAL: Preserve customer_id for company filtering
           createdAt: new Date(order.date_created).getTime() / 1000,
           updatedAt: new Date(order.date_modified).getTime() / 1000,
           status: this.mapStandardStatus(order.status_id),

@@ -55,6 +55,7 @@ function transformOrder(bcOrder: any): any {
     items: bcOrder.productsList || bcOrder.products || [],
     poNumber: bcOrder.poNumber || '',
     referenceNumber: bcOrder.referenceNumber || '',
+    customerId: bcOrder.customer_id || bcOrder.customerId,  // Preserve customer_id for company filtering
     companyId: bcOrder.companyId,
     companyName: bcOrder.companyName,
     firstName: bcOrder.firstName,
@@ -365,6 +366,72 @@ export async function registerRoutes(app: Express): Promise<Server> {
   );
 
   // Orders endpoints
+  
+  // Orders - Company-filtered orders (proper implementation matching invoices)
+  app.get("/api/orders",
+    authenticateToken,
+    sessionTimeout,
+    async (req: AuthRequest, res) => {
+      try {
+        console.log('[Orders] Fetching company orders for user:', req.user?.email);
+        const bcToken = await getBigCommerceToken(req);
+        const { search, status, sortBy, limit, recent } = req.query;
+
+        // Get user's company ID
+        const companyId = req.user?.companyId;
+        if (!companyId) {
+          console.warn('[Orders] No company ID found for user');
+          return res.json([]);
+        }
+
+        // Fetch all customer IDs for this company (like we do for invoices)
+        const customerIds = await bigcommerce.getCompanyCustomerIds(bcToken, companyId);
+        
+        if (customerIds.length === 0) {
+          console.warn('[Orders] No customer IDs found for company', companyId);
+          return res.json([]);
+        }
+
+        console.log(`[Orders] Filtering orders for company ${companyId} with ${customerIds.length} customer IDs`);
+
+        // Fetch all orders from standard BigCommerce API
+        const response = await bigcommerce.getOrders(bcToken, {
+          search: search as string,
+          status: status as string,
+          sortBy: sortBy as string,
+          limit: limit ? parseInt(limit as string) : 1000,
+          recent: recent === 'true',
+        }, companyId);
+
+        if (response?.errMsg || response?.error) {
+          console.warn("[Orders] BigCommerce returned error:", response.errMsg || response.error);
+          return res.json([]);
+        }
+
+        const bcOrders = response?.data?.list || response?.data || [];
+        const allOrders = Array.isArray(bcOrders) ? bcOrders.map(transformOrder) : [];
+
+        // Filter orders by customer IDs (matching invoices approach)
+        console.log(`[Orders] Sample order structure:`, JSON.stringify(allOrders[0]).substring(0, 300));
+        
+        const companyOrders = allOrders.filter((order: any) => {
+          // Standard BC orders have customer_id field
+          const orderCustomerId = order.customer_id || order.customerId;
+          const matches = customerIds.includes(orderCustomerId);
+          
+          console.log(`[Orders] Order ${order.id}: customer_id=${orderCustomerId}, matches=${matches}`);
+          
+          return matches;
+        });
+
+        console.log(`[Orders] Filtered ${allOrders.length} total orders to ${companyOrders.length} company orders for company ${companyId}`);
+        res.json(companyOrders);
+      } catch (error) {
+        console.error("Orders fetch error:", error);
+        res.status(500).json({ message: "Failed to fetch orders" });
+      }
+    }
+  );
   
   // My Orders - orders placed by the logged-in user
   app.get("/api/my-orders",
