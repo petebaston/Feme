@@ -730,54 +730,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const bcToken = await getBigCommerceToken(req);
         const { search, status, sortBy, limit, recent } = req.query;
 
-        // CRITICAL SECURITY: Get user's orders first to know which invoices belong to them
-        // Orders API already filters by user automatically
-        const ordersResponse = await bigcommerce.getOrders(bcToken, { limit: 1000 });
-        const userOrders = ordersResponse?.data?.list || ordersResponse?.data || [];
-        const userOrderNumbers = new Set(userOrders.map((o: any) => o.orderId));
-        const companyName = userOrders.length > 0 ? userOrders[0].companyName : null;
+        // CRITICAL SECURITY: Get user's company ID for filtering
+        // Per BigCommerce best practice: filter at API level using customerId parameter
+        if (!req.user?.companyId) {
+          console.warn(`[Invoices] No company ID for user ${req.user?.email}`);
+          return res.json([]); // No company = no invoices
+        }
 
-        console.log(`[Invoices] User ${req.user?.email} has ${userOrderNumbers.size} orders from company: ${companyName}`);
+        console.log(`[Invoices] Fetching invoices for company ID: ${req.user.companyId}, user: ${req.user?.email}`);
 
-        // Fetch all invoices
-        let allInvoices: any[] = [];
+        // Fetch invoices filtered by company ID (BigCommerce best practice)
+        let invoices: any[] = [];
         try {
           const response = await bigcommerce.getInvoices(bcToken, {
+            customerId: req.user.companyId, // CRITICAL: Filter by company at API level
             search: search as string,
             status: status as string,
             sortBy: sortBy as string,
             limit: limit ? parseInt(limit as string) : undefined,
             recent: recent === 'true',
           });
-          allInvoices = response?.data?.list || response?.data || [];
+          invoices = response?.data?.list || response?.data || [];
         } catch (invoiceError: any) {
           // Handle 403 as "no invoices available" (common when B2B Edition has no invoices created)
           if (invoiceError.message?.includes('403') || invoiceError.message?.includes('Forbidden')) {
             console.log('[Invoices] 403 error - likely no invoices in system or insufficient permissions');
-            allInvoices = [];
+            invoices = [];
           } else {
             throw invoiceError; // Re-throw other errors
           }
         }
 
-        // CRITICAL SECURITY: Filter invoices to only those matching user's order numbers
-        const userInvoices = allInvoices.filter((inv: any) => {
-          // Include if invoice has an order number that belongs to user
-          if (inv.orderNumber && userOrderNumbers.has(inv.orderNumber)) {
-            return true;
-          }
-          // Also check if company name matches (for invoices without order numbers)
-          if (companyName && inv.details?.header?.billingAddress) {
-            const invCompany = `${inv.details.header.billingAddress.firstName || ''} ${inv.details.header.billingAddress.lastName || ''}`.trim();
-            if (invCompany === companyName) {
-              return true;
-            }
-          }
-          return false;
-        });
-
-        console.log(`[Invoices] Filtered ${allInvoices.length} invoices to ${userInvoices.length} for company: ${companyName}`);
-        res.json(userInvoices);
+        console.log(`[Invoices] Retrieved ${invoices.length} invoices for company ${req.user.companyId}`);
+        res.json(invoices);
       } catch (error) {
         console.error("Invoices fetch error:", error);
         res.status(500).json({ message: "Failed to fetch invoices" });
@@ -793,11 +778,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       try {
         const bcToken = await getBigCommerceToken(req);
         
-        // CRITICAL SECURITY: First get user's orders to verify they own this invoice
-        const ordersResponse = await bigcommerce.getOrders(bcToken, { limit: 1000 });
-        const userOrders = ordersResponse?.data?.list || ordersResponse?.data || [];
-        const userOrderNumbers = new Set(userOrders.map((o: any) => o.orderId));
-        const companyName = userOrders.length > 0 ? userOrders[0].companyName : null;
+        // CRITICAL SECURITY: Verify user has company ID
+        if (!req.user?.companyId) {
+          console.warn(`[Invoices] No company ID for user ${req.user?.email}`);
+          return res.status(403).json({ message: 'Access denied' });
+        }
         
         // Fetch the invoice
         const response = await bigcommerce.getInvoice(undefined, req.params.id);
@@ -807,13 +792,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.status(404).json({ message: 'Invoice not found' });
         }
 
-        // CRITICAL SECURITY: Verify this invoice belongs to the user
-        const belongsToUser = (invoice.orderNumber && userOrderNumbers.has(invoice.orderNumber)) ||
-                             (companyName && invoice.details?.header?.billingAddress && 
-                              `${invoice.details.header.billingAddress.firstName || ''} ${invoice.details.header.billingAddress.lastName || ''}`.trim() === companyName);
-
-        if (!belongsToUser) {
-          console.warn(`[Invoices] Access denied: Invoice ${req.params.id} does not belong to user ${req.user?.email}`);
+        // CRITICAL SECURITY: Verify this invoice belongs to the user's company
+        // BigCommerce invoices have customerId field that matches company ID
+        if (invoice.customerId !== req.user.companyId) {
+          console.warn(`[Invoices] Access denied: Invoice ${req.params.id} (company: ${invoice.customerId}) does not belong to user's company ${req.user.companyId}`);
           return res.status(403).json({ message: 'Access denied to this invoice' });
         }
 
@@ -833,12 +815,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       try {
         const bcToken = await getBigCommerceToken(req);
         
-        // CRITICAL SECURITY: Verify user owns this invoice before generating PDF
-        const ordersResponse = await bigcommerce.getOrders(bcToken, { limit: 1000 });
-        const userOrders = ordersResponse?.data?.list || ordersResponse?.data || [];
-        const userOrderNumbers = new Set(userOrders.map((o: any) => o.orderId));
-        const companyName = userOrders.length > 0 ? userOrders[0].companyName : null;
+        // CRITICAL SECURITY: Verify user has company ID
+        if (!req.user?.companyId) {
+          console.warn(`[Invoices] No company ID for user ${req.user?.email}`);
+          return res.status(403).json({ message: 'Access denied' });
+        }
         
+        // Fetch invoice to verify ownership
         const invoiceResponse = await bigcommerce.getInvoice(undefined, req.params.id);
         const invoice = invoiceResponse?.data;
 
@@ -846,13 +829,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.status(404).json({ message: 'Invoice not found' });
         }
 
-        // Verify ownership
-        const belongsToUser = (invoice.orderNumber && userOrderNumbers.has(invoice.orderNumber)) ||
-                             (companyName && invoice.details?.header?.billingAddress && 
-                              `${invoice.details.header.billingAddress.firstName || ''} ${invoice.details.header.billingAddress.lastName || ''}`.trim() === companyName);
-
-        if (!belongsToUser) {
-          console.warn(`[Invoices] PDF access denied: Invoice ${req.params.id} does not belong to user ${req.user?.email}`);
+        // CRITICAL SECURITY: Verify invoice belongs to user's company
+        if (invoice.customerId !== req.user.companyId) {
+          console.warn(`[Invoices] PDF access denied: Invoice ${req.params.id} (company: ${invoice.customerId}) does not belong to user's company ${req.user.companyId}`);
           return res.status(403).json({ message: 'Access denied to this invoice' });
         }
 

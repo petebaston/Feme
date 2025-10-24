@@ -556,18 +556,29 @@ export class BigCommerceService {
     return this.request('/api/v2/addresses', { userToken });
   }
 
-  // Invoices - Use Management API v3 with server B2B Management Token
+  // Invoices - Use Management API v3 with server OAuth Token
   // Correct endpoint: /api/v3/io/ip/invoices (per official B2B Edition API docs)
+  // SECURITY BEST PRACTICE: Always filter by customerId (Company ID) at API level
   async getInvoices(userToken?: string, params?: any) {
     const queryParams = new URLSearchParams();
-    if (params?.search) queryParams.append('search', params.search);
-    if (params?.status && params.status !== 'all') queryParams.append('status', params.status);
+    
+    // CRITICAL: Filter by customerId (B2B Edition Company ID) for security
+    // This ensures users only see invoices for their company
+    if (params?.customerId) {
+      queryParams.append('customerId', params.customerId);
+    }
+    
+    // Additional filters per BigCommerce API docs
+    if (params?.search) queryParams.append('q', params.search); // Use 'q' for search
+    if (params?.status !== undefined && params.status !== 'all') {
+      queryParams.append('status', params.status.toString());
+    }
     if (params?.sortBy) queryParams.append('sortBy', params.sortBy);
     if (params?.limit) queryParams.append('limit', params.limit.toString());
     if (params?.offset) queryParams.append('offset', params.offset.toString());
 
     const query = queryParams.toString();
-    // Uses B2B Management Token via request method (v3/io/ip endpoints use X-Auth-Token)
+    // Uses OAuth X-Auth-Token via request method (v3/io/ip endpoints)
     return this.request(`/api/v3/io/ip/invoices${query ? `?${query}` : ''}`);
   }
 

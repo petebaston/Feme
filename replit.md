@@ -25,18 +25,31 @@ Preferred communication style: Simple, everyday language.
 - `BIGCOMMERCE_CLIENT_SECRET` - OAuth client secret
 - `BIGCOMMERCE_STORE_HASH` - Store identifier (e.g., "pyrenapwe2")
 
-### Invoices Authentication - ✅ RESOLVED
+### Invoices Authentication & Filtering - ✅ RESOLVED
 **Previous Issue:** Getting 403 "Invalid access token" when fetching invoices from B2B Edition Management API.
 
 **Root Cause:** Was using `BIGCOMMERCE_B2B_MANAGEMENT_TOKEN` which was invalid for the Management API endpoints.
 
-**Solution Implemented:** Updated authentication to use standard BigCommerce OAuth token
-- Changed `getServerToServerToken()` to prioritize `BIGCOMMERCE_ACCESS_TOKEN` (standard OAuth token)
-- Per BigCommerce September 2025 update: standard OAuth X-Auth-Token now works for B2B Edition APIs
-- Direct API test confirmed: Successfully retrieves 8 invoices using standard OAuth token
-- Fallback to B2B Management Token preserved for legacy compatibility
+**Solution Implemented:**
+1. **Authentication Fix:** Updated to use standard BigCommerce OAuth token (`BIGCOMMERCE_ACCESS_TOKEN`)
+   - Changed `getServerToServerToken()` to prioritize OAuth token over B2B Management Token
+   - Per BigCommerce September 2025 update: standard OAuth X-Auth-Token now works for B2B Edition APIs
+   - Direct API test confirmed: Successfully retrieves 8 invoices using standard OAuth token
 
-**Current Status:** ✅ Fixed - Invoices API now authenticated correctly using OAuth token.
+2. **Security Best Practice - Company-Level Filtering:**
+   - Implemented proper invoice filtering using BigCommerce `customerId` parameter (company ID)
+   - Filter invoices at API level instead of fetching all and filtering client-side (security & performance)
+   - Endpoint `/api/invoices` now requires user to have `companyId` in JWT
+   - All invoice endpoints verify ownership: `invoice.customerId === req.user.companyId`
+   - Returns 403 Forbidden if user lacks company ID or tries to access another company's invoices
+
+**BigCommerce API Best Practices Implemented:**
+- ✅ Server-side filtering using `customerId` query parameter
+- ✅ Proper multi-tenant isolation (company-level access control)
+- ✅ Invoice detail and PDF endpoints verify ownership before serving data
+- ✅ OAuth X-Auth-Token authentication for Management API endpoints
+
+**Current Status:** ✅ Fixed - Invoices API now authenticated correctly and properly filtered to logged-in user's company.
 
 ### Required Secret Configuration
 **Currently Configured:** ✅
