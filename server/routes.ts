@@ -854,8 +854,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const response = await bigcommerce.getCompanyUsers(bcToken);
         const users = response?.data?.list || response?.data || [];
 
-        // Wholesale/admin portal: Show ALL users across all companies
-        res.json(users);
+        // Filter users by logged-in user's company
+        const filteredUsers = filterByCompany(users, req.user?.companyId, req.user?.role);
+
+        res.json(filteredUsers);
       } catch (error) {
         console.error("Company users fetch error:", error);
         res.status(500).json({ message: "Failed to fetch company users" });
@@ -878,8 +880,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const response = await bigcommerce.getCompanyAddresses(bcToken);
         const addresses = response?.data?.list || response?.data || [];
 
-        // Wholesale/admin portal: Show ALL addresses across all companies
-        res.json(addresses);
+        // Filter addresses by logged-in user's company
+        const filteredAddresses = filterByCompany(addresses, req.user?.companyId, req.user?.role);
+
+        res.json(filteredAddresses);
       } catch (error) {
         console.error("Company addresses fetch error:", error);
         res.status(500).json({ message: "Failed to fetch company addresses" });
