@@ -186,9 +186,24 @@ export class BigCommerceService {
     if (params?.sortBy) queryParams.append('sortBy', params.sortBy);
     if (params?.limit) queryParams.append('limit', params.limit.toString());
     if (params?.recent) queryParams.append('recent', 'true');
+    
+    // Add pagination defaults to ensure we get all orders
+    if (!queryParams.has('limit')) queryParams.append('limit', '250');
+    queryParams.append('offset', '0');
 
     const query = queryParams.toString();
+    console.log('[BigCommerce] Fetching orders with query:', query);
     const response = await this.request(`/api/v2/orders${query ? `?${query}` : ''}`, { userToken });
+    
+    // Log detailed response for debugging
+    if (response?.data) {
+      const list = response.data.list || response.data || [];
+      const total = response.data.paginator?.totalCount || list.length;
+      console.log(`[BigCommerce] Orders API returned ${list.length} orders (total: ${total})`);
+      if (total === 0) {
+        console.warn('[BigCommerce] ⚠️ No orders found - this may indicate B2B Edition orders need to be imported/linked from BigCommerce store');
+      }
+    }
     
     // Cache orders if we have companyId
     if (companyId && response?.data) {

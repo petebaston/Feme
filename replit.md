@@ -6,6 +6,36 @@ This project is a production-ready headless B2B buyer portal designed for BigCom
 ## User Preferences
 Preferred communication style: Simple, everyday language.
 
+## Known Issues & Setup Requirements
+
+### Orders Not Showing
+**Symptom:** Portal shows "No orders" even though orders exist in BigCommerce store.
+
+**Root Cause:** BigCommerce B2B Edition has a separate orders system from the regular BigCommerce store. Orders placed through regular BigCommerce checkout are NOT automatically visible in B2B Edition.
+
+**Requirements for Orders to Appear:**
+1. **User Permissions:** B2B company user must have "Get orders" and "Get order detail" permissions
+2. **Order Source:** Orders must be:
+   - Placed through B2B Edition checkout/buyer portal, OR
+   - Manually imported/linked to B2B Edition company account
+
+**Note:** The B2B Orders API (`/api/v2/orders`) only returns orders that are linked to B2B Edition companies. Regular BigCommerce orders won't appear unless they're imported into the B2B system.
+
+**Current Status:** API returning `totalCount: 0` indicates no orders are linked to this B2B company account.
+
+### Invoices 403 Error
+**Symptom:** Getting "Invalid access token" when fetching invoices.
+
+**Root Cause:** Invoices API requires server-side B2B Management Token which may not be configured correctly.
+
+**Fix:** Verify `VITE_B2B_MANAGEMENT_TOKEN` is set in environment secrets.
+
+### Missing Secret Configuration
+**Required Secrets:** The following must be configured in Replit Secrets:
+- `VITE_B2B_MANAGEMENT_TOKEN` - B2B Edition Management API token
+- `VITE_B2B_ACCESS_TOKEN` - B2B Edition access token (optional, used for some endpoints)
+- `VITE_B2B_CLIENT_ID` - B2B Edition client ID
+
 ## System Architecture
 
 ### Frontend Architecture
