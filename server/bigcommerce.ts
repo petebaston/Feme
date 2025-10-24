@@ -43,13 +43,23 @@ export class BigCommerceService {
       ...(options.headers || {}),
     };
 
-    // CRITICAL: Use B2B Management Token for B2B API endpoints
-    // B2B endpoints require BIGCOMMERCE_B2B_MANAGEMENT_TOKEN, not the store access token
-    if (this.config.managementToken) {
-      headers['X-Auth-Token'] = this.config.managementToken;
+    // CRITICAL: Separate Storefront vs Management API authentication
+    // Storefront APIs (orders, quotes, company, shopping lists): USER TOKEN ONLY via Authorization header
+    // Management APIs (invoices, payments, admin): MANAGEMENT TOKEN via X-Auth-Token header
+    const isManagementEndpoint = endpoint.includes('/api/v3/io/') || 
+                                  endpoint.includes('/api/v3/payments') ||
+                                  endpoint.includes('/api/v3/super-admin') ||
+                                  endpoint.includes('/api/v3/users') ||
+                                  options.requireManagementToken;
+
+    if (isManagementEndpoint) {
+      // Management API: requires B2B Management Token
+      if (this.config.managementToken) {
+        headers['X-Auth-Token'] = this.config.managementToken;
+      }
     }
 
-    // Add user token for authenticated B2B requests (filters data to user's company)
+    // Add user token for authenticated requests (works for both Storefront and Management APIs)
     if (options.userToken) {
       headers['Authorization'] = `Bearer ${options.userToken}`;
     }
@@ -251,12 +261,13 @@ export class BigCommerceService {
       'X-Channel-Id': channelId,
     };
 
-    // Add server access token
-    if (this.config.accessToken) {
-      headers['X-Auth-Token'] = this.config.accessToken;
+    // CRITICAL: GraphQL authentication for B2B Edition
+    // Use management token for GraphQL queries (required for B2B Edition)
+    if (this.config.managementToken) {
+      headers['X-Auth-Token'] = this.config.managementToken;
     }
 
-    // Add user token for authenticated requests
+    // Add user token for authenticated requests (filters to user's company context)
     if (userToken) {
       headers['Authorization'] = `Bearer ${userToken}`;
       headers['authToken'] = userToken;

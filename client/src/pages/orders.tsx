@@ -10,7 +10,7 @@ export default function Orders() {
   const [searchTerm, setSearchTerm] = useState("");
 
   const { data: orders, isLoading, error } = useQuery<any[]>({
-    queryKey: ['/api/orders'],
+    queryKey: ['/api/my-orders'],
     staleTime: 300000,
     retry: false,
   });

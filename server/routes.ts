@@ -365,6 +365,117 @@ export async function registerRoutes(app: Express): Promise<Server> {
   );
 
   // Orders endpoints
+  
+  // My Orders - orders placed by the logged-in user
+  app.get("/api/my-orders",
+    authenticateToken,
+    sessionTimeout,
+    async (req: AuthRequest, res) => {
+      try {
+        console.log('[My Orders] Fetching orders placed by user:', req.user?.email);
+        const bcToken = await getBigCommerceToken(req);
+        const { search, status, sortBy, limit, recent } = req.query;
+
+        // Use authenticated user's email from JWT token (not company email)
+        const userEmail = req.user?.email;
+        
+        // Get current user info from BigCommerce for name matching
+        const companyResponse = await bigcommerce.getCompany(bcToken);
+        const bcUserFirstName = companyResponse?.data?.name?.split(' ')[0];
+        const bcUserLastName = companyResponse?.data?.name?.split(' ').slice(1).join(' ');
+
+        const response = await bigcommerce.getOrders(bcToken, {
+          search: search as string,
+          status: status as string,
+          sortBy: sortBy as string,
+          limit: limit ? parseInt(limit as string) : 1000,
+          recent: recent === 'true',
+        });
+
+        if (response?.errMsg || response?.error) {
+          console.warn("[My Orders] BigCommerce returned error:", response.errMsg || response.error);
+          return res.json([]);
+        }
+
+        const bcOrders = response?.data?.list || response?.data || [];
+        const allOrders = Array.isArray(bcOrders) ? bcOrders.map(transformOrder) : [];
+
+        // Filter to only orders placed by this user (match by email from billing/shipping address)
+        const myOrders = allOrders.filter((order: any) => {
+          const orderEmail = order.billingAddress?.email || order.shippingAddress?.email;
+          
+          // Primary filter: email match
+          if (userEmail && orderEmail?.toLowerCase() === userEmail.toLowerCase()) {
+            return true;
+          }
+          
+          // Secondary filter: name match (less reliable but helpful)
+          if (bcUserFirstName && bcUserLastName) {
+            const orderFirstName = order.firstName?.trim();
+            const orderLastName = order.lastName?.trim();
+            if (orderFirstName?.toLowerCase() === bcUserFirstName.toLowerCase() &&
+                orderLastName?.toLowerCase() === bcUserLastName.toLowerCase()) {
+              return true;
+            }
+          }
+          
+          return false;
+        });
+
+        console.log(`[My Orders] Filtered ${allOrders.length} total orders to ${myOrders.length} user-specific orders for ${userEmail}`);
+        res.json(myOrders);
+      } catch (error) {
+        console.error("My Orders fetch error:", error);
+        res.status(500).json({ message: "Failed to fetch my orders" });
+      }
+    }
+  );
+
+  // Company Orders - all orders for the company
+  app.get("/api/company-orders",
+    authenticateToken,
+    sessionTimeout,
+    async (req: AuthRequest, res) => {
+      try {
+        console.log('[Company Orders] Fetching all company orders for user:', req.user?.email);
+        const bcToken = await getBigCommerceToken(req);
+        const { search, status, sortBy, limit, recent } = req.query;
+
+        // Get companyId for caching
+        let companyId: string | undefined;
+        try {
+          const companyResponse = await bigcommerce.getCompany(bcToken);
+          companyId = companyResponse?.data?.companyId || companyResponse?.data?.id;
+        } catch (e) {
+          console.log('[Company Orders] Could not fetch companyId for cache, continuing without cache');
+        }
+
+        const response = await bigcommerce.getOrders(bcToken, {
+          search: search as string,
+          status: status as string,
+          sortBy: sortBy as string,
+          limit: limit ? parseInt(limit as string) : undefined,
+          recent: recent === 'true',
+        }, companyId);
+
+        if (response?.errMsg || response?.error) {
+          console.warn("[Company Orders] BigCommerce returned error:", response.errMsg || response.error);
+          return res.json([]);
+        }
+
+        const bcOrders = response?.data?.list || response?.data || [];
+        const orders = Array.isArray(bcOrders) ? bcOrders.map(transformOrder) : [];
+
+        console.log(`[Company Orders] Returning ${orders.length} company orders`);
+        res.json(orders);
+      } catch (error) {
+        console.error("Company Orders fetch error:", error);
+        res.status(500).json({ message: "Failed to fetch company orders" });
+      }
+    }
+  );
+
+  // Legacy endpoint - defaults to company orders for backward compatibility
   app.get("/api/orders",
     authenticateToken,
     sessionTimeout,
