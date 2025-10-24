@@ -5045,3 +5045,4 @@
 2025-10-24 09:59:36:5936 [32mhttp[39m: [32mGET /@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-separator.js?v=dad8e203 200 - 1ms[39m
 2025-10-24 09:59:36:5936 [32mhttp[39m: [32mGET /@fs/home/runner/workspace/attached_assets/feme-logo.png 200 - 4ms[39m
 2025-10-24 09:59:36:5936 [32mhttp[39m: [32mGET /favicon.ico 200 - 8ms[39m
+2025-10-24 10:05:06:56 [32mhttp[39m: [32mGET /api/orders 304 - 874ms[39m
