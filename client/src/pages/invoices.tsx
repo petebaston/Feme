@@ -85,9 +85,10 @@ export default function Invoices() {
 
   const getStatusLabel = (status: number) => {
     switch (status) {
-      case 0: return 'Open';
+      case 0: return 'Unpaid';
       case 1: return 'Paid';
       case 2: return 'Overdue';
+      case 3: return 'Refunded';
       default: return 'Unknown';
     }
   };

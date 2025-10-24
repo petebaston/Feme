@@ -29,6 +29,7 @@ const limiter = rateLimit({
   message: 'Too many requests from this IP, please try again later.',
   standardHeaders: true,
   legacyHeaders: false,
+  validate: { trustProxy: false }, // Disable trust proxy validation for Replit environment
 });
 
 // Apply rate limiting to API routes
@@ -39,6 +40,7 @@ const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 5, // 5 login attempts per 15 minutes
   skipSuccessfulRequests: true,
+  validate: { trustProxy: false }, // Disable trust proxy validation for Replit environment
 });
 
 app.use('/api/auth/login', authLimiter);

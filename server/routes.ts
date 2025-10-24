@@ -710,13 +710,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     async (req: AuthRequest, res) => {
       try {
-        // Invoices use server ACCESS_TOKEN (no user token needed)
-
-        // First verify invoice ownership before generating PDF
+        const bcToken = await getBigCommerceToken(req);
+        
+        // CRITICAL SECURITY: Verify user owns this invoice before generating PDF
+        const ordersResponse = await bigcommerce.getOrders(bcToken, { limit: 1000 });
+        const userOrders = ordersResponse?.data?.list || ordersResponse?.data || [];
+        const userOrderNumbers = new Set(userOrders.map((o: any) => o.orderId));
+        const companyName = userOrders.length > 0 ? userOrders[0].companyName : null;
+        
         const invoiceResponse = await bigcommerce.getInvoice(undefined, req.params.id);
         const invoice = invoiceResponse?.data;
 
-        if (invoice && !verifyResourceOwnership(invoice, req.user?.companyId, req.user?.role)) {
+        if (!invoice) {
+          return res.status(404).json({ message: 'Invoice not found' });
+        }
+
+        // Verify ownership
+        const belongsToUser = (invoice.orderNumber && userOrderNumbers.has(invoice.orderNumber)) ||
+                             (companyName && invoice.details?.header?.billingAddress && 
+                              `${invoice.details.header.billingAddress.firstName || ''} ${invoice.details.header.billingAddress.lastName || ''}`.trim() === companyName);
+
+        if (!belongsToUser) {
+          console.warn(`[Invoices] PDF access denied: Invoice ${req.params.id} does not belong to user ${req.user?.email}`);
           return res.status(403).json({ message: 'Access denied to this invoice' });
         }
 
@@ -725,9 +740,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         res.setHeader('Content-Type', 'application/pdf');
         res.setHeader('Content-Disposition', `attachment; filename=invoice-${req.params.id}.pdf`);
         res.send(pdfData);
-      } catch (error) {
+      } catch (error: any) {
         console.error("Invoice PDF error:", error);
-        res.status(500).json({ message: "Failed to generate invoice PDF" });
+        res.status(500).json({ message: error.message || "Failed to generate invoice PDF" });
       }
     }
   );

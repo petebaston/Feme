@@ -16,23 +16,29 @@ export default function InvoiceDetail() {
     enabled: !!id,
   });
 
+  // Convert numeric status to string label
+  const getStatusLabel = (status: number | string): string => {
+    if (typeof status === 'number') {
+      const statusMap: Record<number, string> = {
+        0: 'unpaid',
+        1: 'paid',
+        2: 'overdue',
+        3: 'refunded',
+      };
+      return statusMap[status] || 'unpaid';
+    }
+    return status?.toLowerCase() || 'unpaid';
+  };
+
   const getStatusColor = (status: number | string) => {
-    const statusMap: Record<number, string> = {
-      0: 'pending',
-      1: 'paid',
-      2: 'overdue',
-      3: 'cancelled',
-    };
-    
-    const statusStr = typeof status === 'number' ? statusMap[status] : status?.toLowerCase();
-    
+    const statusLabel = getStatusLabel(status);
     const colors: Record<string, string> = {
       paid: 'bg-green-100 text-green-800',
-      pending: 'bg-yellow-100 text-yellow-800',
+      unpaid: 'bg-yellow-100 text-yellow-800',
       overdue: 'bg-red-100 text-red-800',
-      cancelled: 'bg-gray-100 text-gray-800',
+      refunded: 'bg-gray-100 text-gray-800',
     };
-    return colors[statusStr] || 'bg-gray-100 text-gray-800';
+    return colors[statusLabel] || 'bg-gray-100 text-gray-800';
   };
 
   const getPaymentTermsColor = (terms: string) => {
@@ -45,7 +51,6 @@ export default function InvoiceDetail() {
 
   const handleDownloadPDF = async () => {
     try {
-      // Get auth token
       const token = localStorage.getItem('b2b_token');
       if (!token) {
         throw new Error('Not authenticated');
@@ -58,7 +63,8 @@ export default function InvoiceDetail() {
       });
       
       if (!response.ok) {
-        throw new Error('Failed to download PDF');
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || 'Failed to download PDF');
       }
       
       const blob = await response.blob();
@@ -75,10 +81,11 @@ export default function InvoiceDetail() {
         title: "Success",
         description: "Invoice PDF downloaded successfully",
       });
-    } catch (error) {
+    } catch (error: any) {
+      console.error('PDF download error:', error);
       toast({
         title: "Error",
-        description: "Failed to download invoice PDF. This feature may not be available in sandbox mode.",
+        description: error.message || "Failed to download invoice PDF",
         variant: "destructive",
       });
     }
@@ -161,7 +168,7 @@ export default function InvoiceDetail() {
             <div>
               <p className="text-sm text-gray-500">Status</p>
               <span className={`inline-block text-xs px-2 py-1 rounded-full font-medium ${getStatusColor(invoice.status)}`} data-testid="status">
-                {invoice.status}
+                {getStatusLabel(invoice.status)}
               </span>
             </div>
             {invoice.paymentTerms && (
