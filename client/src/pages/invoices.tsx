@@ -34,23 +34,24 @@ export default function Invoices() {
     return matchesSearch;
   }) || [];
 
-  // Calculate aged invoice totals
+  // Calculate aged invoice totals and status summaries
   const calculateTotals = () => {
     let aged1to30 = 0;
     let aged31to60 = 0;
     let aged61to90 = 0;
     let aged90plus = 0;
+    let totalOpen = 0;
+    let totalOverdue = 0;
     const today = new Date();
 
     filteredInvoices.forEach((invoice: any) => {
-      // Only calculate for unpaid invoices
-      if (invoice.status === 1) return; // Skip paid invoices
+      const openBalance = parseFloat(invoice.openBalance?.value || 0);
+      
+      // Skip paid invoices (openBalance = 0)
+      if (openBalance === 0) return;
 
-      // Parse total from costLines
-      const costLines = invoice.details?.header?.costLines || [];
-      const subtotalLine = costLines.find((line: any) => line.description === 'Subtotal');
-      const taxLine = costLines.find((line: any) => line.description === 'Sales Tax');
-      const amount = (parseFloat(subtotalLine?.amount?.value || 0) + parseFloat(taxLine?.amount?.value || 0));
+      // Add to total open
+      totalOpen += openBalance;
 
       // Calculate days overdue from due date
       const dueDate = invoice.dueDate ? new Date(invoice.dueDate * 1000) : null;
@@ -58,43 +59,57 @@ export default function Invoices() {
 
       const daysOverdue = Math.floor((today.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24));
 
+      // If overdue, add to overdue total
+      if (daysOverdue > 0) {
+        totalOverdue += openBalance;
+      }
+
       // Categorize into aging buckets
       if (daysOverdue >= 1 && daysOverdue <= 30) {
-        aged1to30 += amount;
+        aged1to30 += openBalance;
       } else if (daysOverdue >= 31 && daysOverdue <= 60) {
-        aged31to60 += amount;
+        aged31to60 += openBalance;
       } else if (daysOverdue >= 61 && daysOverdue <= 90) {
-        aged61to90 += amount;
+        aged61to90 += openBalance;
       } else if (daysOverdue > 90) {
-        aged90plus += amount;
+        aged90plus += openBalance;
       }
     });
 
-    return { aged1to30, aged31to60, aged61to90, aged90plus };
+    return { aged1to30, aged31to60, aged61to90, aged90plus, totalOpen, totalOverdue };
   };
 
-  const { aged1to30, aged31to60, aged61to90, aged90plus } = calculateTotals();
+  const { aged1to30, aged31to60, aged61to90, aged90plus, totalOpen, totalOverdue } = calculateTotals();
 
-  const getStatusBadgeClass = (status: number) => {
-    // Status is numeric: 0 = open/pending, 1 = paid, 2 = overdue
+  // Calculate actual status based on openBalance and dueDate
+  const calculateInvoiceStatus = (invoice: any): 'Paid' | 'Overdue' | 'Unpaid' => {
+    const openBalance = parseFloat(invoice.openBalance?.value || 0);
+    
+    // If balance is 0, it's paid
+    if (openBalance === 0) {
+      return 'Paid';
+    }
+    
+    // If there's a balance, check if it's overdue
+    const dueDate = invoice.dueDate ? new Date(invoice.dueDate * 1000) : null;
+    const today = new Date();
+    
+    if (dueDate && dueDate < today) {
+      return 'Overdue';
+    }
+    
+    return 'Unpaid';
+  };
+
+  const getStatusBadgeClass = (status: string) => {
     switch (status) {
-      case 2:
+      case 'Overdue':
         return 'bg-red-600 text-white';
-      case 1:
+      case 'Paid':
         return 'bg-[#C4D600] text-black';
-      case 0:
+      case 'Unpaid':
       default:
         return 'bg-yellow-100 text-yellow-800';
-    }
-  };
-
-  const getStatusLabel = (status: number) => {
-    switch (status) {
-      case 0: return 'Unpaid';
-      case 1: return 'Paid';
-      case 2: return 'Overdue';
-      case 3: return 'Refunded';
-      default: return 'Unknown';
     }
   };
 
@@ -187,8 +202,10 @@ export default function Invoices() {
             <div className="text-sm font-medium text-gray-500 mb-1">CREDIT LIMIT</div>
             <div className="text-3xl font-normal text-black">{formatCurrency(25000)}</div>
           </div>
-          <div className="text-sm text-gray-600">
-            <div>Available: {formatCurrency(25000 - aged1to30 - aged31to60 - aged61to90 - aged90plus)}</div>
+          <div className="text-sm text-gray-600 space-y-1">
+            <div>Available: {formatCurrency(25000 - totalOpen)}</div>
+            <div>Open: {formatCurrency(totalOpen)}</div>
+            <div>Overdue: {formatCurrency(totalOverdue)}</div>
           </div>
         </div>
       </div>
@@ -291,16 +308,19 @@ export default function Invoices() {
                 const orderDate = invoice.details?.header?.orderDate;
                 const invoiceDate = orderDate ? new Date(orderDate * 1000) : null;
                 const dueDate = invoice.dueDate ? new Date(invoice.dueDate * 1000) : null;
-                const isOverdue = invoice.status === 2;
                 
-                // Get company name from billing address
-                const companyName = invoice.details?.header?.billingAddress?.firstName || 
-                                  invoice.details?.header?.billingAddress?.lastName || 
-                                  'Customer';
+                // Calculate actual status
+                const actualStatus = calculateInvoiceStatus(invoice);
+                
+                // Get company name from customerName field
+                const companyName = invoice.customerName || 'Customer';
                 
                 // Get Sales Order number from extraFields
                 const salesOrderField = invoice.extraFields?.find((field: any) => field.fieldName === 'Our Ref');
                 const salesOrder = salesOrderField?.fieldValue || '-';
+                
+                // Get open balance
+                const openBalance = parseFloat(invoice.openBalance?.value || 0);
 
                 return (
                   <Fragment key={invoice.id}>
@@ -347,21 +367,21 @@ export default function Invoices() {
                     <TableCell className="text-gray-700">
                       {invoiceDate ? invoiceDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '-'}
                     </TableCell>
-                    <TableCell className={isOverdue ? 'text-red-600' : 'text-gray-700'}>
+                    <TableCell className={actualStatus === 'Overdue' ? 'text-red-600' : 'text-gray-700'}>
                       {dueDate ? dueDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '-'}
                     </TableCell>
                     <TableCell className="font-normal">{formatCurrency(total)}</TableCell>
-                    <TableCell className="font-normal">{formatCurrency(total)}</TableCell>
+                    <TableCell className="font-normal">{formatCurrency(openBalance)}</TableCell>
                     <TableCell>
                       <Input
                         type="text"
-                        defaultValue={formatCurrency(total)}
+                        defaultValue={formatCurrency(openBalance)}
                         className="h-8 w-24 bg-gray-100 border-0 text-center text-sm"
                       />
                     </TableCell>
                     <TableCell>
-                      <span className={`inline-flex items-center px-3 py-1 text-xs font-medium ${getStatusBadgeClass(invoice.status)}`}>
-                        {getStatusLabel(invoice.status)}
+                      <span className={`inline-flex items-center px-3 py-1 text-xs font-medium ${getStatusBadgeClass(actualStatus)}`}>
+                        {actualStatus}
                       </span>
                     </TableCell>
                     <TableCell>
