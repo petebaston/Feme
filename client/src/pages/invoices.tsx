@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, Fragment } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Input } from "@/components/ui/input";
@@ -19,6 +19,8 @@ export default function Invoices() {
   const [, setLocation] = useLocation();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedInvoices, setSelectedInvoices] = useState<string[]>([]);
+  const [expandedInvoiceId, setExpandedInvoiceId] = useState<string | null>(null);
+  const [pdfBlobUrls, setPdfBlobUrls] = useState<Record<string, string>>({});
 
   const { data: invoices, isLoading } = useQuery<any[]>({
     queryKey: ['/api/invoices'],
@@ -112,6 +114,30 @@ export default function Invoices() {
   const handleExport = () => {
     // Export logic here
     console.log("Exporting invoices...");
+  };
+
+  const loadPdfBlob = async (invoiceId: string) => {
+    if (pdfBlobUrls[invoiceId]) return; // Already loaded
+
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`/api/invoices/${invoiceId}/pdf`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to load PDF');
+      }
+
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      
+      setPdfBlobUrls(prev => ({ ...prev, [invoiceId]: blobUrl }));
+    } catch (error) {
+      console.error('Error loading PDF:', error);
+    }
   };
 
   return (
@@ -234,7 +260,8 @@ export default function Invoices() {
                                   'Customer';
 
                 return (
-                  <TableRow key={invoice.id} className="hover:bg-gray-50">
+                  <Fragment key={invoice.id}>
+                  <TableRow className="hover:bg-gray-50">
                     <TableCell>
                       <Checkbox
                         checked={selectedInvoices.includes(invoice.id)}
@@ -243,10 +270,21 @@ export default function Invoices() {
                     </TableCell>
                     <TableCell>
                       <button 
-                        onClick={() => setLocation(`/invoices/${invoice.id}`)}
-                        className="hover:bg-gray-100 p-1 rounded"
+                        onClick={() => {
+                          const newExpandedId = expandedInvoiceId === invoice.id ? null : invoice.id;
+                          setExpandedInvoiceId(newExpandedId);
+                          if (newExpandedId) {
+                            loadPdfBlob(newExpandedId);
+                          }
+                        }}
+                        className="hover:bg-gray-100 p-1 rounded transition-transform"
+                        data-testid={`button-expand-${invoice.id}`}
                       >
-                        <ChevronRight className="w-4 h-4 text-gray-600" />
+                        {expandedInvoiceId === invoice.id ? (
+                          <ChevronDown className="w-4 h-4 text-gray-600" />
+                        ) : (
+                          <ChevronRight className="w-4 h-4 text-gray-600" />
+                        )}
                       </button>
                     </TableCell>
                     <TableCell className="font-normal">
@@ -300,6 +338,54 @@ export default function Invoices() {
                       </DropdownMenu>
                     </TableCell>
                   </TableRow>
+                  {/* Expandable PDF Preview */}
+                  {expandedInvoiceId === invoice.id && (
+                    <TableRow>
+                      <TableCell colSpan={12} className="bg-gray-50 p-6">
+                        <div className="space-y-4">
+                          <div className="flex items-center justify-between">
+                            <h3 className="text-lg font-medium text-gray-900">Invoice Preview</h3>
+                            <Button
+                              variant="outline"
+                              onClick={async () => {
+                                const token = localStorage.getItem('token');
+                                const response = await fetch(`/api/invoices/${invoice.id}/pdf`, {
+                                  headers: { 'Authorization': `Bearer ${token}` }
+                                });
+                                const blob = await response.blob();
+                                const url = URL.createObjectURL(blob);
+                                const a = document.createElement('a');
+                                a.href = url;
+                                a.download = `invoice-${invoice.invoiceNumber || invoice.id}.pdf`;
+                                a.click();
+                                URL.revokeObjectURL(url);
+                              }}
+                              className="border-gray-300"
+                              data-testid={`button-download-pdf-${invoice.id}`}
+                            >
+                              <FileDown className="w-4 h-4 mr-2" />
+                              Download PDF
+                            </Button>
+                          </div>
+                          <div className="border border-gray-300 bg-white" style={{ height: '600px' }}>
+                            {pdfBlobUrls[invoice.id] ? (
+                              <iframe
+                                src={pdfBlobUrls[invoice.id]}
+                                className="w-full h-full"
+                                title={`Invoice ${invoice.invoiceNumber} PDF`}
+                                data-testid={`iframe-pdf-${invoice.id}`}
+                              />
+                            ) : (
+                              <div className="flex items-center justify-center h-full">
+                                <p className="text-gray-500">Loading PDF...</p>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  )}
+                  </Fragment>
                 );
               })
             ) : (

@@ -35,13 +35,29 @@ Preferred communication style: Simple, everyday language.
 - Changed `getServerToServerToken()` to prioritize OAuth token over B2B Management Token
 - Per BigCommerce September 2025 update: standard OAuth X-Auth-Token now works for B2B Edition APIs
 - Direct API test confirmed: Successfully retrieves 8 invoices using standard OAuth token
+- **PDF Download:** Fixed endpoint to use `/download-pdf` (per official documentation)
+- **PDF Preview:** Added expandable inline PDF preview in invoices table (click arrow to expand)
 
 **Invoice Access Control:**
 - Invoices endpoint shows ALL invoices (no company filtering)
 - Suitable for wholesale/admin portal where users need visibility across all companies
 - 8 total invoices exist across multiple companies (6254969, 8528412, 8757474, 8780493, 8810354, 9546850)
 
-**Current Status:** ✅ Fixed - Invoices API now authenticated correctly and displays all invoices.
+**Current Status:** ✅ Fixed - Invoices API authenticated correctly, PDF downloads working, inline preview implemented.
+
+### Users & Addresses - ✅ RESOLVED
+**Previous Issue:** Endpoints `/api/v2/users` and `/api/v2/addresses` returned 404 Not Found.
+
+**Root Cause:** Using incorrect V2 REST API paths instead of B2B Edition Management API v3 paths.
+
+**Solution Implemented:**
+- **Users:** Updated to use `/api/v3/io/users` (Management API v3)
+- **Addresses:** Updated to use `/api/v3/io/addresses` (Management API v3)
+- Both endpoints use OAuth authentication (`BIGCOMMERCE_ACCESS_TOKEN`) - same as invoices
+- Support company filtering via `companyId` query parameter
+- Direct API tests confirmed: 15 users and 19 addresses successfully retrieved
+
+**Current Status:** ✅ Both endpoints working correctly with proper authentication.
 
 ### Required Secret Configuration
 **Currently Configured:** ✅

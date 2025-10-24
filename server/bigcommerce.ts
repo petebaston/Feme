@@ -546,14 +546,27 @@ export class BigCommerceService {
   }
 
   async getCompanyUsers(userToken: string, companyId?: string) {
-    // V2 REST Storefront API endpoint - per official spec
-    return this.request('/api/v2/users', { userToken });
+    // Management API v3 endpoint - per official B2B Edition documentation
+    // GET /api/v3/io/users - Get All Users
+    // Uses OAuth X-Auth-Token (same authentication as invoices)
+    const queryParams = new URLSearchParams();
+    if (companyId) {
+      queryParams.append('companyId', companyId);
+    }
+    const query = queryParams.toString();
+    return this.request(`/api/v3/io/users${query ? `?${query}` : ''}`);
   }
 
   async getCompanyAddresses(userToken: string, companyId?: string) {
-    // V2 REST API endpoint - per official spec
-    // GET /api/v2/addresses - Get Company Addresses
-    return this.request('/api/v2/addresses', { userToken });
+    // Management API v3 endpoint - per official B2B Edition documentation  
+    // GET /api/v3/io/addresses - Get All Addresses
+    // Uses OAuth X-Auth-Token (same authentication as invoices)
+    const queryParams = new URLSearchParams();
+    if (companyId) {
+      queryParams.append('companyId', companyId);
+    }
+    const query = queryParams.toString();
+    return this.request(`/api/v3/io/addresses${query ? `?${query}` : ''}`);
   }
 
   // Invoices - Use Management API v3 with server OAuth Token
