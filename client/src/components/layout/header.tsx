@@ -34,15 +34,15 @@ export default function Header() {
         description: "You have been signed out.",
       });
 
-      setLocation('/login');
+      // Force full page reload to reset auth state
+      window.location.href = '/login';
     } catch (err) {
       console.error('Logout error:', err);
       localStorage.removeItem('b2b_token');
       localStorage.removeItem('user');
       localStorage.removeItem('b2b_user');
-      setLocation('/login');
-    } finally {
-      setLoading(false);
+      // Force full page reload to reset auth state
+      window.location.href = '/login';
     }
   };
 

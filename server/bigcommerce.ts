@@ -43,12 +43,13 @@ export class BigCommerceService {
       ...(options.headers || {}),
     };
 
-    // Use server ACCESS_TOKEN for all endpoints (unified API token)
-    if (this.config.accessToken) {
-      headers['X-Auth-Token'] = this.config.accessToken;
+    // CRITICAL: Use B2B Management Token for B2B API endpoints
+    // B2B endpoints require BIGCOMMERCE_B2B_MANAGEMENT_TOKEN, not the store access token
+    if (this.config.managementToken) {
+      headers['X-Auth-Token'] = this.config.managementToken;
     }
 
-    // Add user token for authenticated storefront requests
+    // Add user token for authenticated B2B requests (filters data to user's company)
     if (options.userToken) {
       headers['Authorization'] = `Bearer ${options.userToken}`;
     }
