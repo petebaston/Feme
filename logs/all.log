@@ -8142,3 +8142,5 @@
 2025-10-24 13:07:19:719 [32mhttp[39m: [32mGET /src/pages/invoices.tsx?t=1761311239250 200 - 173ms[39m
 2025-10-24 13:07:19:719 [32mhttp[39m: [32mGET /src/index.css?t=1761311239250&v=gbcUBjlWJk6tRSLCpALek 200 - 264ms[39m
 2025-10-24 13:07:33:733 [33mwarn[39m: [33mGET /api/invoices/8248017/pdf 403 - 0ms[39m
+2025-10-24 13:09:46:946 [32mhttp[39m: [32mGET /api/company/addresses 200 - 728ms[39m
+2025-10-24 13:09:51:951 [32mhttp[39m: [32mGET /api/company/users 200 - 3957ms[39m
