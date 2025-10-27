@@ -449,9 +449,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         const order = transformOrder(bcOrder);
 
-        // CRITICAL: Verify resource ownership
-        if (!verifyResourceOwnership(order, req.user?.companyId, req.user?.role)) {
-          return res.status(403).json({ message: 'Access denied to this order' });
+        // CRITICAL: Verify resource ownership by checking customer IDs
+        // Admins see all orders
+        if (req.user?.role !== 'admin' && req.user?.role !== 'superadmin') {
+          if (!req.user?.companyId) {
+            return res.status(403).json({ message: 'Company ID not found' });
+          }
+          
+          // Get company's customer IDs
+          const customerIds = await bigcommerce.getCompanyCustomerIds(bcToken, req.user.companyId);
+          const orderCustomerId = order.customerId || order.customer_id;
+          
+          // Check if order belongs to one of the company's customer accounts
+          if (!customerIds.includes(orderCustomerId)) {
+            return res.status(403).json({ message: 'Access denied to this order' });
+          }
         }
 
         res.json(order);
