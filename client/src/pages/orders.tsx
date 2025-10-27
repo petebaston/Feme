@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Search, SlidersHorizontal, ChevronDown } from "lucide-react";
@@ -8,6 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 
 export default function Orders() {
   const [searchTerm, setSearchTerm] = useState("");
+  const [, setLocation] = useLocation();
 
   const { data: orders, isLoading, error} = useQuery<any[]>({
     queryKey: ['/api/orders'],
@@ -98,7 +100,12 @@ export default function Orders() {
               ))
             ) : filteredOrders.length > 0 ? (
               filteredOrders.map((order: any) => (
-                <TableRow key={order.id} className="hover:bg-gray-50">
+                <TableRow 
+                  key={order.id} 
+                  className="hover:bg-gray-50 cursor-pointer"
+                  onClick={() => setLocation(`/orders/${order.id}`)}
+                  data-testid={`row-order-${order.id}`}
+                >
                   <TableCell className="font-normal">{order.id}</TableCell>
                   <TableCell className="text-gray-700">
                     <div className="max-w-xs">
