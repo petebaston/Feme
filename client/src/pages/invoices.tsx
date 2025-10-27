@@ -397,24 +397,26 @@ export default function Invoices() {
                 // Get company name from customerName field
                 const companyName = invoice.customerName || 'Customer';
                 
-                // Get Sales Order number from "Our Ref" custom field in extraFields
-                // Check multiple possible locations for extraFields in BigCommerce invoice structure
+                // Get Sales Order number from "Our Ref" custom field
+                // Log first invoice to debug the full details structure
+                if (filteredInvoices.indexOf(invoice) === 0) {
+                  console.log('[Invoice Debug] Full invoice.details structure:', invoice.details);
+                  console.log('[Invoice Debug] invoice.details.details:', invoice.details?.details);
+                }
+                
+                // Check multiple possible locations for "Our Ref" field
+                const detailsArray = invoice.details?.details || [];
+                const ourRefDetail = detailsArray.find((detail: any) => 
+                  detail?.key === 'Our Ref' || detail?.name === 'Our Ref' || detail?.label === 'Our Ref'
+                );
+                
                 const extraFields = invoice.extraFields || invoice.details?.extraFields || invoice.details?.header?.extraFields || [];
                 const ourRefField = extraFields.find((field: any) => 
                   field.fieldName === 'Our Ref' || field.name === 'Our Ref' || field.label === 'Our Ref'
                 );
-                const salesOrder = ourRefField?.fieldValue || ourRefField?.value || invoice.orderNumber || '-';
                 
-                // Log first invoice to debug structure
-                if (filteredInvoices.indexOf(invoice) === 0) {
-                  console.log('[Invoice Debug] First invoice structure:', {
-                    id: invoice.id,
-                    orderNumber: invoice.orderNumber,
-                    extraFields: extraFields,
-                    detailsKeys: invoice.details ? Object.keys(invoice.details) : [],
-                    headerKeys: invoice.details?.header ? Object.keys(invoice.details.header) : []
-                  });
-                }
+                // Try multiple possible field value locations
+                const salesOrder = ourRefDetail?.value || ourRefField?.fieldValue || ourRefField?.value || invoice.orderNumber || '-';
                 
                 // Get open balance
                 const openBalance = parseFloat(invoice.openBalance?.value || 0);
