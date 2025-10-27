@@ -1,6 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
 import { bigcommerce } from "./bigcommerce";
 import { DatabaseStorage } from "./storage";
 import {
@@ -172,12 +173,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Store BigCommerce token server-side (two-token authentication system)
       await storage.storeUserToken(user.id, result.token, companyId || undefined);
 
-      // Generate JWT tokens
+      // Generate JWT tokens (use freshly extracted customerId if available)
       const tokenPayload = {
         userId: user.id,
         email: user.email,
-        companyId: user.companyId || undefined,
-        customerId: user.customerId || undefined,
+        companyId: user.companyId || companyId || undefined,
+        customerId: customerId || user.customerId || undefined,
         role: user.role || 'buyer',
       };
 
