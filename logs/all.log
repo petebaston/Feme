@@ -17282,3 +17282,4 @@
 2025-10-27 12:44:47:4447 [32mhttp[39m: [32mGET /src/components/ui/separator.tsx 304 - 0ms[39m
 2025-10-27 12:44:47:4447 [32mhttp[39m: [32mGET /@fs/home/runner/workspace/attached_assets/feme-logo.png 304 - 1ms[39m
 2025-10-27 12:44:49:4449 [32mhttp[39m: [32mGET /api/my-orders 200 - 1668ms[39m
+2025-10-27 12:45:03:453 [32mhttp[39m: [32mGET /api/orders 200 - 1917ms[39m
