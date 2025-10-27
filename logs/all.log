@@ -16589,3 +16589,12 @@
 2025-10-27 12:30:46:3046 [32mhttp[39m: [32mGET /api/company/users 200 - 337ms[39m
 2025-10-27 12:30:47:3047 [32mhttp[39m: [32mGET /favicon.ico 200 - 9ms[39m
 2025-10-27 12:31:43:3143 [32mhttp[39m: [32mGET /api/orders 200 - 1637ms[39m
+2025-10-27 12:37:20:3720 [32minfo[39m: [32m🚀 Server running on port 5000[39m
+2025-10-27 12:37:20:3720 [32minfo[39m: [32m📝 Environment: development[39m
+2025-10-27 12:37:21:3721 [32mhttp[39m: [32mGET / 200 - 63ms[39m
+2025-10-27 12:37:21:3721 [32mhttp[39m: [32mGET /@react-refresh 304 - 9ms[39m
+2025-10-27 12:37:21:3721 [32mhttp[39m: [32mGET /@replit/vite-plugin-dev-banner/banner-script.js 200 - 0ms[39m
+2025-10-27 12:37:21:3721 [32mhttp[39m: [32mGET /@vite/client 200 - 33ms[39m
+2025-10-27 12:37:21:3721 [32mhttp[39m: [32mGET /src/main.tsx?v=wLM0A-4ddxAsFpAqtS4Ws 200 - 60ms[39m
+2025-10-27 12:37:22:3722 [32mhttp[39m: [32mGET /src/App.tsx?v=wLM0A-4ddxAsFpAqtS4Ws 200 - 1ms[39m
+2025-10-27 12:37:22:3722 [32mhttp[39m: [32mGET /@fs/home/runner/workspace/node_modules/vite/dist/client/env.mjs 304 - 1ms[39m
