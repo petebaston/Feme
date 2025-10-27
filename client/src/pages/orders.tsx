@@ -9,6 +9,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 
 export default function Orders() {
   const [searchTerm, setSearchTerm] = useState("");
+  const [showFilters, setShowFilters] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<string>("all");
   const [, setLocation] = useLocation();
 
   const { data: orders, isLoading, error} = useQuery<any[]>({
@@ -28,8 +30,17 @@ export default function Orders() {
     const matchesSearch = !searchTerm ||
       order.id?.toString().includes(searchTerm) ||
       order.customerName?.toLowerCase().includes(searchTerm.toLowerCase());
-    return matchesSearch;
+    
+    const matchesStatus = statusFilter === "all" || 
+      order.status?.toLowerCase() === statusFilter.toLowerCase();
+    
+    return matchesSearch && matchesStatus;
   }) || [];
+
+  // Get unique statuses for filter
+  const uniqueStatuses = Array.from(
+    new Set(orders?.map((o: any) => o.status).filter(Boolean) || [])
+  ) as string[];
 
   const getStatusBadgeClass = (status: string) => {
     const statusLower = status?.toLowerCase();
@@ -55,19 +66,76 @@ export default function Orders() {
       </div>
 
       {/* Search and Filter */}
-      <div className="flex gap-3">
-        <div className="flex-1 relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-          <Input
-            placeholder="Search"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10 h-10 bg-gray-100 border-0 focus-visible:ring-0 rounded-none"
-          />
+      <div className="space-y-3">
+        <div className="flex gap-3">
+          <div className="flex-1 relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <Input
+              placeholder="Search"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10 h-10 bg-gray-100 border-0 focus-visible:ring-0 rounded-none"
+              data-testid="input-search-orders"
+            />
+          </div>
+          <button 
+            onClick={() => setShowFilters(!showFilters)}
+            className={`flex items-center justify-center w-10 h-10 border border-gray-300 hover:bg-gray-50 ${showFilters ? 'bg-gray-100' : ''}`}
+            data-testid="button-toggle-filters"
+          >
+            <SlidersHorizontal className="w-4 h-4" />
+          </button>
         </div>
-        <button className="flex items-center justify-center w-10 h-10 border border-gray-300 hover:bg-gray-50">
-          <SlidersHorizontal className="w-4 h-4" />
-        </button>
+
+        {/* Filter Panel */}
+        {showFilters && (
+          <div className="bg-gray-50 border border-gray-200 p-4" data-testid="panel-filters">
+            <div className="space-y-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Order Status
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={() => setStatusFilter("all")}
+                    className={`px-3 py-1.5 text-sm border ${
+                      statusFilter === "all"
+                        ? 'bg-black text-white border-black'
+                        : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                    }`}
+                    data-testid="button-filter-all"
+                  >
+                    All Statuses
+                  </button>
+                  {uniqueStatuses.map((status) => (
+                    <button
+                      key={status}
+                      onClick={() => setStatusFilter(status)}
+                      className={`px-3 py-1.5 text-sm border ${
+                        statusFilter === status
+                          ? 'bg-black text-white border-black'
+                          : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                      }`}
+                      data-testid={`button-filter-${status.toLowerCase().replace(/\s+/g, '-')}`}
+                    >
+                      {status}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              
+              {statusFilter !== "all" && (
+                <button
+                  onClick={() => setStatusFilter("all")}
+                  className="text-sm text-gray-600 hover:text-black underline"
+                  data-testid="button-clear-filters"
+                >
+                  Clear filters
+                </button>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Table */}
