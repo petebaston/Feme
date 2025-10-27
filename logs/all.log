@@ -18868,3 +18868,6 @@
 2025-10-27 15:55:00:550 [32mhttp[39m: [32mGET /@fs/home/runner/workspace/attached_assets/feme-logo.png 304 - 1ms[39m
 2025-10-27 15:55:02:552 [32mhttp[39m: [32mGET /api/my-orders 304 - 1751ms[39m
 2025-10-27 15:55:07:557 [32mhttp[39m: [32mGET / 200 - 9ms[39m
+2025-10-27 15:55:31:5531 [32mhttp[39m: [32mGET /api/invoices 200 - 510ms[39m
+2025-10-27 15:56:29:5629 [32mhttp[39m: [32mGET /src/index.css?t=1761580588977&v=GrTedjLX7rFcL2IJJDJ5 200 - 415ms[39m
+2025-10-27 15:56:29:5629 [32mhttp[39m: [32mGET /src/pages/invoices.tsx?t=1761580588977 200 - 568ms[39m

@@ -277,21 +277,6 @@ export default function Invoices() {
         )}
       </div>
 
-      {/* Credit Limit */}
-      <div className="bg-white border border-gray-200 p-6">
-        <div className="flex items-baseline justify-between">
-          <div>
-            <div className="text-sm font-medium text-gray-500 mb-1">CREDIT LIMIT</div>
-            <div className="text-3xl font-normal text-black">{formatCurrency(25000)}</div>
-          </div>
-          <div className="text-sm text-gray-600 space-y-1">
-            <div>Available: {formatCurrency(25000 - totalOpen)}</div>
-            <div>Open: {formatCurrency(totalOpen)}</div>
-            <div>Overdue: {formatCurrency(totalOverdue)}</div>
-          </div>
-        </div>
-      </div>
-
       {/* Summary Bar - Aged Invoices */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         {/* 1-30 Days */}
