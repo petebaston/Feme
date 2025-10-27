@@ -455,14 +455,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const allOrders = Array.isArray(bcOrders) ? bcOrders.map(transformOrder) : [];
 
         // Filter orders by this user's customer ID only
-        // Note: If customer_id is null in B2B orders, we can't filter reliably
         const myOrders = allOrders.filter((order: any) => {
           const orderCustomerId = order.customer_id || order.customerId;
-          // If order has no customer ID (B2B API limitation), include it as a fallback
-          if (!orderCustomerId) {
-            console.log(`[My Orders] Order ${order.id} has no customer ID, including it`);
-            return true;
-          }
           return orderCustomerId === userCustomerId;
         });
 
@@ -519,10 +513,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const bcOrders = response?.data?.list || response?.data || [];
         const allOrders = Array.isArray(bcOrders) ? bcOrders.map(transformOrder) : [];
 
-        // For company orders: B2B API already filters by company, so show all returned orders
-        // The B2B API endpoint filters by company automatically, so we don't need to filter by customer IDs
-        console.log(`[Orders] Returning ${allOrders.length} company orders`);
-        res.json(allOrders);
+        // Filter orders by customer IDs only - all orders for the company's customer account(s)
+        const companyOrders = allOrders.filter((order: any) => {
+          const orderCustomerId = order.customer_id || order.customerId;
+          return customerIds.includes(orderCustomerId);
+        });
+
+        res.json(companyOrders);
       } catch (error) {
         console.error("Orders fetch error:", error);
         res.status(500).json({ message: "Failed to fetch orders" });
