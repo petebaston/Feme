@@ -397,16 +397,30 @@ export default function Invoices() {
                 // Get company name from customerName field
                 const companyName = invoice.customerName || 'Customer';
                 
-                // Get Sales Order number from extraFields
-                const salesOrderField = invoice.extraFields?.find((field: any) => field.fieldName === 'Our Ref');
-                const salesOrder = salesOrderField?.fieldValue || '-';
+                // Get Sales Order number from orderNumber field
+                const salesOrder = invoice.orderNumber || '-';
                 
                 // Get open balance
                 const openBalance = parseFloat(invoice.openBalance?.value || 0);
 
                 return (
                   <Fragment key={invoice.id}>
-                  <TableRow className="hover:bg-gray-50">
+                  <TableRow 
+                    className="hover:bg-gray-50 cursor-pointer"
+                    onClick={(e) => {
+                      // Don't navigate if clicking on checkbox, expand button, or action menu
+                      const target = e.target as HTMLElement;
+                      if (
+                        target.closest('input[type="checkbox"]') ||
+                        target.closest('button') ||
+                        target.closest('[role="menuitem"]')
+                      ) {
+                        return;
+                      }
+                      setLocation(`/invoices/${invoice.id}`);
+                    }}
+                    data-testid={`row-invoice-${invoice.id}`}
+                  >
                     <TableCell>
                       <Checkbox
                         checked={selectedInvoices.includes(invoice.id)}
