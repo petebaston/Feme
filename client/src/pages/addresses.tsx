@@ -45,6 +45,8 @@ interface AddressFormData {
 
 export default function Addresses() {
   const [searchTerm, setSearchTerm] = useState("");
+  const [showFilters, setShowFilters] = useState(false);
+  const [typeFilter, setTypeFilter] = useState<string>("all");
   const [selectedAddress, setSelectedAddress] = useState<any>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -80,7 +82,12 @@ export default function Addresses() {
       address.addressLine2?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       address.city?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       address.zipCode?.toLowerCase().includes(searchTerm.toLowerCase());
-    return matchesSearch;
+    
+    const matchesType = typeFilter === "all" ||
+      (typeFilter === "shipping" && address.isDefaultShipping) ||
+      (typeFilter === "billing" && address.isDefaultBilling);
+    
+    return matchesSearch && matchesType;
   });
 
   const createAddressMutation = useMutation({
@@ -196,18 +203,85 @@ export default function Addresses() {
         </Button>
       </div>
 
-      {/* Search */}
-      <div className="flex gap-3">
-        <div className="relative w-full max-w-md">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-          <Input
-            placeholder="Search addresses..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10 h-10 bg-gray-100 border-0 focus-visible:ring-0 rounded-none w-full"
-            data-testid="input-search-addresses"
-          />
+      {/* Search and Filter */}
+      <div className="space-y-3">
+        <div className="flex gap-3 w-1/2">
+          <div className="flex-1 relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <Input
+              placeholder="Search addresses..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10 h-10 bg-gray-100 border-0 focus-visible:ring-0 rounded-none"
+              data-testid="input-search-addresses"
+            />
+          </div>
+          <button 
+            onClick={() => setShowFilters(!showFilters)}
+            className={`flex items-center justify-center w-10 h-10 border border-gray-300 hover:bg-gray-50 ${showFilters ? 'bg-gray-100' : ''}`}
+            data-testid="button-toggle-filters"
+          >
+            <SlidersHorizontal className="w-4 h-4" />
+          </button>
         </div>
+
+        {/* Filter Panel */}
+        {showFilters && (
+          <div className="bg-gray-50 border border-gray-200 p-4" data-testid="panel-filters">
+            <div className="space-y-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Address Type
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={() => setTypeFilter("all")}
+                    className={`px-3 py-1.5 text-sm border ${
+                      typeFilter === "all"
+                        ? 'bg-black text-white border-black'
+                        : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                    }`}
+                    data-testid="button-filter-all"
+                  >
+                    All Addresses
+                  </button>
+                  <button
+                    onClick={() => setTypeFilter("shipping")}
+                    className={`px-3 py-1.5 text-sm border ${
+                      typeFilter === "shipping"
+                        ? 'bg-black text-white border-black'
+                        : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                    }`}
+                    data-testid="button-filter-shipping"
+                  >
+                    Default Shipping
+                  </button>
+                  <button
+                    onClick={() => setTypeFilter("billing")}
+                    className={`px-3 py-1.5 text-sm border ${
+                      typeFilter === "billing"
+                        ? 'bg-black text-white border-black'
+                        : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                    }`}
+                    data-testid="button-filter-billing"
+                  >
+                    Default Billing
+                  </button>
+                </div>
+              </div>
+              
+              {typeFilter !== "all" && (
+                <button
+                  onClick={() => setTypeFilter("all")}
+                  className="text-sm text-gray-600 hover:text-black underline"
+                  data-testid="button-clear-filters"
+                >
+                  Clear filters
+                </button>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Address Cards */}
