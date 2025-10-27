@@ -18,6 +18,8 @@ import {
 export default function Invoices() {
   const [, setLocation] = useLocation();
   const [searchTerm, setSearchTerm] = useState("");
+  const [showFilters, setShowFilters] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<string>("all");
   const [selectedInvoices, setSelectedInvoices] = useState<string[]>([]);
   const [expandedInvoiceId, setExpandedInvoiceId] = useState<string | null>(null);
   const [pdfBlobUrls, setPdfBlobUrls] = useState<Record<string, string>>({});
@@ -31,7 +33,11 @@ export default function Invoices() {
     const matchesSearch = !searchTerm ||
       invoice.invoiceNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       invoice.customerName?.toLowerCase().includes(searchTerm.toLowerCase());
-    return matchesSearch;
+    
+    const invoiceStatus = calculateInvoiceStatus(invoice);
+    const matchesStatus = statusFilter === "all" || invoiceStatus.toLowerCase() === statusFilter.toLowerCase();
+    
+    return matchesSearch && matchesStatus;
   }) || [];
 
   // Calculate aged invoice totals and status summaries
@@ -180,19 +186,95 @@ export default function Invoices() {
       </div>
 
       {/* Search and Filter */}
-      <div className="flex gap-3">
-        <div className="flex-1 relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-          <Input
-            placeholder="Search"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10 h-10 bg-gray-100 border-0 focus-visible:ring-0 rounded-none"
-          />
+      <div className="space-y-3">
+        <div className="flex gap-3 w-1/2">
+          <div className="flex-1 relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <Input
+              placeholder="Search"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10 h-10 bg-gray-100 border-0 focus-visible:ring-0 rounded-none"
+              data-testid="input-search-invoices"
+            />
+          </div>
+          <button 
+            onClick={() => setShowFilters(!showFilters)}
+            className={`flex items-center justify-center w-10 h-10 border border-gray-300 hover:bg-gray-50 ${showFilters ? 'bg-gray-100' : ''}`}
+            data-testid="button-toggle-filters"
+          >
+            <SlidersHorizontal className="w-4 h-4" />
+          </button>
         </div>
-        <button className="flex items-center justify-center w-10 h-10 border border-gray-300 hover:bg-gray-50">
-          <SlidersHorizontal className="w-4 h-4" />
-        </button>
+
+        {/* Filter Panel */}
+        {showFilters && (
+          <div className="bg-gray-50 border border-gray-200 p-4" data-testid="panel-filters">
+            <div className="space-y-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Invoice Status
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={() => setStatusFilter("all")}
+                    className={`px-3 py-1.5 text-sm border ${
+                      statusFilter === "all"
+                        ? 'bg-black text-white border-black'
+                        : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                    }`}
+                    data-testid="button-filter-all"
+                  >
+                    All Invoices
+                  </button>
+                  <button
+                    onClick={() => setStatusFilter("paid")}
+                    className={`px-3 py-1.5 text-sm border ${
+                      statusFilter === "paid"
+                        ? 'bg-black text-white border-black'
+                        : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                    }`}
+                    data-testid="button-filter-paid"
+                  >
+                    Paid
+                  </button>
+                  <button
+                    onClick={() => setStatusFilter("overdue")}
+                    className={`px-3 py-1.5 text-sm border ${
+                      statusFilter === "overdue"
+                        ? 'bg-black text-white border-black'
+                        : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                    }`}
+                    data-testid="button-filter-overdue"
+                  >
+                    Overdue
+                  </button>
+                  <button
+                    onClick={() => setStatusFilter("unpaid")}
+                    className={`px-3 py-1.5 text-sm border ${
+                      statusFilter === "unpaid"
+                        ? 'bg-black text-white border-black'
+                        : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                    }`}
+                    data-testid="button-filter-unpaid"
+                  >
+                    Unpaid
+                  </button>
+                </div>
+              </div>
+              
+              {statusFilter !== "all" && (
+                <button
+                  onClick={() => setStatusFilter("all")}
+                  className="text-sm text-gray-600 hover:text-black underline"
+                  data-testid="button-clear-filters"
+                >
+                  Clear filters
+                </button>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Credit Limit */}
