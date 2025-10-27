@@ -113,6 +113,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log('[Login] Attempting BigCommerce login for:', email);
       const result = await bigcommerce.login(email, password);
 
+      // Extract customerId from BigCommerce JWT token
+      let customerId: number | undefined;
+      try {
+        const decoded = jwt.decode(result.token) as any;
+        if (decoded?.bc_customer_id) {
+          customerId = decoded.bc_customer_id;
+          console.log('[Login] Extracted customerId from BC token:', customerId);
+        }
+      } catch (error) {
+        console.warn('[Login] Could not decode BigCommerce token for customerId');
+      }
+
       // Get user from database to include in JWT
       let user = await storage.getUserByEmail(email);
       
@@ -135,11 +147,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
           name: email.split('@')[0],
           role: 'buyer',
           companyId,
+          customerId,
         });
-      } else if (companyId && user.companyId !== companyId) {
-        // Update company ID if changed
-        const updatedUser = await storage.updateUser(user.id, { companyId });
-        if (updatedUser) user = updatedUser;
+      } else {
+        // Update company ID or customerId if changed
+        const updates: any = {};
+        if (companyId && user.companyId !== companyId) {
+          updates.companyId = companyId;
+        }
+        if (customerId && user.customerId !== customerId) {
+          updates.customerId = customerId;
+        }
+        if (Object.keys(updates).length > 0) {
+          const updatedUser = await storage.updateUser(user.id, updates);
+          if (updatedUser) user = updatedUser;
+        }
       }
 
       // Ensure user exists at this point
@@ -155,6 +177,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         userId: user.id,
         email: user.email,
         companyId: user.companyId || undefined,
+        customerId: user.customerId || undefined,
         role: user.role || 'buyer',
       };
 
@@ -248,6 +271,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         userId: user.id,
         email: user.email,
         companyId: user.companyId || undefined,
+        customerId: user.customerId || undefined,
         role: user.role || 'buyer',
       };
 
