@@ -974,11 +974,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const response = await bigcommerce.getCompanyAddresses(bcToken, req.user?.companyId);
         const addresses = response?.data?.list || response?.data || [];
 
-        console.log(`[Addresses] Fetched ${addresses.length} addresses for company ${req.user?.companyId}`);
+        console.log(`[Addresses] RAW API returned ${addresses.length} addresses for company ${req.user?.companyId}`);
+        if (addresses.length > 0 && addresses.length <= 5) {
+          console.log('[Addresses] Full address data:', JSON.stringify(addresses, null, 2));
+        } else if (addresses.length > 5) {
+          console.log('[Addresses] Sample (first 3):', JSON.stringify(addresses.slice(0, 3), null, 2));
+        }
+
+        // Deduplicate addresses by id or addressId (BigCommerce sometimes returns duplicates)
+        const uniqueAddresses = addresses.filter((addr: any, index: number, self: any[]) => 
+          index === self.findIndex((a: any) => 
+            (a.id && a.id === addr.id) || (a.addressId && a.addressId === addr.addressId)
+          )
+        );
+
+        console.log(`[Addresses] After deduplication: ${uniqueAddresses.length} unique addresses (removed ${addresses.length - uniqueAddresses.length} duplicates)`);
 
         // Note: Already filtered by BigCommerce API, but apply filterByCompany for admin access control
-        const filteredAddresses = filterByCompany(addresses, req.user?.companyId, req.user?.role);
+        const filteredAddresses = filterByCompany(uniqueAddresses, req.user?.companyId, req.user?.role);
 
+        console.log(`[Addresses] Final filtered count: ${filteredAddresses.length} addresses`);
         res.json(filteredAddresses);
       } catch (error) {
         console.error("Company addresses fetch error:", error);
