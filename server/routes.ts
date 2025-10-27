@@ -411,40 +411,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const bcOrders = response?.data?.list || response?.data || [];
         const allOrders = Array.isArray(bcOrders) ? bcOrders.map(transformOrder) : [];
 
-        // Get company users to check their emails  
-        const companyUsersResponse = await bigcommerce.getCompanyUsers(bcToken, companyId);
-        const companyUsers = companyUsersResponse?.data || [];
-        const companyEmails = companyUsers.map((u: any) => u.email?.toLowerCase()).filter(Boolean);
-
-        // Filter orders by customer IDs AND company in billing address
+        // Filter orders by customer IDs only - all orders for the company's customer account(s)
         const companyOrders = allOrders.filter((order: any) => {
           const orderCustomerId = order.customer_id || order.customerId;
-          const billingCompany = order.billingAddress?.company || order.companyName || '';
-          const billingEmail = order.billingAddress?.email?.toLowerCase() || '';
-          const billingName = `${order.billingAddress?.first_name || ''} ${order.billingAddress?.last_name || ''}`.trim().toLowerCase();
-          
-          // Must match customer ID
-          if (!customerIds.includes(orderCustomerId)) {
-            return false;
-          }
-          
-          // Include if: has company ID in billing, OR is B2B order, 
-          // OR (placed by company user AND billing name matches user name)
-          const hasCompanyInBilling = billingCompany.includes(companyId);
-          const isB2BOrder = !!order.companyId;
-          
-          // Only include orders placed by company users if the NAME also matches (not just email)
-          let placedByVerifiedCompanyUser = false;
-          if (companyEmails.includes(billingEmail)) {
-            // Find the matching company user
-            const matchingUser = companyUsers.find((u: any) => u.email?.toLowerCase() === billingEmail);
-            if (matchingUser) {
-              const userName = `${matchingUser.firstName || ''} ${matchingUser.lastName || ''}`.trim().toLowerCase();
-              placedByVerifiedCompanyUser = billingName === userName;
-            }
-          }
-          
-          return hasCompanyInBilling || isB2BOrder || placedByVerifiedCompanyUser;
+          return customerIds.includes(orderCustomerId);
         });
 
         res.json(companyOrders);
