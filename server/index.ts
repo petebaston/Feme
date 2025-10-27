@@ -18,7 +18,18 @@ app.set('trust proxy', true);
 
 // Security headers (Item 10)
 app.use(helmet({
-  contentSecurityPolicy: process.env.NODE_ENV === "production" ? undefined : false,
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"], // For Vite in dev mode
+      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+      fontSrc: ["'self'", "https://fonts.gstatic.com"],
+      imgSrc: ["'self'", "data:", "https:", "blob:"],
+      frameSrc: ["'self'", "blob:", "data:"], // Allow blob: and data: URLs in iframes
+      objectSrc: ["'self'", "blob:"],
+      connectSrc: ["'self'", "https://api-b2b.bigcommerce.com", "https://api.bigcommerce.com"],
+    },
+  },
   crossOriginEmbedderPolicy: false,
 }));
 
