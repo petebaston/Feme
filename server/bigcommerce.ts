@@ -360,6 +360,56 @@ export class BigCommerceService {
     
     console.log(`[BigCommerce] Combined total: ${allOrders.length} orders (${b2bOrders.length} B2B + ${allOrders.length - b2bOrders.length} standard)`);
     
+    // CRITICAL: Enrich B2B orders with customerId by matching against company users
+    // B2B API orders don't include customer_id, so we need to add it for filtering
+    if (companyId && b2bOrders.length > 0) {
+      try {
+        const usersResponse = await this.getCompanyUsers(userToken, companyId);
+        if (usersResponse?.data && Array.isArray(usersResponse.data)) {
+          console.log(`[BigCommerce] Enriching ${b2bOrders.length} B2B orders with customer IDs...`);
+          
+          // Create lookup maps: email -> customerId AND (firstName+lastName) -> customerId
+          const emailToCustomerId = new Map<string, number>();
+          const nameToCustomerId = new Map<string, number>();
+          
+          usersResponse.data.forEach((user: any) => {
+            if (user.email && user.customerId) {
+              emailToCustomerId.set(user.email.toLowerCase(), user.customerId);
+            }
+            if (user.firstName && user.lastName && user.customerId) {
+              const nameKey = `${user.firstName.toLowerCase()}|${user.lastName.toLowerCase()}`;
+              nameToCustomerId.set(nameKey, user.customerId);
+            }
+          });
+          
+          // Enrich B2B orders (match by email OR name)
+          allOrders.forEach((order: any) => {
+            if (!order.customer_id && !order.customerId) {
+              let customerId: number | undefined;
+              
+              // Try matching by email first
+              if (order.email) {
+                customerId = emailToCustomerId.get(order.email.toLowerCase());
+              }
+              
+              // Fall back to matching by firstName + lastName
+              if (!customerId && order.firstName && order.lastName) {
+                const nameKey = `${order.firstName.toLowerCase()}|${order.lastName.toLowerCase()}`;
+                customerId = nameToCustomerId.get(nameKey);
+              }
+              
+              if (customerId) {
+                order.customer_id = customerId;
+                console.log(`[BigCommerce] Matched order ${order.orderId} (${order.firstName} ${order.lastName}) to customer ${customerId}`);
+              }
+            }
+          });
+        }
+      } catch (enrichError: any) {
+        console.warn('[BigCommerce] Failed to enrich B2B orders with customer IDs:', enrichError.message);
+      }
+    }
+    
     // Update response with combined orders
     if (response?.data) {
       response.data.list = allOrders;
