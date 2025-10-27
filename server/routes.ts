@@ -779,9 +779,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log(`[Invoices] Retrieved ${invoices.length} total invoices`);
         console.log(`[Invoices] User companyId: ${req.user?.companyId}, role: ${req.user?.role}`);
 
+        // Enrich invoices with full details (including extraFields) from individual invoice endpoints
+        // The list endpoint doesn't include extraFields, but the detail endpoint does
+        const enrichedInvoices = await Promise.all(
+          invoices.map(async (invoice) => {
+            try {
+              const detailResponse = await bigcommerce.getInvoice(undefined, invoice.id);
+              const fullInvoice = detailResponse?.data;
+              
+              // Merge the full invoice details (which includes extraFields) with the list invoice
+              return {
+                ...invoice,
+                extraFields: fullInvoice?.extraFields || [],
+                // Preserve other detail fields if needed
+                details: fullInvoice?.details || invoice.details
+              };
+            } catch (error) {
+              console.error(`[Invoices] Failed to enrich invoice ${invoice.id}:`, error);
+              // Return original invoice if enrichment fails
+              return { ...invoice, extraFields: [] };
+            }
+          })
+        );
+
+        console.log(`[Invoices] Enriched ${enrichedInvoices.length} invoices with full details`);
+
         // Filter invoices by logged-in user's company
         // Invoices use customerId field instead of companyId
-        const filteredInvoices = invoices.filter(invoice => {
+        const filteredInvoices = enrichedInvoices.filter(invoice => {
           // Admins see all invoices
           if (req.user?.role === 'admin' || req.user?.role === 'superadmin') {
             return true;

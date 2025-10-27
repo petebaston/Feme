@@ -397,20 +397,15 @@ export default function Invoices() {
                 // Get company name from customerName field
                 const companyName = invoice.customerName || 'Customer';
                 
-                // Get Sales Order number from "Our Ref" custom field
-                // Log first invoice to debug the full details structure
-                if (filteredInvoices.indexOf(invoice) === 0) {
-                  console.log('[Invoice Debug] Full invoice structure:', {
-                    id: invoice.id,
-                    orderNumber: invoice.orderNumber,
-                    details: invoice.details,
-                    detailsType: typeof invoice.details?.details,
-                    detailsIsArray: Array.isArray(invoice.details?.details)
-                  });
-                }
+                // Get Sales Order number from "Our Ref" custom field in extraFields
+                // The backend now enriches invoices with extraFields from the detail endpoint
+                const extraFields = invoice.extraFields || [];
+                const ourRefField = extraFields.find((field: any) => 
+                  field.fieldName === 'Our Ref'
+                );
                 
-                // For now, just use orderNumber until we find the correct field location
-                const salesOrder = invoice.orderNumber || '-';
+                // Use "Our Ref" if available, fallback to orderNumber
+                const salesOrder = ourRefField?.fieldValue || invoice.orderNumber || '-';
                 
                 // Get open balance
                 const openBalance = parseFloat(invoice.openBalance?.value || 0);
