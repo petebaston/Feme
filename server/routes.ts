@@ -53,13 +53,17 @@ function transformOrder(bcOrder: any): any {
     variantId: product.variant_id,
   }));
 
+  const totalAmount = bcOrder.totalIncTax || bcOrder.total_inc_tax || 0;
+  const currencyCode = bcOrder.currency_code || bcOrder.currencyCode || 'GBP';
+  
   return {
     id: bcOrder.orderId || bcOrder.id,
     bcOrderId: bcOrder.orderId || bcOrder.id,
     customerName: bcOrder.companyName || bcOrder.customerName || 
       `${bcOrder.billing_address?.first_name || ''} ${bcOrder.billing_address?.last_name || ''}`.trim(),
     status: bcOrder.orderStatus || bcOrder.customOrderStatus || bcOrder.status,
-    total: bcOrder.totalIncTax || bcOrder.total_inc_tax || 0,
+    total: totalAmount,
+    totalIncTax: totalAmount,  // Frontend expects this field
     subtotal: bcOrder.totalExTax || bcOrder.total_ex_tax || bcOrder.subtotalIncTax || bcOrder.totalIncTax || 0,
     createdAt: bcOrder.createdAt ? new Date(parseInt(bcOrder.createdAt) * 1000).toISOString() : 
       (bcOrder.date_created || new Date().toISOString()),
@@ -74,12 +78,12 @@ function transformOrder(bcOrder: any): any {
     companyName: bcOrder.companyName || bcOrder.billing_address?.company,
     firstName: bcOrder.firstName || bcOrder.billing_address?.first_name,
     lastName: bcOrder.lastName || bcOrder.billing_address?.last_name,
-    currencyCode: bcOrder.currency_code || bcOrder.currencyCode || 'USD',
-    money: bcOrder.money || {
+    currencyCode: currencyCode,
+    money: bcOrder.money?.value ? bcOrder.money : {
       currency: {
-        code: bcOrder.currency_code || 'GBP'
+        code: currencyCode
       },
-      value: (bcOrder.totalIncTax || bcOrder.total_inc_tax || 0).toString()
+      value: totalAmount.toString()
     },
     shippingAddress: bcOrder.shippingAddress || (Array.isArray(bcOrder.shipping_addresses) && bcOrder.shipping_addresses.length > 0 
       ? bcOrder.shipping_addresses[0] 
