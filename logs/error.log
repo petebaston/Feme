@@ -68,3 +68,4 @@
 2025-10-27 12:11:00:110 [31merror[39m: [31mGET /api/company/users 500 - 165ms[39m
 2025-10-27 12:11:02:112 [31merror[39m: [31mGET /api/company/addresses 500 - 39ms[39m
 2025-10-27 12:11:04:114 [31merror[39m: [31mGET /api/orders 500 - 38ms[39m
+2025-10-27 12:30:46:3046 [31merror[39m: [31mGET /api/my-orders 500 - 53ms[39m
