@@ -714,6 +714,15 @@ export class BigCommerceService {
     return this.request(`/api/v3/io/addresses${query ? `?${query}` : ''}`);
   }
 
+  async getCompanyCredit(userToken: string, companyId: string) {
+    // Payment API v3 endpoint - Get Company Credit Status
+    // GET /api/v3/io/companies/{companyId}/credit
+    // Returns credit settings including availableCredit, creditCurrency, etc.
+    // Uses OAuth X-Auth-Token (same authentication as other v3 endpoints)
+    console.log(`[BigCommerce] Fetching credit info for company ${companyId}`);
+    return this.request(`/api/v3/io/companies/${companyId}/credit`);
+  }
+
   // Invoices - Use Management API v3 with server OAuth Token
   // Correct endpoint: /api/v3/io/ip/invoices (per official B2B Edition API docs)
   // SECURITY BEST PRACTICE: Always filter by customerId (Company ID) at API level

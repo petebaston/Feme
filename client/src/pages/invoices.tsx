@@ -29,6 +29,11 @@ export default function Invoices() {
     staleTime: 300000,
   });
 
+  const { data: companyCredit, isLoading: isCreditLoading } = useQuery<any>({
+    queryKey: ['/api/company/credit'],
+    staleTime: 300000,
+  });
+
   // Calculate actual status based on openBalance and dueDate
   const calculateInvoiceStatus = (invoice: any): 'Paid' | 'Overdue' | 'Unpaid' => {
     const openBalance = parseFloat(invoice.openBalance?.value || 0);
@@ -284,7 +289,13 @@ export default function Invoices() {
           <div className="flex items-baseline justify-between">
             <div>
               <div className="text-sm font-medium text-gray-500 mb-1">CREDIT LIMIT</div>
-              <div className="text-3xl font-normal text-black">{formatCurrency(25000)}</div>
+              {isCreditLoading ? (
+                <Skeleton className="h-9 w-32" />
+              ) : (
+                <div className="text-3xl font-normal text-black">
+                  {formatCurrency((companyCredit?.availableCredit || 0) + totalOpen, companyCredit?.creditCurrency || 'GBP')}
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -294,7 +305,13 @@ export default function Invoices() {
           <div className="flex items-baseline justify-between">
             <div>
               <div className="text-sm font-medium text-gray-500 mb-1">AVAILABLE</div>
-              <div className="text-3xl font-normal text-green-600">{formatCurrency(25000 - totalOpen)}</div>
+              {isCreditLoading ? (
+                <Skeleton className="h-9 w-32" />
+              ) : (
+                <div className="text-3xl font-normal text-green-600">
+                  {formatCurrency(companyCredit?.availableCredit || 0, companyCredit?.creditCurrency || 'GBP')}
+                </div>
+              )}
             </div>
             <div className="w-3 h-3 bg-green-500"></div>
           </div>
@@ -305,7 +322,13 @@ export default function Invoices() {
           <div className="flex items-baseline justify-between">
             <div>
               <div className="text-sm font-medium text-gray-500 mb-1">OPEN</div>
-              <div className="text-3xl font-normal text-black">{formatCurrency(totalOpen)}</div>
+              {isLoading ? (
+                <Skeleton className="h-9 w-32" />
+              ) : (
+                <div className="text-3xl font-normal text-black">
+                  {formatCurrency(totalOpen, companyCredit?.creditCurrency || 'GBP')}
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -315,7 +338,13 @@ export default function Invoices() {
           <div className="flex items-baseline justify-between">
             <div>
               <div className="text-sm font-medium text-gray-500 mb-1">OVERDUE</div>
-              <div className="text-3xl font-normal text-red-600">{formatCurrency(totalOverdue)}</div>
+              {isLoading ? (
+                <Skeleton className="h-9 w-32" />
+              ) : (
+                <div className="text-3xl font-normal text-red-600">
+                  {formatCurrency(totalOverdue, companyCredit?.creditCurrency || 'GBP')}
+                </div>
+              )}
             </div>
             <div className="w-3 h-3 bg-red-500"></div>
           </div>

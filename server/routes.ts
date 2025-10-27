@@ -921,6 +921,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   );
 
+  app.get("/api/company/credit",
+    authenticateToken,
+    sessionTimeout,
+
+    async (req: AuthRequest, res) => {
+      try {
+        // Disable caching to prevent stale data
+        res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+        res.set('Pragma', 'no-cache');
+        res.set('Expires', '0');
+
+        if (!req.user?.companyId) {
+          return res.status(400).json({ message: 'Company ID required' });
+        }
+
+        const bcToken = await getBigCommerceToken(req);
+        const response = await bigcommerce.getCompanyCredit(bcToken, req.user.companyId);
+        const creditData = response?.data || {};
+
+        console.log(`[Company Credit] Fetched for company ${req.user.companyId}:`, creditData);
+
+        res.json(creditData);
+      } catch (error: any) {
+        console.error("Company credit fetch error:", error);
+        // If credit feature is not enabled, return default values
+        if (error.message?.includes('404') || error.message?.includes('400')) {
+          console.log('[Company Credit] Feature not enabled, returning defaults');
+          res.json({
+            creditEnabled: false,
+            creditCurrency: 'GBP',
+            availableCredit: 0,
+            limitPurchases: false,
+            creditHold: false,
+          });
+        } else {
+          res.status(500).json({ message: "Failed to fetch company credit" });
+        }
+      }
+    }
+  );
+
   app.get("/api/company/users",
     authenticateToken,
     sessionTimeout,
