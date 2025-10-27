@@ -18599,3 +18599,4 @@
 2025-10-27 15:41:51:4151 [32mhttp[39m: [32mGET /@fs/home/runner/workspace/node_modules/.vite/deps/chunk-I7OES434.js?v=ca1dfdd9 200 - 1ms[39m
 2025-10-27 15:41:51:4151 [32mhttp[39m: [32mGET /@fs/home/runner/workspace/attached_assets/feme-logo.png 200 - 4ms[39m
 2025-10-27 15:41:51:4151 [32mhttp[39m: [32mGET /favicon.ico 200 - 11ms[39m
+2025-10-27 15:43:08:438 [32mhttp[39m: [32mGET /api/invoices 200 - 2740ms[39m
