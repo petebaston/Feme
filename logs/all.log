@@ -17375,3 +17375,4 @@
 2025-10-27 12:45:46:4546 [32mhttp[39m: [32mGET /favicon.ico 200 - 5ms[39m
 2025-10-27 12:45:46:4546 [32mhttp[39m: [32mGET /@fs/home/runner/workspace/attached_assets/feme-logo.png 304 - 1ms[39m
 2025-10-27 12:45:46:4546 [32mhttp[39m: [32mGET /favicon.ico 200 - 6ms[39m
+2025-10-27 12:47:35:4735 [32mhttp[39m: [32mGET /api/company/users 200 - 2325ms[39m
