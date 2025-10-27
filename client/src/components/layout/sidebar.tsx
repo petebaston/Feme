@@ -4,7 +4,8 @@ import { useState } from "react";
 import { Menu, X } from "lucide-react";
 
 const navigation = [
-  { name: 'Orders', href: '/orders' },
+  { name: 'My Orders', href: '/my-orders' },
+  { name: 'Company Orders', href: '/orders' },
   { name: 'Invoices', href: '/invoices' },
   { name: 'Addresses', href: '/addresses' },
   { name: 'User management', href: '/user-management' },

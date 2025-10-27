@@ -11,6 +11,7 @@ import { useEffect, useState } from "react";
 import NotFound from "@/pages/not-found";
 import Login from "@/pages/login";
 import Dashboard from "@/pages/dashboard";
+import MyOrders from "@/pages/my-orders";
 import Orders from "@/pages/orders";
 import OrderDetail from "@/pages/order-detail";
 import Invoices from "@/pages/invoices";
@@ -70,7 +71,8 @@ function Router() {
         <Sidebar />
         <main className="flex-1 md:ml-44 px-8 py-6 bg-white min-h-[calc(100vh-4rem)]">
           <Switch>
-            <Route path="/" component={Orders} />
+            <Route path="/" component={MyOrders} />
+            <Route path="/my-orders" component={MyOrders} />
             <Route path="/orders/:id" component={OrderDetail} />
             <Route path="/orders" component={Orders} />
             <Route path="/invoices/:id" component={InvoiceDetail} />

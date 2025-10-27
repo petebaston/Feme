@@ -387,7 +387,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Orders endpoints
   
-  // Orders - Company-filtered orders (proper implementation matching invoices)
+  // My Orders - Only logged-in user's orders
+  app.get("/api/my-orders",
+    authenticateToken,
+    sessionTimeout,
+    async (req: AuthRequest, res) => {
+      try {
+        console.log('[My Orders] Fetching orders for user:', req.user?.email);
+        const bcToken = await getBigCommerceToken(req);
+        const { search, status, sortBy, limit, recent } = req.query;
+
+        // Get user's customer ID from the JWT token
+        const userCustomerId = req.user?.customerId;
+        if (!userCustomerId) {
+          console.warn('[My Orders] No customer ID found for user');
+          return res.json([]);
+        }
+
+        console.log(`[My Orders] Filtering orders for customer ID ${userCustomerId}`);
+
+        // Fetch all orders from standard BigCommerce API
+        const response = await bigcommerce.getOrders(bcToken, {
+          search: search as string,
+          status: status as string,
+          sortBy: sortBy as string,
+          limit: limit ? parseInt(limit as string) : 1000,
+          recent: recent === 'true',
+        }, req.user?.companyId);
+
+        if (response?.errMsg || response?.error) {
+          console.warn("[My Orders] BigCommerce returned error:", response.errMsg || response.error);
+          return res.json([]);
+        }
+
+        const bcOrders = response?.data?.list || response?.data || [];
+        const allOrders = Array.isArray(bcOrders) ? bcOrders.map(transformOrder) : [];
+
+        // Filter orders by this user's customer ID only
+        const myOrders = allOrders.filter((order: any) => {
+          const orderCustomerId = order.customer_id || order.customerId;
+          return orderCustomerId === userCustomerId;
+        });
+
+        console.log(`[My Orders] Found ${myOrders.length} orders for customer ${userCustomerId}`);
+        res.json(myOrders);
+      } catch (error) {
+        console.error("My Orders fetch error:", error);
+        res.status(500).json({ message: "Failed to fetch orders" });
+      }
+    }
+  );
+  
+  // Company Orders - All orders for the user's company
   app.get("/api/orders",
     authenticateToken,
     sessionTimeout,

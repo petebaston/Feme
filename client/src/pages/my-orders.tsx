@@ -7,12 +7,12 @@ import { Search, SlidersHorizontal, ChevronDown } from "lucide-react";
 import { formatCurrency } from "@/lib/currency";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
-export default function Orders() {
+export default function MyOrders() {
   const [searchTerm, setSearchTerm] = useState("");
   const [, setLocation] = useLocation();
 
   const { data: orders, isLoading, error} = useQuery<any[]>({
-    queryKey: ['/api/orders'],
+    queryKey: ['/api/my-orders'],
     staleTime: 300000,
     retry: false,
   });
@@ -51,7 +51,7 @@ export default function Orders() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-normal text-black">Company Orders</h1>
+        <h1 className="text-2xl font-normal text-black">My Orders</h1>
       </div>
 
       {/* Search and Filter */}
