@@ -25,6 +25,23 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { Label } from "@/components/ui/label";
+import { useForm } from "react-hook-form";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+
+interface AddressFormData {
+  firstName: string;
+  lastName: string;
+  addressLine1: string;
+  addressLine2?: string;
+  city: string;
+  stateName: string;
+  zipCode: string;
+  countryCode: string;
+  phoneNumber?: string;
+  isDefaultShipping: boolean;
+  isDefaultBilling: boolean;
+}
 
 export default function Addresses() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -33,6 +50,22 @@ export default function Addresses() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [addressToDelete, setAddressToDelete] = useState<any>(null);
   const { toast } = useToast();
+  
+  const form = useForm<AddressFormData>({
+    defaultValues: {
+      firstName: "",
+      lastName: "",
+      addressLine1: "",
+      addressLine2: "",
+      city: "",
+      stateName: "",
+      zipCode: "",
+      countryCode: "GB",
+      phoneNumber: "",
+      isDefaultShipping: false,
+      isDefaultBilling: false,
+    },
+  });
 
   const { data: addresses = [], isLoading } = useQuery<any[]>({
     queryKey: ['/api/company/addresses'],
@@ -50,8 +83,75 @@ export default function Addresses() {
     return matchesSearch;
   });
 
+  const createAddressMutation = useMutation({
+    mutationFn: (data: AddressFormData) => 
+      apiRequest('/api/company/addresses', { method: 'POST', body: JSON.stringify(data) }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/company/addresses'] });
+      toast({ title: "Success", description: "Address created successfully" });
+      setIsEditDialogOpen(false);
+      form.reset();
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to create address", variant: "destructive" });
+    },
+  });
+
+  const updateAddressMutation = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: AddressFormData }) =>
+      apiRequest(`/api/company/addresses/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/company/addresses'] });
+      toast({ title: "Success", description: "Address updated successfully" });
+      setIsEditDialogOpen(false);
+      setSelectedAddress(null);
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to update address", variant: "destructive" });
+    },
+  });
+
+  const deleteAddressMutation = useMutation({
+    mutationFn: (id: number) =>
+      apiRequest(`/api/company/addresses/${id}`, { method: 'DELETE' }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/company/addresses'] });
+      toast({ title: "Success", description: "Address deleted successfully" });
+      setIsDeleteDialogOpen(false);
+      setAddressToDelete(null);
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to delete address", variant: "destructive" });
+    },
+  });
+
+  const setDefaultMutation = useMutation({
+    mutationFn: (id: number) =>
+      apiRequest(`/api/company/addresses/${id}/set-default`, { method: 'PATCH' }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/company/addresses'] });
+      toast({ title: "Success", description: "Default address updated" });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to set default address", variant: "destructive" });
+    },
+  });
+
   const handleEdit = (address: any) => {
     setSelectedAddress(address);
+    form.reset({
+      firstName: address.firstName || "",
+      lastName: address.lastName || "",
+      addressLine1: address.addressLine1 || "",
+      addressLine2: address.addressLine2 || "",
+      city: address.city || "",
+      stateName: address.stateName || address.stateCode || "",
+      zipCode: address.zipCode || "",
+      countryCode: address.countryCode || "GB",
+      phoneNumber: address.phoneNumber || "",
+      isDefaultShipping: address.isDefaultShipping || false,
+      isDefaultBilling: address.isDefaultBilling || false,
+    });
     setIsEditDialogOpen(true);
   };
 
@@ -61,19 +161,21 @@ export default function Addresses() {
   };
 
   const confirmDelete = () => {
-    toast({
-      title: "Delete Address",
-      description: "Address deletion is not yet implemented. This will be connected to the BigCommerce API.",
-    });
-    setIsDeleteDialogOpen(false);
-    setAddressToDelete(null);
+    if (addressToDelete) {
+      deleteAddressMutation.mutate(addressToDelete.addressId);
+    }
   };
 
   const handleSetDefault = (address: any) => {
-    toast({
-      title: "Set as Default",
-      description: "Setting default address is not yet implemented. This will be connected to the BigCommerce API.",
-    });
+    setDefaultMutation.mutate(address.addressId);
+  };
+
+  const onSubmit = (data: AddressFormData) => {
+    if (selectedAddress) {
+      updateAddressMutation.mutate({ id: selectedAddress.addressId, data });
+    } else {
+      createAddressMutation.mutate(data);
+    }
   };
 
   return (
