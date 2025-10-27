@@ -422,11 +422,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const bcToken = await getBigCommerceToken(req);
         const { search, status, sortBy, limit, recent } = req.query;
 
-        // Get user's customer ID from the JWT token
-        const userCustomerId = req.user?.customerId;
+        // Get user's customer ID from the JWT token or database (for backward compatibility)
+        let userCustomerId = req.user?.customerId;
         if (!userCustomerId) {
-          console.warn('[My Orders] No customer ID found for user');
-          return res.json([]);
+          console.warn('[My Orders] No customerId in JWT token, fetching from database...');
+          const user = await storage.getUserById(req.user!.userId);
+          userCustomerId = user?.customerId;
+          if (!userCustomerId) {
+            console.warn('[My Orders] No customer ID found for user');
+            return res.json([]);
+          }
+          console.log('[My Orders] Retrieved customerId from database:', userCustomerId);
         }
 
         console.log(`[My Orders] Filtering orders for customer ID ${userCustomerId}`);

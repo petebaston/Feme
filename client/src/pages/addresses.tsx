@@ -196,20 +196,18 @@ export default function Addresses() {
         </Button>
       </div>
 
-      {/* Search and Filter */}
+      {/* Search */}
       <div className="flex gap-3">
-        <div className="flex-1 relative">
+        <div className="relative w-full max-w-md">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
           <Input
-            placeholder="Search"
+            placeholder="Search addresses..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10 h-10 bg-gray-100 border-0 focus-visible:ring-0 rounded-none"
+            className="pl-10 h-10 bg-gray-100 border-0 focus-visible:ring-0 rounded-none w-full"
+            data-testid="input-search-addresses"
           />
         </div>
-        <button className="flex items-center justify-center w-10 h-10 border border-gray-300 hover:bg-gray-50">
-          <SlidersHorizontal className="w-4 h-4" />
-        </button>
       </div>
 
       {/* Address Cards */}
