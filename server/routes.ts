@@ -820,16 +820,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         res.set('Expires', '0');
 
         const bcToken = await getBigCommerceToken(req);
-        const response = await bigcommerce.getCompanyAddresses(bcToken);
+        // Pass company filter directly to BigCommerce API (like users endpoint)
+        const response = await bigcommerce.getCompanyAddresses(bcToken, req.user?.companyId);
         const addresses = response?.data?.list || response?.data || [];
 
-        console.log(`[Addresses] Total addresses fetched: ${addresses.length}`);
-        console.log(`[Addresses] User companyId: ${req.user?.companyId}, role: ${req.user?.role}`);
+        console.log(`[Addresses] Fetched ${addresses.length} addresses for company ${req.user?.companyId}`);
 
-        // Filter addresses by logged-in user's company
+        // Note: Already filtered by BigCommerce API, but apply filterByCompany for admin access control
         const filteredAddresses = filterByCompany(addresses, req.user?.companyId, req.user?.role);
 
-        console.log(`[Addresses] Filtered to ${filteredAddresses.length} addresses`);
         res.json(filteredAddresses);
       } catch (error) {
         console.error("Company addresses fetch error:", error);
