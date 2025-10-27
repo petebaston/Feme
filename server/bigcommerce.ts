@@ -321,41 +321,57 @@ export class BigCommerceService {
     const response = await this.request(`/api/v2/orders${query ? `?${query}` : ''}`, { userToken });
     
     // Log detailed response for debugging
+    let b2bOrders: any[] = [];
     if (response?.data) {
       const list = response.data.list || response.data || [];
       const total = response.data.paginator?.totalCount || list.length;
       console.log(`[BigCommerce B2B API] Returned ${list.length} orders (total: ${total})`);
-      
-      // FALLBACK: If B2B Edition returns 0 orders, try standard API
-      if (total === 0 && this.config.accessToken) {
-        console.log('[BigCommerce] No B2B orders found, falling back to standard BigCommerce API...');
-        try {
-          const standardResponse = await this.getStandardBigCommerceOrders({
-            limit: 250, // BigCommerce V2 API max limit is 250
-          });
-          
-          if (standardResponse?.data?.list?.length > 0) {
-            console.log(`[BigCommerce] ✅ Retrieved ${standardResponse.data.list.length} orders from standard API`);
-            // Cache these orders too
-            if (companyId) {
-              await storage.setCachedOrders(standardResponse.data.list, companyId);
-              console.log(`[Cache] Stored ${standardResponse.data.list.length} standard API orders for company ${companyId}`);
-            }
-            return standardResponse;
-          }
-        } catch (fallbackError: any) {
-          console.error('[BigCommerce] Standard API fallback failed:', fallbackError.message);
+      b2bOrders = list;
+    }
+    
+    // ALWAYS fetch from standard API too, because B2B Edition may not have all historical orders
+    let standardOrders: any[] = [];
+    if (this.config.accessToken) {
+      console.log('[BigCommerce] Also fetching from standard BigCommerce API...');
+      try {
+        const standardResponse = await this.getStandardBigCommerceOrders({
+          limit: 250, // BigCommerce V2 API max limit is 250
+        });
+        
+        if (standardResponse?.data?.list?.length > 0) {
+          standardOrders = standardResponse.data.list;
+          console.log(`[BigCommerce] ✅ Retrieved ${standardOrders.length} orders from standard API`);
         }
+      } catch (fallbackError: any) {
+        console.error('[BigCommerce] Standard API fetch failed:', fallbackError.message);
+      }
+    }
+    
+    // Merge orders from both APIs, removing duplicates by order ID
+    const allOrders = [...b2bOrders];
+    const b2bOrderIds = new Set(b2bOrders.map((o: any) => o.orderId || o.id));
+    
+    for (const stdOrder of standardOrders) {
+      const stdOrderId = stdOrder.orderId || stdOrder.id;
+      if (!b2bOrderIds.has(stdOrderId)) {
+        allOrders.push(stdOrder);
+      }
+    }
+    
+    console.log(`[BigCommerce] Combined total: ${allOrders.length} orders (${b2bOrders.length} B2B + ${allOrders.length - b2bOrders.length} standard)`);
+    
+    // Update response with combined orders
+    if (response?.data) {
+      response.data.list = allOrders;
+      if (response.data.paginator) {
+        response.data.paginator.totalCount = allOrders.length;
       }
     }
     
     // Cache orders if we have companyId
-    if (companyId && response?.data) {
-      const ordersList = response.data.list || response.data || [];
-      if (ordersList.length > 0) {
-        await storage.setCachedOrders(ordersList, companyId);
-        console.log(`[Cache] Stored ${ordersList.length} orders for company ${companyId}`);
-      }
+    if (companyId && allOrders.length > 0) {
+      await storage.setCachedOrders(allOrders, companyId);
+      console.log(`[Cache] Stored ${allOrders.length} combined orders for company ${companyId}`);
     }
     
     return response;
