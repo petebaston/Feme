@@ -29,6 +29,26 @@ export default function Invoices() {
     staleTime: 300000,
   });
 
+  // Calculate actual status based on openBalance and dueDate
+  const calculateInvoiceStatus = (invoice: any): 'Paid' | 'Overdue' | 'Unpaid' => {
+    const openBalance = parseFloat(invoice.openBalance?.value || 0);
+    
+    // If balance is 0, it's paid
+    if (openBalance === 0) {
+      return 'Paid';
+    }
+    
+    // If there's a balance, check if it's overdue
+    const dueDate = invoice.dueDate ? new Date(invoice.dueDate * 1000) : null;
+    const today = new Date();
+    
+    if (dueDate && dueDate < today) {
+      return 'Overdue';
+    }
+    
+    return 'Unpaid';
+  };
+
   const filteredInvoices = invoices?.filter((invoice: any) => {
     const matchesSearch = !searchTerm ||
       invoice.invoiceNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -86,26 +106,6 @@ export default function Invoices() {
   };
 
   const { aged1to30, aged31to60, aged61to90, aged90plus, totalOpen, totalOverdue } = calculateTotals();
-
-  // Calculate actual status based on openBalance and dueDate
-  const calculateInvoiceStatus = (invoice: any): 'Paid' | 'Overdue' | 'Unpaid' => {
-    const openBalance = parseFloat(invoice.openBalance?.value || 0);
-    
-    // If balance is 0, it's paid
-    if (openBalance === 0) {
-      return 'Paid';
-    }
-    
-    // If there's a balance, check if it's overdue
-    const dueDate = invoice.dueDate ? new Date(invoice.dueDate * 1000) : null;
-    const today = new Date();
-    
-    if (dueDate && dueDate < today) {
-      return 'Overdue';
-    }
-    
-    return 'Unpaid';
-  };
 
   const getStatusBadgeClass = (status: string) => {
     switch (status) {
