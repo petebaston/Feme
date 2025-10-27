@@ -239,7 +239,7 @@ export default function OrderDetail() {
       </div>
 
       {/* Shipping Information */}
-      {(order.shippingAddress || order.shippingCity || order.shippingState) && (
+      {(order.shippingAddress || order.billingAddress) && (
         <Card className="border border-gray-200">
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
@@ -248,39 +248,42 @@ export default function OrderDetail() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
-            {order.shippingAddress && (
-              <>
-                <p className="font-medium">{order.shippingAddress.firstName} {order.shippingAddress.lastName}</p>
-                <p>{order.shippingAddress.address1}</p>
-                {order.shippingAddress.address2 && <p>{order.shippingAddress.address2}</p>}
-                <p>{order.shippingAddress.city}, {order.shippingAddress.state} {order.shippingAddress.zipCode}</p>
-                {order.shippingAddress.country && <p>{order.shippingAddress.country}</p>}
-              </>
-            )}
-            {!order.shippingAddress && (order.shippingCity || order.shippingState) && (
-              <p>{order.shippingCity}, {order.shippingState}</p>
-            )}
+            {(() => {
+              const addr = order.shippingAddress && Object.keys(order.shippingAddress).length > 0 
+                ? order.shippingAddress 
+                : order.billingAddress;
+              
+              if (!addr) return null;
+              
+              return (
+                <>
+                  <p className="font-medium">
+                    {addr.first_name || addr.firstName} {addr.last_name || addr.lastName}
+                  </p>
+                  {addr.company && <p className="text-sm text-gray-600">{addr.company}</p>}
+                  <p>{addr.street_1 || addr.address1 || addr.address_line_1}</p>
+                  {(addr.street_2 || addr.address2 || addr.address_line_2) && (
+                    <p>{addr.street_2 || addr.address2 || addr.address_line_2}</p>
+                  )}
+                  <p>
+                    {addr.city}, {addr.state || addr.state_or_province} {addr.zip || addr.postal_code || addr.zipCode}
+                  </p>
+                  {addr.country && <p>{addr.country}</p>}
+                  {addr.phone && <p className="text-sm text-gray-600">Tel: {addr.phone}</p>}
+                </>
+              );
+            })()}
           </CardContent>
         </Card>
       )}
 
       {/* Custom Fields / ERP Integration Data */}
-      <CustomFieldsDisplay
-        extraFields={order.extraFields}
-        extraStr1={order.extraStr1}
-        extraStr2={order.extraStr2}
-        extraStr3={order.extraStr3}
-        extraStr4={order.extraStr4}
-        extraStr5={order.extraStr5}
-        extraInt1={order.extraInt1}
-        extraInt2={order.extraInt2}
-        extraInt3={order.extraInt3}
-        extraInt4={order.extraInt4}
-        extraInt5={order.extraInt5}
-        extraText={order.extraText}
-        referenceNumber={order.referenceNumber}
-        variant="full"
-      />
+      {order.extraFields && order.extraFields.length > 0 && (
+        <CustomFieldsDisplay
+          extraFields={order.extraFields}
+          variant="card"
+        />
+      )}
 
       {/* Line Items */}
       {order.items && order.items.length > 0 && (

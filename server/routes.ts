@@ -42,28 +42,48 @@ async function getBigCommerceToken(req: AuthRequest): Promise<string> {
 
 // Transform BigCommerce order to frontend format
 function transformOrder(bcOrder: any): any {
+  // Map products to items array for frontend consumption
+  const items = (bcOrder.products || bcOrder.productsList || bcOrder.items || []).map((product: any) => ({
+    name: product.name || product.productName,
+    sku: product.sku,
+    quantity: product.quantity || 1,
+    price: product.base_price || product.price || product.price_ex_tax || 0,
+    productId: product.product_id,
+    variantId: product.variant_id,
+  }));
+
   return {
     id: bcOrder.orderId || bcOrder.id,
-    bcOrderId: bcOrder.orderId,
-    customerName: bcOrder.companyName || bcOrder.customerName,
+    bcOrderId: bcOrder.orderId || bcOrder.id,
+    customerName: bcOrder.companyName || bcOrder.customerName || 
+      `${bcOrder.billing_address?.first_name || ''} ${bcOrder.billing_address?.last_name || ''}`.trim(),
     status: bcOrder.orderStatus || bcOrder.customOrderStatus || bcOrder.status,
-    total: bcOrder.totalIncTax || 0,
-    subtotal: bcOrder.totalExTax || bcOrder.subtotalIncTax || bcOrder.totalIncTax || 0,
-    createdAt: bcOrder.createdAt ? new Date(parseInt(bcOrder.createdAt) * 1000).toISOString() : new Date().toISOString(),
-    updatedAt: bcOrder.updatedAt ? new Date(parseInt(bcOrder.updatedAt) * 1000).toISOString() : new Date().toISOString(),
-    itemCount: bcOrder.itemCount || bcOrder.items || 0,
-    items: bcOrder.productsList || bcOrder.products || [],
-    poNumber: bcOrder.poNumber || '',
+    total: bcOrder.totalIncTax || bcOrder.total_inc_tax || 0,
+    subtotal: bcOrder.totalExTax || bcOrder.total_ex_tax || bcOrder.subtotalIncTax || bcOrder.totalIncTax || 0,
+    createdAt: bcOrder.createdAt ? new Date(parseInt(bcOrder.createdAt) * 1000).toISOString() : 
+      (bcOrder.date_created || new Date().toISOString()),
+    updatedAt: bcOrder.updatedAt ? new Date(parseInt(bcOrder.updatedAt) * 1000).toISOString() : 
+      (bcOrder.date_modified || new Date().toISOString()),
+    itemCount: items.length,
+    items: items,
+    poNumber: bcOrder.poNumber || bcOrder.customer_message || '',
     referenceNumber: bcOrder.referenceNumber || '',
-    customerId: bcOrder.customer_id || bcOrder.customerId,  // Preserve customer_id for company filtering
+    customerId: bcOrder.customer_id || bcOrder.customerId,
     companyId: bcOrder.companyId,
-    companyName: bcOrder.companyName,
-    firstName: bcOrder.firstName,
-    lastName: bcOrder.lastName,
-    currencyCode: bcOrder.currencyCode,
-    money: bcOrder.money,
-    shippingAddress: bcOrder.shippingAddress,
-    billingAddress: bcOrder.billingAddress,
+    companyName: bcOrder.companyName || bcOrder.billing_address?.company,
+    firstName: bcOrder.firstName || bcOrder.billing_address?.first_name,
+    lastName: bcOrder.lastName || bcOrder.billing_address?.last_name,
+    currencyCode: bcOrder.currency_code || bcOrder.currencyCode || 'USD',
+    money: bcOrder.money || {
+      currency: {
+        code: bcOrder.currency_code || 'GBP'
+      },
+      value: (bcOrder.totalIncTax || bcOrder.total_inc_tax || 0).toString()
+    },
+    shippingAddress: bcOrder.shippingAddress || (Array.isArray(bcOrder.shipping_addresses) && bcOrder.shipping_addresses.length > 0 
+      ? bcOrder.shipping_addresses[0] 
+      : null),
+    billingAddress: bcOrder.billingAddress || bcOrder.billing_address,
     // Custom fields from ERP integrations
     extraFields: bcOrder.extraFields || [],
     extraInt1: bcOrder.extraInt1,

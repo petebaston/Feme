@@ -370,7 +370,9 @@ export class BigCommerceService {
       const cachedOrder = await storage.getCachedOrder(orderId, companyId);
       if (cachedOrder) {
         console.log('[Cache] Order found in cache:', orderId);
-        return { code: 200, data: cachedOrder };
+        // Fetch line items from standard API
+        const products = await this.getOrderProducts(orderId);
+        return { code: 200, data: { ...cachedOrder, products } };
       }
       console.log('[Cache] Order not in cache, fetching from API:', orderId);
     }
@@ -382,11 +384,15 @@ export class BigCommerceService {
       
       if (response?.data) {
         console.log('[BigCommerce] Direct order fetch successful:', orderId);
+        // Fetch line items from standard API
+        const products = await this.getOrderProducts(orderId);
+        const orderWithProducts = { ...response.data, products };
+        
         // Cache the order
         if (companyId) {
-          await storage.setCachedOrders([response.data], companyId);
+          await storage.setCachedOrders([orderWithProducts], companyId);
         }
-        return response;
+        return { code: 200, data: orderWithProducts };
       }
     } catch (directError: any) {
       console.log('[BigCommerce] Direct order fetch failed, trying list fallback:', directError.message);
@@ -406,8 +412,45 @@ export class BigCommerceService {
       throw new Error('Order not found');
     }
 
-    console.log('[BigCommerce] Order found in list:', foundOrder.orderId);
-    return { code: 200, data: foundOrder };
+    console.log('[BigCommerce] Order found in list:', foundOrder.orderId || foundOrder.id);
+    // Fetch line items from standard API
+    const products = await this.getOrderProducts(orderId);
+    return { code: 200, data: { ...foundOrder, products } };
+  }
+
+  async getOrderProducts(orderId: string) {
+    // Fetch order products from standard BigCommerce V2 API
+    // This endpoint requires OAuth token, not B2B token
+    if (!this.config.accessToken) {
+      console.log('[BigCommerce] No access token, cannot fetch order products');
+      return [];
+    }
+
+    try {
+      const url = `${this.config.standardApiUrl}/v2/orders/${orderId}/products`;
+      console.log('[BigCommerce] GET', url);
+      
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'X-Auth-Token': this.config.accessToken,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        console.log(`[BigCommerce] Products fetch failed with status ${response.status}`);
+        return [];
+      }
+
+      const products = await response.json();
+      console.log(`[BigCommerce] Fetched ${products?.length || 0} products for order ${orderId}`);
+      return products || [];
+    } catch (error: any) {
+      console.error('[BigCommerce] Error fetching order products:', error.message);
+      return [];
+    }
   }
 
   private async graphqlRequest(query: string, variables: any = {}, userToken?: string) {
