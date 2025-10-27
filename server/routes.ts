@@ -822,16 +822,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         res.set('Expires', '0');
 
         const bcToken = await getBigCommerceToken(req);
-        const response = await bigcommerce.getCompanyUsers(bcToken);
+        
+        // For non-admin users, pass companyId to filter at the API level for better performance
+        // Admins fetch all users without companyId filter
+        const companyIdForQuery = (req.user?.role === 'admin' || req.user?.role === 'superadmin') 
+          ? undefined 
+          : req.user?.companyId;
+        
+        const response = await bigcommerce.getCompanyUsers(bcToken, companyIdForQuery);
         const users = response?.data?.list || response?.data || [];
 
-        console.log(`[Users] Total users fetched: ${users.length}`);
+        console.log(`[Users] Total users fetched from API: ${users.length}`);
         console.log(`[Users] User companyId: ${req.user?.companyId}, role: ${req.user?.role}`);
 
-        // Filter users by logged-in user's company
+        // Apply client-side filter as additional security layer
         const filteredUsers = filterByCompany(users, req.user?.companyId, req.user?.role);
 
-        console.log(`[Users] Filtered to ${filteredUsers.length} users`);
+        console.log(`[Users] Final filtered users: ${filteredUsers.length}`);
         res.json(filteredUsers);
       } catch (error) {
         console.error("Company users fetch error:", error);

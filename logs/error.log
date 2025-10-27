@@ -65,3 +65,6 @@
 2025-10-24 14:31:11:3111 [31merror[39m: [31mUNCAUGHT EXCEPTION! Shutting down...[39m
 2025-10-24 15:52:43:5243 [31merror[39m: [31mGET /api/orders 500 - 1722ms[39m
 2025-10-24 15:52:56:5256 [31merror[39m: [31mGET /api/orders 500 - 1548ms[39m
+2025-10-27 12:11:00:110 [31merror[39m: [31mGET /api/company/users 500 - 165ms[39m
+2025-10-27 12:11:02:112 [31merror[39m: [31mGET /api/company/addresses 500 - 39ms[39m
+2025-10-27 12:11:04:114 [31merror[39m: [31mGET /api/orders 500 - 38ms[39m
