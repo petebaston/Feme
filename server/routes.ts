@@ -898,17 +898,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         );
 
         // CRITICAL SECURITY FILTER: Filter by company customer ID in invoice extraFields
+        // This is ESSENTIAL defense-in-depth in case BigCommerce API doesn't properly filter by companyId
         const companyInvoices = companyCustomerId ? enrichedInvoices.filter((invoice: any) => {
           const customerField = invoice.extraFields?.find((f: any) => f.fieldName === 'Customer');
           const invoiceCustomerId = customerField?.fieldValue;
           const matches = invoiceCustomerId === companyCustomerId;
-          
+
           if (!matches && invoiceCustomerId) {
             console.log(`[Invoices] SECURITY: Blocking invoice ${invoice.id} - customer ${invoiceCustomerId} !== ${companyCustomerId}`);
           }
-          
+
           return matches;
-        }) : enrichedInvoices;
+        }) : [];  // CRITICAL FIX: If no companyCustomerId, return EMPTY array (not all invoices!)
 
         console.log(`[Invoices] SECURITY FILTER: ${enrichedInvoices.length} total → ${companyInvoices.length} for company ${req.user?.companyId}`);
         console.log(`[Invoices] FINAL: Returning ${companyInvoices.length} invoices for company ${req.user?.companyId}`);
@@ -927,13 +928,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
     async (req: AuthRequest, res) => {
       try {
         const bcToken = await getBigCommerceToken(req);
-        
-        // Fetch the invoice (no company restriction)
+
+        // SECURITY CHECK: Require companyId
+        if (!req.user?.companyId) {
+          return res.status(403).json({ message: 'Company ID required for invoice access' });
+        }
+
+        // Fetch the invoice
         const response = await bigcommerce.getInvoice(undefined, req.params.id);
         const invoice = response?.data;
 
         if (!invoice) {
           return res.status(404).json({ message: 'Invoice not found' });
+        }
+
+        // SECURITY: Verify invoice belongs to user's company
+        try {
+          const companyResponse = await bigcommerce.getCompany(req.user.companyId);
+          const companyData = companyResponse?.data;
+          const customerIdField = companyData?.extraFields?.find((f: any) => f.fieldName === 'Customer ID');
+          const companyCustomerId = customerIdField?.fieldValue || null;
+
+          if (companyCustomerId) {
+            const customerField = invoice.extraFields?.find((f: any) => f.fieldName === 'Customer');
+            const invoiceCustomerId = customerField?.fieldValue;
+
+            if (invoiceCustomerId !== companyCustomerId) {
+              console.log(`[Invoice Detail] SECURITY: Blocking invoice ${req.params.id} - customer ${invoiceCustomerId} !== ${companyCustomerId}`);
+              return res.status(403).json({ message: 'Access denied to this invoice' });
+            }
+          }
+        } catch (error) {
+          console.error(`[Invoice Detail] Failed to verify company ownership:`, error);
         }
 
         res.json(invoice);
@@ -951,13 +977,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
     async (req: AuthRequest, res) => {
       try {
         const bcToken = await getBigCommerceToken(req);
-        
-        // Fetch invoice (no company restriction)
+
+        // SECURITY CHECK: Require companyId
+        if (!req.user?.companyId) {
+          return res.status(403).json({ message: 'Company ID required for invoice access' });
+        }
+
+        // Fetch invoice with company validation
         const invoiceResponse = await bigcommerce.getInvoice(undefined, req.params.id);
         const invoice = invoiceResponse?.data;
 
         if (!invoice) {
           return res.status(404).json({ message: 'Invoice not found' });
+        }
+
+        // SECURITY: Verify invoice belongs to user's company
+        try {
+          const companyResponse = await bigcommerce.getCompany(req.user.companyId);
+          const companyData = companyResponse?.data;
+          const customerIdField = companyData?.extraFields?.find((f: any) => f.fieldName === 'Customer ID');
+          const companyCustomerId = customerIdField?.fieldValue || null;
+
+          if (companyCustomerId) {
+            const customerField = invoice.extraFields?.find((f: any) => f.fieldName === 'Customer');
+            const invoiceCustomerId = customerField?.fieldValue;
+
+            if (invoiceCustomerId !== companyCustomerId) {
+              console.log(`[Invoice PDF] SECURITY: Blocking invoice ${req.params.id} - customer ${invoiceCustomerId} !== ${companyCustomerId}`);
+              return res.status(403).json({ message: 'Access denied to this invoice' });
+            }
+          }
+        } catch (error) {
+          console.error(`[Invoice PDF] Failed to verify company ownership:`, error);
+          return res.status(500).json({ message: 'Failed to verify access' });
         }
 
         // Get PDF URL from BigCommerce
@@ -970,7 +1022,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // Fetch the actual PDF file from S3
         const pdfFileResponse = await fetch(pdfUrl);
-        
+
         if (!pdfFileResponse.ok) {
           throw new Error('Failed to download PDF from storage');
         }

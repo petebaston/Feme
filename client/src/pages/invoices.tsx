@@ -1,4 +1,4 @@
-import { useState, Fragment } from "react";
+import { useState, Fragment, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Input } from "@/components/ui/input";
@@ -23,34 +23,73 @@ export default function Invoices() {
   const [selectedInvoices, setSelectedInvoices] = useState<string[]>([]);
   const [expandedInvoiceId, setExpandedInvoiceId] = useState<string | null>(null);
   const [pdfBlobUrls, setPdfBlobUrls] = useState<Record<string, string>>({});
+  const [currentPage, setCurrentPage] = useState(1);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
 
-  const { data: invoices, isLoading } = useQuery<any[]>({
+  const { data: invoices, isLoading, error: invoicesError } = useQuery<any[]>({
     queryKey: ['/api/invoices'],
     staleTime: 300000,
+    retry: 2,
   });
 
-  const { data: companyCredit, isLoading: isCreditLoading } = useQuery<any>({
+  const { data: companyCredit, isLoading: isCreditLoading, error: creditError } = useQuery<any>({
     queryKey: ['/api/company/credit'],
     staleTime: 300000,
+    retry: 2,
   });
 
+  // Get consistent currency code from invoices or company credit
+  const getCurrencyCode = (): string => {
+    if (companyCredit?.creditCurrency) return companyCredit.creditCurrency;
+    if (invoices?.[0]?.openBalance?.code) return invoices[0].openBalance.code;
+    return 'GBP'; // Default fallback
+  };
+
   // Calculate actual status based on openBalance and dueDate
+  // This matches the logic used in the BigCommerce API and provides consistent status across the app
   const calculateInvoiceStatus = (invoice: any): 'Paid' | 'Overdue' | 'Unpaid' => {
+    // First check if there's an explicit status field (numeric or string)
+    if (invoice.status !== undefined) {
+      // Handle numeric status codes from BigCommerce
+      if (typeof invoice.status === 'number') {
+        const statusMap: Record<number, 'Paid' | 'Overdue' | 'Unpaid'> = {
+          0: 'Unpaid',
+          1: 'Paid',
+          2: 'Overdue',
+        };
+        if (invoice.status in statusMap) {
+          return statusMap[invoice.status];
+        }
+      }
+      // Handle string status
+      if (typeof invoice.status === 'string') {
+        const normalized = invoice.status.toLowerCase();
+        if (normalized === 'paid') return 'Paid';
+        if (normalized === 'overdue') return 'Overdue';
+        if (normalized === 'unpaid') return 'Unpaid';
+      }
+    }
+
+    // Fallback: Calculate from openBalance and dueDate
     const openBalance = parseFloat(invoice.openBalance?.value || 0);
-    
+
     // If balance is 0, it's paid
     if (openBalance === 0) {
       return 'Paid';
     }
-    
+
     // If there's a balance, check if it's overdue
     const dueDate = invoice.dueDate ? new Date(invoice.dueDate * 1000) : null;
     const today = new Date();
-    
-    if (dueDate && dueDate < today) {
-      return 'Overdue';
+    today.setHours(0, 0, 0, 0); // Reset to start of day for accurate comparison
+
+    if (dueDate) {
+      dueDate.setHours(0, 0, 0, 0);
+      if (dueDate < today) {
+        return 'Overdue';
+      }
     }
-    
+
     return 'Unpaid';
   };
 
@@ -58,12 +97,24 @@ export default function Invoices() {
     const matchesSearch = !searchTerm ||
       invoice.invoiceNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       invoice.customerName?.toLowerCase().includes(searchTerm.toLowerCase());
-    
+
     const invoiceStatus = calculateInvoiceStatus(invoice);
     const matchesStatus = statusFilter === "all" || invoiceStatus.toLowerCase() === statusFilter.toLowerCase();
-    
+
     return matchesSearch && matchesStatus;
   }) || [];
+
+  // Pagination calculations
+  const totalInvoices = filteredInvoices.length;
+  const totalPages = Math.ceil(totalInvoices / rowsPerPage);
+  const startIndex = (currentPage - 1) * rowsPerPage;
+  const endIndex = startIndex + rowsPerPage;
+  const paginatedInvoices = filteredInvoices.slice(startIndex, endIndex);
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, statusFilter]);
 
   // Calculate aged invoice totals and status summaries
   const calculateTotals = () => {
@@ -125,10 +176,10 @@ export default function Invoices() {
   };
 
   const toggleSelectAll = () => {
-    if (selectedInvoices.length === filteredInvoices.length) {
+    if (selectedInvoices.length === paginatedInvoices.length && paginatedInvoices.length > 0) {
       setSelectedInvoices([]);
     } else {
-      setSelectedInvoices(filteredInvoices.map((inv: any) => inv.id));
+      setSelectedInvoices(paginatedInvoices.map((inv: any) => inv.id));
     }
   };
 
@@ -141,8 +192,74 @@ export default function Invoices() {
   };
 
   const handleExport = () => {
-    // Export logic here
-    console.log("Exporting invoices...");
+    if (!filteredInvoices || filteredInvoices.length === 0) {
+      alert('No invoices to export');
+      return;
+    }
+
+    const currencyCode = getCurrencyCode();
+
+    // Prepare CSV data
+    const headers = [
+      'Invoice Number',
+      'Company',
+      'Order Number',
+      'Sales Order',
+      'Invoice Date',
+      'Due Date',
+      'Invoice Total',
+      'Amount Due',
+      'Status'
+    ];
+
+    const rows = filteredInvoices.map((invoice: any) => {
+      const costLines = invoice.details?.header?.costLines || [];
+      const subtotalLine = costLines.find((line: any) => line.description === 'Subtotal');
+      const taxLine = costLines.find((line: any) => line.description === 'Sales Tax');
+      const total = parseFloat(subtotalLine?.amount?.value || 0) + parseFloat(taxLine?.amount?.value || 0);
+
+      const orderDate = invoice.details?.header?.orderDate;
+      const invoiceDate = orderDate ? new Date(orderDate * 1000).toLocaleDateString('en-GB') : '-';
+      const dueDate = invoice.dueDate ? new Date(invoice.dueDate * 1000).toLocaleDateString('en-GB') : '-';
+
+      const actualStatus = calculateInvoiceStatus(invoice);
+      const companyName = invoice.customerName || 'Customer';
+
+      const extraFields = invoice.extraFields || [];
+      const ourRefField = extraFields.find((field: any) => field.fieldName === 'Our Ref');
+      const salesOrder = ourRefField?.fieldValue || invoice.orderNumber || '-';
+
+      const openBalance = parseFloat(invoice.openBalance?.value || 0);
+
+      return [
+        invoice.invoiceNumber || invoice.id,
+        companyName,
+        invoice.orderNumber || '-',
+        salesOrder,
+        invoiceDate,
+        dueDate,
+        formatCurrency(total, currencyCode),
+        formatCurrency(openBalance, currencyCode),
+        actualStatus
+      ];
+    });
+
+    // Create CSV content
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
+    ].join('\n');
+
+    // Download CSV
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `invoices-${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   const loadPdfBlob = async (invoiceId: string) => {
@@ -189,6 +306,22 @@ export default function Invoices() {
           Invoices
         </h1>
       </div>
+
+      {/* Error Messages */}
+      {invoicesError && (
+        <div className="bg-red-50 border border-red-200 rounded-md p-4">
+          <p className="text-red-800 text-sm font-medium">Failed to load invoices</p>
+          <p className="text-red-600 text-sm mt-1">
+            {invoicesError instanceof Error ? invoicesError.message : 'Please try refreshing the page'}
+          </p>
+        </div>
+      )}
+      {creditError && (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4">
+          <p className="text-yellow-800 text-sm font-medium">Failed to load company credit information</p>
+          <p className="text-yellow-600 text-sm mt-1">Some features may be limited</p>
+        </div>
+      )}
 
       {/* Search and Filter */}
       <div className="space-y-3">
@@ -293,7 +426,7 @@ export default function Invoices() {
                 <Skeleton className="h-9 w-32" />
               ) : (
                 <div className="text-3xl font-normal text-black">
-                  {formatCurrency(companyCredit?.creditLimit || 0, companyCredit?.creditCurrency || 'GBP')}
+                  {formatCurrency(companyCredit?.creditLimit || 0, getCurrencyCode())}
                 </div>
               )}
             </div>
@@ -309,7 +442,7 @@ export default function Invoices() {
                 <Skeleton className="h-9 w-32" />
               ) : (
                 <div className="text-3xl font-normal text-green-600">
-                  {formatCurrency(Math.max(0, (companyCredit?.creditLimit || 0) - totalOpen), companyCredit?.creditCurrency || 'GBP')}
+                  {formatCurrency(Math.max(0, (companyCredit?.creditLimit || 0) - totalOpen), getCurrencyCode())}
                 </div>
               )}
             </div>
@@ -326,7 +459,7 @@ export default function Invoices() {
                 <Skeleton className="h-9 w-32" />
               ) : (
                 <div className="text-3xl font-normal text-black">
-                  {formatCurrency(totalOpen, companyCredit?.creditCurrency || 'GBP')}
+                  {formatCurrency(totalOpen, getCurrencyCode())}
                 </div>
               )}
             </div>
@@ -342,7 +475,7 @@ export default function Invoices() {
                 <Skeleton className="h-9 w-32" />
               ) : (
                 <div className="text-3xl font-normal text-red-600">
-                  {formatCurrency(totalOverdue, companyCredit?.creditCurrency || 'GBP')}
+                  {formatCurrency(totalOverdue, getCurrencyCode())}
                 </div>
               )}
             </div>
@@ -358,7 +491,7 @@ export default function Invoices() {
           <div className="flex items-baseline justify-between">
             <div>
               <div className="text-sm font-medium text-gray-500 mb-1">1-30 DAYS</div>
-              <div className="text-3xl font-normal text-black">{formatCurrency(aged1to30)}</div>
+              <div className="text-3xl font-normal text-black">{formatCurrency(aged1to30, getCurrencyCode())}</div>
             </div>
             <div className="w-3 h-3 bg-green-500"></div>
           </div>
@@ -369,7 +502,7 @@ export default function Invoices() {
           <div className="flex items-baseline justify-between">
             <div>
               <div className="text-sm font-medium text-gray-500 mb-1">31-60 DAYS</div>
-              <div className="text-3xl font-normal text-orange-600">{formatCurrency(aged31to60)}</div>
+              <div className="text-3xl font-normal text-orange-600">{formatCurrency(aged31to60, getCurrencyCode())}</div>
             </div>
             <div className="w-3 h-3 bg-orange-500"></div>
           </div>
@@ -380,7 +513,7 @@ export default function Invoices() {
           <div className="flex items-baseline justify-between">
             <div>
               <div className="text-sm font-medium text-gray-500 mb-1">61-90 DAYS</div>
-              <div className="text-3xl font-normal text-red-600">{formatCurrency(aged61to90)}</div>
+              <div className="text-3xl font-normal text-red-600">{formatCurrency(aged61to90, getCurrencyCode())}</div>
             </div>
             <div className="w-3 h-3 bg-red-500"></div>
           </div>
@@ -391,7 +524,7 @@ export default function Invoices() {
           <div className="flex items-baseline justify-between">
             <div>
               <div className="text-sm font-medium text-gray-500 mb-1">90+ DAYS</div>
-              <div className="text-3xl font-normal text-red-700">{formatCurrency(aged90plus)}</div>
+              <div className="text-3xl font-normal text-red-700">{formatCurrency(aged90plus, getCurrencyCode())}</div>
             </div>
             <div className="w-3 h-3 bg-red-700"></div>
           </div>
@@ -406,7 +539,7 @@ export default function Invoices() {
             <TableRow className="hover:bg-transparent">
               <TableHead className="w-12">
                 <Checkbox
-                  checked={selectedInvoices.length === filteredInvoices.length && filteredInvoices.length > 0}
+                  checked={selectedInvoices.length === paginatedInvoices.length && paginatedInvoices.length > 0}
                   onCheckedChange={toggleSelectAll}
                 />
               </TableHead>
@@ -424,7 +557,6 @@ export default function Invoices() {
               <TableHead className="font-medium">Due date</TableHead>
               <TableHead className="font-medium">Invoice total</TableHead>
               <TableHead className="font-medium">Amount due</TableHead>
-              <TableHead className="font-medium">Amount to pay</TableHead>
               <TableHead className="font-medium">Status</TableHead>
               <TableHead className="font-medium">Action</TableHead>
             </TableRow>
@@ -438,8 +570,8 @@ export default function Invoices() {
                   </TableCell>
                 </TableRow>
               ))
-            ) : filteredInvoices.length > 0 ? (
-              filteredInvoices.map((invoice: any) => {
+            ) : paginatedInvoices.length > 0 ? (
+              paginatedInvoices.map((invoice: any) => {
                 // Calculate total from costLines
                 const costLines = invoice.details?.header?.costLines || [];
                 const subtotalLine = costLines.find((line: any) => line.description === 'Subtotal');
@@ -534,15 +666,8 @@ export default function Invoices() {
                     <TableCell className={actualStatus === 'Overdue' ? 'text-red-600' : 'text-gray-700'}>
                       {dueDate ? dueDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '-'}
                     </TableCell>
-                    <TableCell className="font-normal">{formatCurrency(total)}</TableCell>
-                    <TableCell className="font-normal">{formatCurrency(openBalance)}</TableCell>
-                    <TableCell>
-                      <Input
-                        type="text"
-                        defaultValue={formatCurrency(openBalance)}
-                        className="h-8 w-24 bg-gray-100 border-0 text-center text-sm"
-                      />
-                    </TableCell>
+                    <TableCell className="font-normal">{formatCurrency(total, getCurrencyCode())}</TableCell>
+                    <TableCell className="font-normal">{formatCurrency(openBalance, getCurrencyCode())}</TableCell>
                     <TableCell>
                       <span className={`inline-flex items-center px-3 py-1 text-xs font-medium ${getStatusBadgeClass(actualStatus)}`}>
                         {actualStatus}
@@ -633,18 +758,48 @@ export default function Invoices() {
 
       {/* Footer */}
       <div className="flex items-center justify-between">
-        <Button variant="outline" onClick={handleExport} className="border-gray-300">
+        <Button
+          variant="outline"
+          onClick={handleExport}
+          className="border-gray-300"
+          disabled={filteredInvoices.length === 0}
+        >
           <FileDown className="w-4 h-4 mr-2" />
           EXPORT FILTERED AS CSV
         </Button>
         <div className="flex items-center gap-4 text-sm text-gray-600">
-          <span>Rows per page: <span className="font-medium">10</span></span>
-          <span>1–3 of 3</span>
+          <div className="flex items-center gap-2">
+            <span>Rows per page:</span>
+            <select
+              value={rowsPerPage}
+              onChange={(e) => {
+                setRowsPerPage(Number(e.target.value));
+                setCurrentPage(1);
+              }}
+              className="border border-gray-300 rounded px-2 py-1 text-sm"
+            >
+              <option value={10}>10</option>
+              <option value={25}>25</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+            </select>
+          </div>
+          <span>
+            {totalInvoices === 0 ? '0–0 of 0' : `${startIndex + 1}–${Math.min(endIndex, totalInvoices)} of ${totalInvoices}`}
+          </span>
           <div className="flex gap-2">
-            <button className="w-8 h-8 flex items-center justify-center border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50" disabled>
+            <button
+              className="w-8 h-8 flex items-center justify-center border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={currentPage === 1}
+              onClick={() => setCurrentPage(currentPage - 1)}
+            >
               ‹
             </button>
-            <button className="w-8 h-8 flex items-center justify-center border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50" disabled>
+            <button
+              className="w-8 h-8 flex items-center justify-center border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={currentPage === totalPages || totalInvoices === 0}
+              onClick={() => setCurrentPage(currentPage + 1)}
+            >
               ›
             </button>
           </div>

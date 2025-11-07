@@ -24,9 +24,10 @@ export default function InvoiceDetail() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
 
-  const { data: invoice, isLoading } = useQuery<any>({
+  const { data: invoice, isLoading, error } = useQuery<any>({
     queryKey: [`/api/invoices/${id}`],
     enabled: !!id,
+    retry: 2,
   });
 
   // Convert numeric status to string label
@@ -111,6 +112,30 @@ export default function InvoiceDetail() {
         <Card className="border border-gray-200">
           <CardContent className="p-6">
             <Skeleton className="h-64" />
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <Button
+          variant="ghost"
+          onClick={() => setLocation('/invoices')}
+          className="mb-4"
+          data-testid="button-back"
+        >
+          <ArrowLeft className="w-4 h-4 mr-2" />
+          Back to Invoices
+        </Button>
+        <Card className="border border-gray-200">
+          <CardContent className="p-12 text-center">
+            <p className="text-red-600 font-medium mb-2">Failed to load invoice</p>
+            <p className="text-gray-500 text-sm">
+              {error instanceof Error ? error.message : 'Please try again or contact support'}
+            </p>
           </CardContent>
         </Card>
       </div>
@@ -264,39 +289,65 @@ export default function InvoiceDetail() {
       </div>
 
       {/* Line Items */}
-      {invoice.items && invoice.items.length > 0 && (
-        <Card className="border border-gray-200">
-          <CardHeader>
-            <CardTitle className="text-lg">Line Items</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-gray-200">
-                    <th className="text-left py-3 px-2 text-sm font-medium text-gray-500">Item</th>
-                    <th className="text-right py-3 px-2 text-sm font-medium text-gray-500">Qty</th>
-                    <th className="text-right py-3 px-2 text-sm font-medium text-gray-500">Price</th>
-                    <th className="text-right py-3 px-2 text-sm font-medium text-gray-500">Total</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {invoice.items.map((item: any, index: number) => (
-                    <tr key={index} className="border-b border-gray-100" data-testid={`item-${index}`}>
-                      <td className="py-3 px-2 text-sm">{item.name || item.productName}</td>
-                      <td className="py-3 px-2 text-sm text-right">{item.quantity}</td>
-                      <td className="py-3 px-2 text-sm text-right">£{parseFloat(item.price).toLocaleString()}</td>
-                      <td className="py-3 px-2 text-sm text-right font-medium">
-                        £{(parseFloat(item.price) * item.quantity).toLocaleString()}
-                      </td>
+      {(() => {
+        // Try to extract line items from details.products or details.header.products
+        const products = invoice.details?.products || invoice.details?.header?.products || invoice.items || [];
+
+        if (products.length === 0) {
+          return null; // Don't show section if no products
+        }
+
+        // Get currency from the first costLine
+        const currencyCode = invoice.details?.header?.costLines?.[0]?.amount?.code || 'GBP';
+
+        return (
+          <Card className="border border-gray-200">
+            <CardHeader>
+              <CardTitle className="text-lg">Line Items</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-gray-200">
+                      <th className="text-left py-3 px-2 text-sm font-medium text-gray-500">Item</th>
+                      <th className="text-right py-3 px-2 text-sm font-medium text-gray-500">Qty</th>
+                      <th className="text-right py-3 px-2 text-sm font-medium text-gray-500">Price</th>
+                      <th className="text-right py-3 px-2 text-sm font-medium text-gray-500">Total</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+                  </thead>
+                  <tbody>
+                    {products.map((item: any, index: number) => {
+                      const quantity = item.quantity || item.qty || 1;
+                      const price = parseFloat(item.price || item.unitPrice || item.amount?.value || 0);
+                      const total = price * quantity;
+                      const symbol = currencyCode === 'USD' ? '$' : '£';
+
+                      return (
+                        <tr key={index} className="border-b border-gray-100" data-testid={`item-${index}`}>
+                          <td className="py-3 px-2 text-sm">{item.name || item.productName || item.description || 'Item'}</td>
+                          <td className="py-3 px-2 text-sm text-right">{quantity}</td>
+                          <td className="py-3 px-2 text-sm text-right">
+                            {symbol}{price.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </td>
+                          <td className="py-3 px-2 text-sm text-right font-medium">
+                            {symbol}{total.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+              {products.length === 0 && (
+                <p className="text-center py-8 text-gray-500 text-sm">
+                  No line items available for this invoice
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        );
+      })()}
     </div>
   );
 }
