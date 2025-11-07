@@ -827,14 +827,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         console.log(`[Invoices] Fetching invoices for user: ${req.user?.email} (Customer: ${req.user?.customerId}, Company: ${req.user?.companyId}, Role: ${req.user?.role})`);
 
-        // Fetch invoices using user's storefront token (company-scoped by BigCommerce)
-        // Defense-in-depth: Also pass companyId parameter for explicit filtering
+        // Fetch invoices using buyer's storefront token (BigCommerce auto-scopes by company)
         let invoices: any[] = [];
         try {
-          console.log(`[Invoices] Fetching invoices with user token + companyId ${req.user?.companyId}`);
+          console.log(`[Invoices] Using buyer storefront token (BigCommerce will auto-scope by company)`);
           
           const response = await bigcommerce.getInvoices(bcToken, {
-            companyId: req.user?.companyId, // CRITICAL: Explicit company filtering
             search: search as string,
             status: status as string,
             sortBy: sortBy as string,
@@ -843,7 +841,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
           invoices = response?.data?.list || response?.data || [];
           
-          console.log(`[Invoices] Retrieved ${invoices.length} invoices for company ${req.user?.companyId}`);
+          console.log(`[Invoices] Retrieved ${invoices.length} invoices (company-scoped by BigCommerce)`);
         } catch (invoiceError: any) {
           // Handle 403 as "no invoices available" (common when B2B Edition has no invoices created)
           if (invoiceError.message?.includes('403') || invoiceError.message?.includes('Forbidden')) {

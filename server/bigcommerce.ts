@@ -73,33 +73,40 @@ export class BigCommerceService {
       ...(options.headers || {}),
     };
 
-    // CRITICAL: Authentication strategy based on endpoint type
-    // Management API endpoints (/api/v3/io/*): require X-Auth-Token
-    // Storefront API endpoints (/api/v2/*): use user Authorization Bearer token
+    // CRITICAL: Authentication strategy
+    // BUYER PORTAL ENDPOINTS: Use storefront user token (company-scoped by BigCommerce)
+    // ADMIN/MANAGEMENT ENDPOINTS: Use server-to-server token (store-wide access)
     
-    const isManagementEndpoint = endpoint.includes('/api/v3/io/') || 
-                                  endpoint.includes('/api/v3/payments') ||
-                                  endpoint.includes('/api/v3/super-admin') ||
-                                  endpoint.includes('/api/v3/users') ||
-                                  endpoint.includes('/api/v2/users') ||
-                                  options.requireManagementToken;
-
-    if (isManagementEndpoint) {
-      // Management API: requires server-to-server token via X-Auth-Token
-      // SECURITY: Must filter by companyId in query params to prevent cross-company data leakage
-      try {
-        const serverToken = await this.getServerToServerToken();
-        headers['X-Auth-Token'] = serverToken;
-        console.log('[BigCommerce] Using management token (X-Auth-Token) - MUST filter by companyId');
-      } catch (error: any) {
-        console.error('[BigCommerce] Failed to get server-to-server token:', error.message);
-      }
-    }
-
-    // Add user token for storefront APIs
-    if (options.userToken && !isManagementEndpoint) {
+    // Explicitly check if this should use storefront token (buyer-facing endpoints)
+    const useStorefrontToken = options.useStorefrontToken || false;
+    
+    if (useStorefrontToken && options.userToken) {
+      // BUYER CONTEXT: Use storefront token - BigCommerce automatically scopes by company
       headers['Authorization'] = `Bearer ${options.userToken}`;
-      console.log('[BigCommerce] Using user storefront token (company-scoped)');
+      console.log('[BigCommerce] ✓ Using buyer storefront token (auto-scoped by company)');
+    } else {
+      // ADMIN CONTEXT: Check if this is a management endpoint
+      const isManagementEndpoint = endpoint.includes('/api/v3/io/') || 
+                                    endpoint.includes('/api/v3/payments') ||
+                                    endpoint.includes('/api/v3/super-admin') ||
+                                    endpoint.includes('/api/v3/users') ||
+                                    endpoint.includes('/api/v2/users') ||
+                                    options.requireManagementToken;
+
+      if (isManagementEndpoint) {
+        // Management API: requires server-to-server token via X-Auth-Token
+        try {
+          const serverToken = await this.getServerToServerToken();
+          headers['X-Auth-Token'] = serverToken;
+          console.log('[BigCommerce] Using management token (store-wide access)');
+        } catch (error: any) {
+          console.error('[BigCommerce] Failed to get server-to-server token:', error.message);
+        }
+      } else if (options.userToken) {
+        // Storefront API with user token
+        headers['Authorization'] = `Bearer ${options.userToken}`;
+        console.log('[BigCommerce] Using user token for storefront API');
+      }
     }
 
     console.log(`[BigCommerce] ${options.method || 'GET'} ${url}`);
@@ -739,23 +746,14 @@ export class BigCommerceService {
     return this.request(`/api/v3/io/addresses${query ? `?${query}` : ''}`);
   }
 
-  // Invoices - Use Management API with X-Auth-Token
-  // Correct endpoint: /api/v3/io/ip/invoices (per official B2B Edition API docs)
-  // SECURITY: MUST filter by companyId parameter to prevent cross-company data leakage
+  // Invoices - Buyer portal endpoint using storefront token
+  // Endpoint: /api/v3/io/ip/invoices (B2B Edition buyer portal API)
+  // SECURITY: Uses buyer storefront token - BigCommerce auto-scopes by company
   async getInvoices(userToken?: string, params?: any) {
     const queryParams = new URLSearchParams();
     
-    // CRITICAL: Filter by companyId - this is the ONLY way to prevent cross-company leakage
-    // Management token has store-wide access, so companyId filtering is mandatory
-    if (params?.companyId) {
-      queryParams.append('companyId', params.companyId);
-      console.log(`[BigCommerce] Filtering invoices by companyId: ${params.companyId}`);
-    } else {
-      console.warn('[BigCommerce] ⚠️ WARNING: No companyId filter - may return invoices from all companies!');
-    }
-    
-    // Additional filters per BigCommerce API docs
-    if (params?.search) queryParams.append('q', params.search); // Use 'q' for search
+    // Optional search filters (no companyId needed - token scopes automatically)
+    if (params?.search) queryParams.append('q', params.search);
     if (params?.status !== undefined && params.status !== 'all') {
       queryParams.append('status', params.status.toString());
     }
@@ -764,18 +762,27 @@ export class BigCommerceService {
     if (params?.offset) queryParams.append('offset', params.offset.toString());
 
     const query = queryParams.toString();
-    // Management API endpoint - uses X-Auth-Token automatically
-    return this.request(`/api/v3/io/ip/invoices${query ? `?${query}` : ''}`);
+    // CRITICAL: useStorefrontToken=true to send buyer token instead of management token
+    return this.request(`/api/v3/io/ip/invoices${query ? `?${query}` : ''}`, { 
+      userToken,
+      useStorefrontToken: true 
+    });
   }
 
   async getInvoice(userToken: string | undefined, invoiceId: string) {
-    // Management API endpoint - uses X-Auth-Token automatically
-    return this.request(`/api/v3/io/ip/invoices/${invoiceId}`);
+    // Buyer portal endpoint - uses storefront token
+    return this.request(`/api/v3/io/ip/invoices/${invoiceId}`, { 
+      userToken,
+      useStorefrontToken: true 
+    });
   }
 
   async getInvoicePdf(userToken: string | undefined, invoiceId: string) {
-    // Correct endpoint per BigCommerce documentation
-    return this.request(`/api/v3/io/ip/invoices/${invoiceId}/download-pdf`);
+    // PDF download - uses storefront token
+    return this.request(`/api/v3/io/ip/invoices/${invoiceId}/download-pdf`, { 
+      userToken,
+      useStorefrontToken: true 
+    });
   }
 
   // Products
