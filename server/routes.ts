@@ -17,6 +17,9 @@ import {
   type AuthRequest
 } from "./auth";
 import { filterByCompany, verifyResourceOwnership } from "./filters";
+import { db } from "./db";
+import { bigcommerceOrdersCache } from "@shared/schema";
+import { eq, and } from "drizzle-orm";
 
 const storage = new DatabaseStorage();
 
@@ -880,16 +883,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // For non-admin users, filter invoices by matching order numbers
         if (req.user?.role !== 'admin' && req.user?.role !== 'superadmin' && req.user?.companyId) {
           try {
-            // Fetch cached orders for this company and customer
+            // Query cached orders directly from database for this company
             console.log(`[Invoices] Fetching cached orders for company ${req.user.companyId}, customer ${req.user.customerId}`);
-            const cachedOrders = await storage.getOrdersForCompany(req.user.companyId);
+            const cachedOrderRecords = await db.select()
+              .from(bigcommerceOrdersCache)
+              .where(eq(bigcommerceOrdersCache.companyId, String(req.user.companyId)));
             
-            // Filter orders for this specific customer
-            const userOrders = cachedOrders.filter((order: any) => 
-              order.customerId === req.user?.customerId
-            );
+            console.log(`[Invoices] Found ${cachedOrderRecords.length} cached order records`);
             
-            console.log(`[Invoices] User has ${userOrders.length} orders`);
+            // Parse order data and filter by customer ID
+            const userOrders = cachedOrderRecords
+              .map(record => {
+                try {
+                  return JSON.parse(record.orderData);
+                } catch (e) {
+                  console.error('[Invoices] Failed to parse order data:', e);
+                  return null;
+                }
+              })
+              .filter((order: any) => order && order.customerId === req.user?.customerId);
+            
+            console.log(`[Invoices] User has ${userOrders.length} orders for customer ${req.user.customerId}`);
             
             if (userOrders.length > 0) {
               // Build set of order IDs for fast lookup
