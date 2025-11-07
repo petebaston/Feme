@@ -827,11 +827,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         console.log(`[Invoices] Fetching invoices for user: ${req.user?.email} (Customer: ${req.user?.customerId}, Company: ${req.user?.companyId}, Role: ${req.user?.role})`);
 
-        // Fetch invoices from BigCommerce with API-level filtering by customerId
-        // NOTE: BigCommerce B2B Edition invoices can include BOTH:
-        // 1. Online orders placed through the storefront
-        // 2. Offline/ERP-imported invoices without matching online orders
-        // Therefore, we filter by customerId (not by order matching)
+        // Fetch invoices from BigCommerce
+        // NOTE: BigCommerce B2B Edition automatically filters invoices by company (via auth token)
+        // Users within a company SHARE access to all company invoices (per official B2B Edition behavior)
+        // Invoices can include BOTH online orders AND offline/ERP-imported invoices
         let invoices: any[] = [];
         try {
           const apiParams: any = {
@@ -842,14 +841,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
             recent: recent === 'true',
           };
           
-          // CRITICAL: For non-admin users, filter by customerId at API level
-          // This ensures users only see their own invoices (both online orders + ERP imports)
-          if (req.user?.role !== 'admin' && req.user?.role !== 'superadmin' && req.user?.customerId) {
-            apiParams.customerId = req.user.customerId;
-            console.log(`[Invoices] Filtering by customerId ${req.user.customerId} at API level`);
-          } else if (req.user?.role === 'admin' || req.user?.role === 'superadmin') {
-            console.log('[Invoices] Admin user - fetching all company invoices (no customer filter)');
-          }
+          // NO customerId filtering - BigCommerce B2B Edition hosted portal shows all company invoices
+          // The API automatically filters by company via the authentication token
+          console.log('[Invoices] Fetching all company invoices (per B2B Edition standard behavior)');
           
           const response = await bigcommerce.getInvoices(bcToken, apiParams);
           invoices = response?.data?.list || response?.data || [];
@@ -863,7 +857,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         }
 
-        console.log(`[Invoices] Retrieved ${invoices.length} invoices after API filtering`);
+        console.log(`[Invoices] Retrieved ${invoices.length} company invoices`);
 
         // Enrich invoices with full details (including extraFields) from individual invoice endpoints
         // The list endpoint doesn't include extraFields, but the detail endpoint does
@@ -889,7 +883,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         );
 
         console.log(`[Invoices] Enriched ${enrichedInvoices.length} invoices with full details`);
-        console.log(`[Invoices] Returning ${enrichedInvoices.length} invoices for ${req.user?.role === 'admin' ? 'company' : 'customer'}`);
+        console.log(`[Invoices] Returning ${enrichedInvoices.length} company invoices (shared access per B2B Edition standard)`);
         res.json(enrichedInvoices);
       } catch (error) {
         console.error("Invoices fetch error:", error);

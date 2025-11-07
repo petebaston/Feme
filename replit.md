@@ -25,21 +25,26 @@ Preferred communication style: Simple, everyday language.
 - `BIGCOMMERCE_CLIENT_SECRET` - OAuth client secret
 - `BIGCOMMERCE_STORE_HASH` - Store identifier (e.g., "pyrenapwe2")
 
-### Invoices Authentication - ✅ RESOLVED
-**Previous Issue:** Getting 403 "Invalid access token" when fetching invoices from B2B Edition Management API.
+### Invoices System - ✅ RESOLVED
+**Previous Issues:** 
+1. Getting 403 "Invalid access token" when fetching invoices from B2B Edition Management API
+2. Incorrect filtering logic showing 0 invoices when hosted B2B portal showed 10+ invoices
 
-**Root Cause:** Was using `BIGCOMMERCE_B2B_MANAGEMENT_TOKEN` which was invalid for the Management API endpoints.
+**Root Causes:** 
+1. Was using `BIGCOMMERCE_B2B_MANAGEMENT_TOKEN` which was invalid for the Management API endpoints
+2. Incorrectly filtering by individual `customerId` instead of company-level filtering
 
 **Solution Implemented:**
 - **Authentication Fix:** Updated to use standard BigCommerce OAuth token (`BIGCOMMERCE_ACCESS_TOKEN`)
 - Changed `getServerToServerToken()` to prioritize OAuth token over B2B Management Token
 - Per BigCommerce September 2025 update: standard OAuth X-Auth-Token now works for B2B Edition APIs
-- Direct API test confirmed: Successfully retrieves 8 invoices using standard OAuth token
+- **Filtering Fix:** Removed individual customer ID filtering to match BigCommerce B2B Edition hosted portal behavior
+- Per official B2B Edition documentation: "Invoices are automatically filtered per company account" and "Users within a company share access to that company's invoices"
+- All users in company see all company invoices (both online orders + ERP-imported invoices)
 - **PDF Download:** Fixed endpoint to use `/download-pdf` (per official documentation)
 - **PDF Preview:** Added expandable inline PDF preview in invoices table (click arrow to expand)
-- **Company Filtering:** Invoices now filtered by user's companyId (regular users see only their company's invoices, admins see all)
 
-**Current Status:** ✅ Fixed - Invoices API authenticated correctly, PDF downloads working, inline preview implemented, company filtering active.
+**Current Status:** ✅ Fixed - Invoices API authenticated correctly, company-level filtering matching hosted portal, PDF downloads working, inline preview implemented.
 
 ### Users & Addresses - ✅ RESOLVED
 **Previous Issues:** 
