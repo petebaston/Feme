@@ -1126,20 +1126,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const addresses = response?.data?.list || response?.data || [];
 
         console.log(`[Addresses] RAW API returned ${addresses.length} addresses for company ${req.user?.companyId}`);
-        if (addresses.length > 0 && addresses.length <= 5) {
-          console.log('[Addresses] Full address data:', JSON.stringify(addresses, null, 2));
-        } else if (addresses.length > 5) {
-          console.log('[Addresses] Sample (first 3):', JSON.stringify(addresses.slice(0, 3), null, 2));
-        }
 
         // Deduplicate addresses by id or addressId (BigCommerce sometimes returns duplicates)
-        const uniqueAddresses = addresses.filter((addr: any, index: number, self: any[]) => 
+        let uniqueAddresses = addresses.filter((addr: any, index: number, self: any[]) => 
           index === self.findIndex((a: any) => 
             (a.id && a.id === addr.id) || (a.addressId && a.addressId === addr.addressId)
           )
         );
 
         console.log(`[Addresses] After deduplication: ${uniqueAddresses.length} unique addresses (removed ${addresses.length - uniqueAddresses.length} duplicates)`);
+
+        // If no addresses found in address book, try to use company's default address
+        if (uniqueAddresses.length === 0 && req.user?.companyId) {
+          try {
+            console.log(`[Addresses] No address book entries found, fetching company default address for ${req.user.companyId}`);
+            const companyResponse = await bigcommerce.getCompanyDetails(bcToken, req.user.companyId);
+            const company = companyResponse?.data;
+
+            // Check if company has address fields populated
+            if (company && company.addressLine1) {
+              console.log('[Addresses] Company has default address, adding to results');
+              const defaultAddress = {
+                id: `company-${company.companyId}`,
+                addressId: `company-${company.companyId}`,
+                companyId: company.companyId,
+                firstName: company.companyName?.split(' ')[0] || '',
+                lastName: company.companyName?.split(' ').slice(1).join(' ') || '',
+                addressLine1: company.addressLine1,
+                addressLine2: company.addressLine2 || '',
+                city: company.city || '',
+                stateCode: company.state || '',
+                stateName: company.state || '',
+                zipCode: company.zipCode || '',
+                country: company.country || '',
+                countryCode: company.country || '',
+                countryName: company.country || '',
+                phoneNumber: company.companyPhone || '',
+                isDefaultShipping: true,
+                isDefaultBilling: true,
+                label: 'Company Headquarters'
+              };
+              uniqueAddresses = [defaultAddress];
+              console.log('[Addresses] Added company default address:', JSON.stringify(defaultAddress, null, 2));
+            }
+          } catch (companyError) {
+            console.log('[Addresses] Could not fetch company default address:', companyError);
+          }
+        }
 
         // Note: Already filtered by BigCommerce API, but apply filterByCompany for admin access control
         const filteredAddresses = filterByCompany(uniqueAddresses, req.user?.companyId, req.user?.role);

@@ -20659,3 +20659,12 @@
 2025-11-07 10:19:54:1954 [32mhttp[39m: [32mGET /api/auth/me 304 - 5ms[39m
 2025-11-07 10:19:54:1954 [32mhttp[39m: [32mGET /@fs/home/runner/workspace/attached_assets/feme-logo.png 304 - 1ms[39m
 2025-11-07 10:19:55:1955 [32mhttp[39m: [32mGET /api/my-orders 304 - 1420ms[39m
+2025-11-07 10:21:04:214 [32minfo[39m: [32m🚀 Server running on port 5000[39m
+2025-11-07 10:21:04:214 [32minfo[39m: [32m📝 Environment: development[39m
+2025-11-07 10:21:09:219 [32mhttp[39m: [32mGET / 200 - 60ms[39m
+2025-11-07 10:21:09:219 [32mhttp[39m: [32mGET /@react-refresh 304 - 8ms[39m
+2025-11-07 10:21:09:219 [32mhttp[39m: [32mGET /@vite/client 200 - 33ms[39m
+2025-11-07 10:21:09:219 [32mhttp[39m: [32mGET /@replit/vite-plugin-dev-banner/banner-script.js 200 - 1ms[39m
+2025-11-07 10:21:09:219 [32mhttp[39m: [32mGET /src/main.tsx?v=nr0_cl8hLCItWeyeo6oNL 200 - 45ms[39m
+2025-11-07 10:21:10:2110 [32mhttp[39m: [32mGET /src/App.tsx?v=nr0_cl8hLCItWeyeo6oNL 200 - 1ms[39m
+2025-11-07 10:21:10:2110 [32mhttp[39m: [32mGET /@fs/home/runner/workspace/node_modules/vite/dist/client/env.mjs 304 - 1ms[39m
