@@ -714,15 +714,6 @@ export class BigCommerceService {
     return this.request(`/api/v3/io/addresses${query ? `?${query}` : ''}`);
   }
 
-  async getCompanyCredit(userToken: string, companyId: string) {
-    // Payment API v3 endpoint - Get Company Credit Status
-    // GET /api/v3/io/companies/{companyId}/credit
-    // Returns credit settings including availableCredit, creditCurrency, etc.
-    // Uses OAuth X-Auth-Token (same authentication as other v3 endpoints)
-    console.log(`[BigCommerce] Fetching credit info for company ${companyId}`);
-    return this.request(`/api/v3/io/companies/${companyId}/credit`);
-  }
-
   // Invoices - Use Management API v3 with server OAuth Token
   // Correct endpoint: /api/v3/io/ip/invoices (per official B2B Edition API docs)
   // SECURITY BEST PRACTICE: Always filter by customerId (Company ID) at API level
@@ -853,6 +844,40 @@ export class BigCommerceService {
       code: 200,
       data: { success: true }
     };
+  }
+
+  // Company Credit - Multiple endpoint investigation
+  // 1. Check if company credit feature is enabled
+  async getCompanyCreditConfiguration() {
+    try {
+      console.log('[BigCommerce] Checking if company credit is enabled...');
+      return await this.request('/api/v3/payments/company-credit/configuration');
+    } catch (error: any) {
+      console.log('[BigCommerce] Company credit configuration check failed:', error.message);
+      return null;
+    }
+  }
+
+  // 2. Get company credit (only works if feature is enabled)
+  async getCompanyCredit(companyId: string) {
+    try {
+      console.log(`[BigCommerce] Fetching credit info for company ${companyId}`);
+      return await this.request(`/api/v3/io/companies/${companyId}/credit`);
+    } catch (error: any) {
+      console.log(`[BigCommerce] Company credit fetch failed: ${error.message}`);
+      return null;
+    }
+  }
+
+  // 3. Get full company details (includes extraFields which may contain credit limit)
+  async getCompanyDetails(companyId: string) {
+    try {
+      console.log(`[BigCommerce] Fetching full company details for ${companyId}`);
+      return await this.request(`/api/v3/io/companies/${companyId}`);
+    } catch (error: any) {
+      console.log(`[BigCommerce] Company details fetch failed: ${error.message}`);
+      return null;
+    }
   }
 }
 

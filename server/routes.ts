@@ -936,28 +936,81 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.status(400).json({ message: 'Company ID required' });
         }
 
-        const bcToken = await getBigCommerceToken(req);
-        const response = await bigcommerce.getCompanyCredit(bcToken, req.user.companyId);
-        const creditData = response?.data || {};
+        const companyId = req.user.companyId;
+        console.log(`\n========== COMPREHENSIVE CREDIT INVESTIGATION FOR COMPANY ${companyId} ==========\n`);
 
-        console.log(`[Company Credit] Fetched for company ${req.user.companyId}:`, creditData);
+        // TEST 1: Check if company credit feature is enabled at store level
+        console.log('TEST 1: Checking company credit configuration...');
+        const configResult = await bigcommerce.getCompanyCreditConfiguration();
+        console.log('Config Result:', JSON.stringify(configResult, null, 2));
+
+        // TEST 2: Try to fetch company credit (will fail if feature is disabled)
+        console.log('\nTEST 2: Attempting to fetch company credit...');
+        const creditResult = await bigcommerce.getCompanyCredit(companyId);
+        console.log('Credit Result:', JSON.stringify(creditResult, null, 2));
+
+        // TEST 3: Fetch full company details to check for credit in extraFields
+        console.log('\nTEST 3: Fetching full company details for extraFields...');
+        const companyResult = await bigcommerce.getCompanyDetails(companyId);
+        console.log('Company Result:', JSON.stringify(companyResult, null, 2));
+
+        // Analyze results
+        console.log('\n========== ANALYSIS ==========');
+        
+        let creditData: any = {
+          creditEnabled: false,
+          creditCurrency: 'GBP',
+          availableCredit: 0,
+          creditLimit: 0,
+          balance: 0,
+          limitPurchases: false,
+          creditHold: false,
+          source: 'none'
+        };
+
+        // Priority 1: If credit endpoint works, use that
+        if (creditResult?.data) {
+          console.log('✅ Found credit data from /credit endpoint');
+          creditData = {
+            creditEnabled: true,
+            ...creditResult.data,
+            source: '/api/v3/io/companies/{companyId}/credit'
+          };
+        }
+        // Priority 2: Check extraFields in company details
+        else if (companyResult?.data?.extraFields) {
+          console.log('Checking extraFields for credit limit...');
+          const extraFields = companyResult.data.extraFields;
+          console.log('ExtraFields:', JSON.stringify(extraFields, null, 2));
+          
+          // Look for credit-related fields
+          const creditField = extraFields.find((f: any) => 
+            f.fieldName?.toLowerCase().includes('credit') || 
+            f.fieldName?.toLowerCase().includes('limit')
+          );
+          
+          if (creditField) {
+            console.log('✅ Found credit in extraFields:', creditField);
+            creditData.creditLimit = parseFloat(creditField.fieldValue) || 0;
+            creditData.creditEnabled = true;
+            creditData.source = `extraFields.${creditField.fieldName}`;
+          } else {
+            console.log('❌ No credit-related fields found in extraFields');
+            console.log('Available field names:', extraFields.map((f: any) => f.fieldName));
+          }
+        }
+
+        console.log('\n========== FINAL CREDIT DATA ==========');
+        console.log(JSON.stringify(creditData, null, 2));
+        console.log('=========================================\n');
 
         res.json(creditData);
       } catch (error: any) {
         console.error("Company credit fetch error:", error);
-        // If credit feature is not enabled, return default values
-        if (error.message?.includes('404') || error.message?.includes('400')) {
-          console.log('[Company Credit] Feature not enabled, returning defaults');
-          res.json({
-            creditEnabled: false,
-            creditCurrency: 'GBP',
-            availableCredit: 0,
-            limitPurchases: false,
-            creditHold: false,
-          });
-        } else {
-          res.status(500).json({ message: "Failed to fetch company credit" });
-        }
+        res.status(500).json({ 
+          message: "Failed to fetch company credit",
+          error: error.message 
+        });
       }
     }
   );
