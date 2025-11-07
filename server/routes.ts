@@ -301,6 +301,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get current user (validate token)
+  app.get("/api/auth/me", authenticateToken, async (req: AuthRequest, res) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
+      // Return user info (token is valid)
+      res.json({
+        user: {
+          userId: req.user.userId,
+          email: req.user.email,
+          role: req.user.role,
+          companyId: req.user.companyId,
+        }
+      });
+    } catch (error) {
+      console.error("[Me] Error:", error);
+      res.status(500).json({ message: "Failed to get user info" });
+    }
+  });
+
   // Token refresh endpoint (Item 1)
   app.post("/api/auth/refresh", async (req, res) => {
     try {

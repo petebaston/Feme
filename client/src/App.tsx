@@ -27,13 +27,50 @@ function Router() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Check authentication status
+    // Check authentication status and refresh token if needed
     const checkAuth = async () => {
       try {
         const token = localStorage.getItem('b2b_token');
 
         if (token) {
-          setIsAuthenticated(true);
+          // Try to verify token is still valid by making a lightweight API call
+          try {
+            const response = await fetch('/api/auth/me', {
+              headers: {
+                'Authorization': `Bearer ${token}`
+              }
+            });
+
+            if (response.ok) {
+              // Token is still valid
+              setIsAuthenticated(true);
+            } else if (response.status === 401) {
+              // Token expired - try to refresh using remember me cookie
+              console.log('[Auth] Token expired, attempting refresh...');
+              const refreshResponse = await fetch('/api/auth/refresh', {
+                method: 'POST',
+                credentials: 'include', // Include cookies (refreshToken cookie)
+              });
+
+              if (refreshResponse.ok) {
+                const data = await refreshResponse.json();
+                // Update token
+                localStorage.setItem('b2b_token', data.accessToken);
+                setIsAuthenticated(true);
+                console.log('[Auth] Token refreshed successfully');
+              } else {
+                // Refresh failed - clear token and redirect to login
+                console.log('[Auth] Refresh failed, redirecting to login');
+                localStorage.removeItem('b2b_token');
+                localStorage.removeItem('user');
+                setIsAuthenticated(false);
+              }
+            }
+          } catch (error) {
+            console.error('[Auth] Token validation failed:', error);
+            // If network error, assume token is still good
+            setIsAuthenticated(true);
+          }
         }
       } catch (error) {
         console.error('Auth check failed:', error);
