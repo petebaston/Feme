@@ -20126,3 +20126,5 @@
 2025-11-07 10:00:21:021 [32mhttp[39m: [32mGET /@fs/home/runner/workspace/node_modules/.vite/deps/chunk-I7OES434.js?v=ca1dfdd9 200 - 3ms[39m
 2025-11-07 10:00:21:021 [32mhttp[39m: [32mGET /@fs/home/runner/workspace/attached_assets/feme-logo.png 200 - 9ms[39m
 2025-11-07 10:00:21:021 [32mhttp[39m: [32mGET /favicon.ico 200 - 13ms[39m
+2025-11-07 10:07:19:719 [33mwarn[39m: [33mPOST /api/auth/login 401 - 326ms[39m
+2025-11-07 10:07:26:726 [33mwarn[39m: [33mPOST /api/auth/login 401 - 208ms[39m
