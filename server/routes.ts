@@ -901,7 +901,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   return null;
                 }
               })
-              .filter((order: any) => order && order.customerId === req.user?.customerId);
+              .filter((order: any) => {
+                if (!order) return false;
+                // Check both camelCase and snake_case versions
+                const orderCustomerId = order.customerId || order.customer_id;
+                const matches = orderCustomerId === req.user?.customerId;
+                return matches;
+              });
             
             console.log(`[Invoices] User has ${userOrders.length} orders for customer ${req.user.customerId}`);
             
