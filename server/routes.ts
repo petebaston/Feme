@@ -873,37 +873,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         console.log(`[Invoices] Enriched ${enrichedInvoices.length} invoices with full details`);
 
-        // CRITICAL: Invoice Portal API returns ALL invoices, NOT filtered by company!
-        // We must filter by matching invoice's "Customer" extraField with company's "Customer ID" extraField
+        // CRITICAL: Filter invoices by BigCommerce customer IDs of ALL users in the company
+        // The invoice.customerId field contains the BigCommerce customer ID
         
         let filteredInvoices = enrichedInvoices;
         
-        // For non-admin users, filter invoices by company
+        // For non-admin users, filter invoices by company's users
         if (req.user?.role !== 'admin' && req.user?.role !== 'superadmin' && req.user?.companyId) {
           try {
-            // Get company's Customer ID from extraFields
-            const companyResponse = await bigcommerce.getCompanyDetails(req.user.companyId);
-            const company = companyResponse?.data;
-            const companyCustomerId = company?.extraFields?.find((f: any) => f.fieldName === 'Customer ID')?.fieldValue;
+            // Get all users in the company
+            const usersResponse = await bigcommerce.getCompanyUsers(bcToken, req.user.companyId);
+            const companyUsers = usersResponse?.data?.list || usersResponse?.data || [];
             
-            console.log(`[Invoices] Company Customer ID: ${companyCustomerId}`);
+            // Extract BigCommerce customer IDs from all users
+            const companyCustomerIds = companyUsers
+              .map((user: any) => String(user.customerId))
+              .filter((id: string) => id && id !== 'undefined' && id !== 'null');
             
-            if (companyCustomerId) {
+            console.log(`[Invoices] Company has ${companyUsers.length} users with customer IDs: ${companyCustomerIds.join(', ')}`);
+            
+            if (companyCustomerIds.length > 0) {
               filteredInvoices = enrichedInvoices.filter((invoice: any) => {
-                // Match invoice's "Customer" extraField with company's "Customer ID"
-                const invoiceCustomer = invoice.extraFields?.find((f: any) => f.fieldName === 'Customer')?.fieldValue;
-                const matches = invoiceCustomer === companyCustomerId;
+                const invoiceCustomerId = String(invoice.customerId);
+                const matches = companyCustomerIds.includes(invoiceCustomerId);
                 if (!matches) {
-                  console.log(`[Invoices] Filtering out invoice ${invoice.id}: customer ${invoiceCustomer} !== ${companyCustomerId}`);
+                  console.log(`[Invoices] Filtering out invoice ${invoice.id}: customerId ${invoiceCustomerId} not in company user list`);
                 }
                 return matches;
               });
-              console.log(`[Invoices] Filtered from ${enrichedInvoices.length} to ${filteredInvoices.length} invoices for company ${companyCustomerId}`);
+              console.log(`[Invoices] Filtered from ${enrichedInvoices.length} to ${filteredInvoices.length} invoices for company users`);
             } else {
-              console.log('[Invoices] WARNING: No Customer ID found in company extraFields, returning all invoices');
+              console.log('[Invoices] WARNING: No customer IDs found for company users, returning all invoices');
             }
           } catch (companyError) {
-            console.error('[Invoices] Failed to fetch company details for filtering:', companyError);
+            console.error('[Invoices] Failed to fetch company users for filtering:', companyError);
             // On error, don't filter - return all invoices
           }
         } else {
