@@ -702,6 +702,27 @@ export class BigCommerceService {
     return customerIds;
   }
 
+  async getCompanyCustomerAccountIds(userToken: string, companyId: string): Promise<string[]> {
+    // Fetch B2B Customer Accounts for the company from Management API
+    // These are different from user customerIds - they represent B2B account entities
+    // linked to ERP codes (FEM01, etc.) and used in invoice.customerId fields
+    console.log(`[BigCommerce] Fetching customer account IDs for company ${companyId}`);
+    const response = await this.request(`/api/v3/io/companies/${companyId}/customers`);
+    
+    if (!response?.data) {
+      console.warn('[BigCommerce] No customer accounts found for company');
+      return [];
+    }
+    
+    const customerAccounts = response.data.list || response.data || [];
+    const accountIds = customerAccounts
+      .map((account: any) => String(account.customerId || account.id))
+      .filter((id: string) => id && id !== 'undefined' && id !== 'null');
+    
+    console.log(`[BigCommerce] Found ${accountIds.length} customer account IDs for company ${companyId}:`, accountIds);
+    return accountIds;
+  }
+
   async getCompanyAddresses(userToken: string, companyId?: string) {
     // Management API v3 endpoint - per official B2B Edition documentation  
     // GET /api/v3/io/addresses - Get All Addresses
