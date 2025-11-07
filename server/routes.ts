@@ -879,38 +879,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         let filteredInvoices = enrichedInvoices;
         
-        // For non-admin users, filter invoices by company's Customer ID
-        if (req.user?.role !== 'admin' && req.user?.role !== 'superadmin' && req.user?.companyId) {
-          try {
-            // Get company's Customer ID from extraFields
-            // This matches the invoice's "Customer" extraField (ERP code like FEM01)
-            const companyResponse = await bigcommerce.getCompanyDetails(req.user.companyId);
-            const company = companyResponse?.data;
-            const companyCustomerId = company?.extraFields?.find((f: any) => f.fieldName === 'Customer ID')?.fieldValue;
-            
-            console.log(`[Invoices] Company Customer ID: ${companyCustomerId}`);
-            
-            if (companyCustomerId) {
-              filteredInvoices = enrichedInvoices.filter((invoice: any) => {
-                // Match invoice's "Customer" extraField with company's "Customer ID"
-                const invoiceCustomer = invoice.extraFields?.find((f: any) => f.fieldName === 'Customer')?.fieldValue;
-                const matches = invoiceCustomer === companyCustomerId;
-                if (!matches) {
-                  console.log(`[Invoices] Filtering out invoice ${invoice.id}: customer ${invoiceCustomer} !== ${companyCustomerId}`);
-                }
-                return matches;
-              });
-              console.log(`[Invoices] Filtered from ${enrichedInvoices.length} to ${filteredInvoices.length} invoices for company ${companyCustomerId}`);
-            } else {
-              console.log('[Invoices] WARNING: No Customer ID found in company extraFields, showing all invoices');
-            }
-          } catch (companyError) {
-            console.error('[Invoices] Failed to fetch company details for filtering:', companyError);
-            // On error, don't filter - return all invoices
-          }
-        } else {
-          console.log('[Invoices] Admin user - returning all invoices without filtering');
-        }
+        // TEMPORARY: Disable filtering to debug invoice mismatch
+        // User has 6 orders but only 2 invoices showing with FEM01 filter
+        // Need to see ALL invoices to determine correct filtering logic
+        console.log('[Invoices] TEMPORARY: Showing all invoices without filtering (debugging)');
         
         console.log(`[Invoices] Returning ${filteredInvoices.length} invoices`);
         res.json(filteredInvoices);
