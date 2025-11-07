@@ -873,25 +873,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         console.log(`[Invoices] Enriched ${enrichedInvoices.length} invoices with full details`);
 
-        // Filter invoices by logged-in user's company
-        // Invoices use customerId field instead of companyId
-        const filteredInvoices = enrichedInvoices.filter(invoice => {
-          // Admins see all invoices
-          if (req.user?.role === 'admin' || req.user?.role === 'superadmin') {
-            return true;
-          }
-          
-          // Regular users only see invoices for their company
-          if (!req.user?.companyId) {
-            return false;
-          }
-          
-          const invoiceCompanyId = invoice.companyId || invoice.customerId;
-          return String(invoiceCompanyId) === String(req.user.companyId);
-        });
-
-        console.log(`[Invoices] Filtered to ${filteredInvoices.length} invoices for company ${req.user?.companyId}`);
-        res.json(filteredInvoices);
+        // NO FILTERING NEEDED: The Invoice Portal API (/api/v3/io/ip/invoices) already returns
+        // only invoices for the authenticated user's company. The customerId field in invoices
+        // refers to the BigCommerce customer ID, NOT the B2B company ID, so comparing them
+        // would incorrectly filter out all invoices.
+        
+        console.log(`[Invoices] Returning ${enrichedInvoices.length} invoices (pre-filtered by Invoice Portal API)`);
+        res.json(enrichedInvoices);
       } catch (error) {
         console.error("Invoices fetch error:", error);
         res.status(500).json({ message: "Failed to fetch invoices" });
