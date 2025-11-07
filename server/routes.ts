@@ -866,39 +866,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         console.log(`[Invoices] Retrieved ${invoices.length} invoices from BigCommerce`);
 
-        // DEBUG: Log first invoice structure to understand field mapping
-        if (invoices.length > 0) {
-          console.log('[Invoices] DEBUG: First invoice structure:', JSON.stringify(invoices[0], null, 2));
+        // Get company's customer ID from extraFields for filtering invoices
+        let companyCustomerId: string | null = null;
+        try {
+          const companyResponse = await bigcommerce.getCompany(req.user.companyId);
+          const companyData = companyResponse?.data;
+          const customerIdField = companyData?.extraFields?.find((f: any) => f.fieldName === 'Customer ID');
+          companyCustomerId = customerIdField?.fieldValue || null;
+          console.log(`[Invoices] Company ${req.user.companyId} customer ID: ${companyCustomerId}`);
+        } catch (error) {
+          console.error(`[Invoices] Failed to get company customer ID:`, error);
         }
 
-        console.log(`[Invoices] DEBUG: Temporarily returning ALL ${invoices.length} invoices to analyze structure`);
-
         // Enrich invoices with full details (including extraFields) from individual invoice endpoints
-        // The list endpoint doesn't include extraFields, but the detail endpoint does
         const enrichedInvoices = await Promise.all(
           invoices.map(async (invoice) => {
             try {
               const detailResponse = await bigcommerce.getInvoice(undefined, invoice.id);
               const fullInvoice = detailResponse?.data;
               
-              // Merge the full invoice details (which includes extraFields) with the list invoice
               return {
                 ...invoice,
                 extraFields: fullInvoice?.extraFields || [],
-                // Preserve other detail fields if needed
                 details: fullInvoice?.details || invoice.details
               };
             } catch (error) {
               console.error(`[Invoices] Failed to enrich invoice ${invoice.id}:`, error);
-              // Return original invoice if enrichment fails
               return { ...invoice, extraFields: [] };
             }
           })
         );
 
-        console.log(`[Invoices] Enriched ${enrichedInvoices.length} invoices with full details`);
-        console.log(`[Invoices] FINAL SECURITY CHECK: Returning ${enrichedInvoices.length} invoices for company ${req.user?.companyId} ONLY`);
-        res.json(enrichedInvoices);
+        // CRITICAL SECURITY FILTER: Filter by company customer ID in invoice extraFields
+        const companyInvoices = companyCustomerId ? enrichedInvoices.filter((invoice: any) => {
+          const customerField = invoice.extraFields?.find((f: any) => f.fieldName === 'Customer');
+          const invoiceCustomerId = customerField?.fieldValue;
+          const matches = invoiceCustomerId === companyCustomerId;
+          
+          if (!matches && invoiceCustomerId) {
+            console.log(`[Invoices] SECURITY: Blocking invoice ${invoice.id} - customer ${invoiceCustomerId} !== ${companyCustomerId}`);
+          }
+          
+          return matches;
+        }) : enrichedInvoices;
+
+        console.log(`[Invoices] SECURITY FILTER: ${enrichedInvoices.length} total → ${companyInvoices.length} for company ${req.user?.companyId}`);
+        console.log(`[Invoices] FINAL: Returning ${companyInvoices.length} invoices for company ${req.user?.companyId}`);
+        res.json(companyInvoices);
       } catch (error) {
         console.error("Invoices fetch error:", error);
         res.status(500).json({ message: "Failed to fetch invoices" });
