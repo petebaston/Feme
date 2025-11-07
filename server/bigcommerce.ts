@@ -73,33 +73,33 @@ export class BigCommerceService {
       ...(options.headers || {}),
     };
 
-    // CRITICAL: Authentication strategy prevents cross-company data leakage
-    // PRIORITY 1: User Token (company-scoped) - use for buyer portal operations
-    // PRIORITY 2: Management Token (store-wide) - use ONLY for admin operations without user context
+    // CRITICAL: Authentication strategy based on endpoint type
+    // Management API endpoints (/api/v3/io/*): require X-Auth-Token
+    // Storefront API endpoints (/api/v2/*): use user Authorization Bearer token
     
-    if (options.userToken) {
-      // USER CONTEXT: Use storefront token ONLY (automatically company-scoped by BigCommerce)
-      // DO NOT add management token - it would override company scoping and leak cross-company data
-      headers['Authorization'] = `Bearer ${options.userToken}`;
-      console.log('[BigCommerce] ✓ Using user storefront token (company-scoped)');
-    } else {
-      // ADMIN CONTEXT: Use management token only when no user token available
-      const isManagementEndpoint = endpoint.includes('/api/v3/io/') || 
-                                    endpoint.includes('/api/v3/payments') ||
-                                    endpoint.includes('/api/v3/super-admin') ||
-                                    endpoint.includes('/api/v3/users') ||
-                                    endpoint.includes('/api/v2/users') ||
-                                    options.requireManagementToken;
+    const isManagementEndpoint = endpoint.includes('/api/v3/io/') || 
+                                  endpoint.includes('/api/v3/payments') ||
+                                  endpoint.includes('/api/v3/super-admin') ||
+                                  endpoint.includes('/api/v3/users') ||
+                                  endpoint.includes('/api/v2/users') ||
+                                  options.requireManagementToken;
 
-      if (isManagementEndpoint) {
-        try {
-          const serverToken = await this.getServerToServerToken();
-          headers['X-Auth-Token'] = serverToken;
-          console.log('[BigCommerce] ⚠️  Using management token (store-wide access - no user context)');
-        } catch (error: any) {
-          console.error('[BigCommerce] Failed to get server-to-server token:', error.message);
-        }
+    if (isManagementEndpoint) {
+      // Management API: requires server-to-server token via X-Auth-Token
+      // SECURITY: Must filter by companyId in query params to prevent cross-company data leakage
+      try {
+        const serverToken = await this.getServerToServerToken();
+        headers['X-Auth-Token'] = serverToken;
+        console.log('[BigCommerce] Using management token (X-Auth-Token) - MUST filter by companyId');
+      } catch (error: any) {
+        console.error('[BigCommerce] Failed to get server-to-server token:', error.message);
       }
+    }
+
+    // Add user token for storefront APIs
+    if (options.userToken && !isManagementEndpoint) {
+      headers['Authorization'] = `Bearer ${options.userToken}`;
+      console.log('[BigCommerce] Using user storefront token (company-scoped)');
     }
 
     console.log(`[BigCommerce] ${options.method || 'GET'} ${url}`);
@@ -739,16 +739,19 @@ export class BigCommerceService {
     return this.request(`/api/v3/io/addresses${query ? `?${query}` : ''}`);
   }
 
-  // Invoices - Use user storefront token for company-scoped access
+  // Invoices - Use Management API with X-Auth-Token
   // Correct endpoint: /api/v3/io/ip/invoices (per official B2B Edition API docs)
-  // SECURITY: User token auto-filters by company, companyId param adds extra safety
+  // SECURITY: MUST filter by companyId parameter to prevent cross-company data leakage
   async getInvoices(userToken?: string, params?: any) {
     const queryParams = new URLSearchParams();
     
-    // CRITICAL: Filter by companyId for double security
-    // User token provides primary company scoping, this param is defense-in-depth
+    // CRITICAL: Filter by companyId - this is the ONLY way to prevent cross-company leakage
+    // Management token has store-wide access, so companyId filtering is mandatory
     if (params?.companyId) {
       queryParams.append('companyId', params.companyId);
+      console.log(`[BigCommerce] Filtering invoices by companyId: ${params.companyId}`);
+    } else {
+      console.warn('[BigCommerce] ⚠️ WARNING: No companyId filter - may return invoices from all companies!');
     }
     
     // Additional filters per BigCommerce API docs
@@ -761,18 +764,18 @@ export class BigCommerceService {
     if (params?.offset) queryParams.append('offset', params.offset.toString());
 
     const query = queryParams.toString();
-    // CRITICAL: Pass userToken to enable company-scoped authentication
-    return this.request(`/api/v3/io/ip/invoices${query ? `?${query}` : ''}`, { userToken });
+    // Management API endpoint - uses X-Auth-Token automatically
+    return this.request(`/api/v3/io/ip/invoices${query ? `?${query}` : ''}`);
   }
 
   async getInvoice(userToken: string | undefined, invoiceId: string) {
-    // Pass userToken for company-scoped access
-    return this.request(`/api/v3/io/ip/invoices/${invoiceId}`, { userToken });
+    // Management API endpoint - uses X-Auth-Token automatically
+    return this.request(`/api/v3/io/ip/invoices/${invoiceId}`);
   }
 
   async getInvoicePdf(userToken: string | undefined, invoiceId: string) {
     // Correct endpoint per BigCommerce documentation
-    return this.request(`/api/v3/io/ip/invoices/${invoiceId}/download-pdf`, { userToken });
+    return this.request(`/api/v3/io/ip/invoices/${invoiceId}/download-pdf`);
   }
 
   // Products
