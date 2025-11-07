@@ -23244,3 +23244,5 @@
 2025-11-07 12:00:31:031 [32mhttp[39m: [32mGET /api/auth/me 304 - 6ms[39m
 2025-11-07 12:00:31:031 [32mhttp[39m: [32mGET /@fs/home/runner/workspace/attached_assets/feme-logo.png 304 - 2ms[39m
 2025-11-07 12:00:33:033 [32mhttp[39m: [32mGET /api/my-orders 304 - 1872ms[39m
+2025-11-07 12:01:31:131 [32mhttp[39m: [32mGET /api/company/credit 200 - 289ms[39m
+2025-11-07 12:01:31:131 [32mhttp[39m: [32mGET /api/invoices 200 - 514ms[39m
