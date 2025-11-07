@@ -873,13 +873,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         console.log(`[Invoices] Enriched ${enrichedInvoices.length} invoices with full details`);
 
-        // NO FILTERING NEEDED: The Invoice Portal API (/api/v3/io/ip/invoices) already returns
-        // only invoices for the authenticated user's company. The customerId field in invoices
-        // refers to the BigCommerce customer ID, NOT the B2B company ID, so comparing them
-        // would incorrectly filter out all invoices.
+        // CRITICAL: Invoice Portal API returns ALL invoices, NOT filtered by company!
+        // We must filter by matching invoice's "Customer" extraField with company's "Customer ID" extraField
         
-        console.log(`[Invoices] Returning ${enrichedInvoices.length} invoices (pre-filtered by Invoice Portal API)`);
-        res.json(enrichedInvoices);
+        let filteredInvoices = enrichedInvoices;
+        
+        // For non-admin users, filter invoices by company
+        if (req.user?.role !== 'admin' && req.user?.role !== 'superadmin' && req.user?.companyId) {
+          try {
+            // Get company's Customer ID from extraFields
+            const companyResponse = await bigcommerce.getCompanyDetails(req.user.companyId);
+            const company = companyResponse?.data;
+            const companyCustomerId = company?.extraFields?.find((f: any) => f.fieldName === 'Customer ID')?.fieldValue;
+            
+            console.log(`[Invoices] Company Customer ID: ${companyCustomerId}`);
+            
+            if (companyCustomerId) {
+              filteredInvoices = enrichedInvoices.filter((invoice: any) => {
+                // Match invoice's "Customer" extraField with company's "Customer ID"
+                const invoiceCustomer = invoice.extraFields?.find((f: any) => f.fieldName === 'Customer')?.fieldValue;
+                const matches = invoiceCustomer === companyCustomerId;
+                if (!matches) {
+                  console.log(`[Invoices] Filtering out invoice ${invoice.id}: customer ${invoiceCustomer} !== ${companyCustomerId}`);
+                }
+                return matches;
+              });
+              console.log(`[Invoices] Filtered from ${enrichedInvoices.length} to ${filteredInvoices.length} invoices for company ${companyCustomerId}`);
+            } else {
+              console.log('[Invoices] WARNING: No Customer ID found in company extraFields, returning all invoices');
+            }
+          } catch (companyError) {
+            console.error('[Invoices] Failed to fetch company details for filtering:', companyError);
+            // On error, don't filter - return all invoices
+          }
+        } else {
+          console.log('[Invoices] Admin user - returning all invoices without filtering');
+        }
+        
+        console.log(`[Invoices] Returning ${filteredInvoices.length} invoices`);
+        res.json(filteredInvoices);
       } catch (error) {
         console.error("Invoices fetch error:", error);
         res.status(500).json({ message: "Failed to fetch invoices" });
@@ -1140,7 +1172,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (uniqueAddresses.length === 0 && req.user?.companyId) {
           try {
             console.log(`[Addresses] No address book entries found, fetching company default address for ${req.user.companyId}`);
-            const companyResponse = await bigcommerce.getCompanyDetails(bcToken, req.user.companyId);
+            const companyResponse = await bigcommerce.getCompanyDetails(req.user.companyId);
             const company = companyResponse?.data;
 
             // Check if company has address fields populated
