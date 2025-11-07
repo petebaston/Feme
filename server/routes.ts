@@ -876,73 +876,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         console.log(`[Invoices] Enriched ${enrichedInvoices.length} invoices with full details`);
 
-        // CRITICAL: Filter invoices by matching orderNumber with user's cached orders
-        // Each order should have a corresponding invoice
-        let filteredInvoices = enrichedInvoices;
+        // NOTE: Invoices are already filtered by company at the API level
+        // BigCommerce B2B Edition automatically returns only invoices for the authenticated company
+        // No additional filtering needed - company-level isolation is handled by BigCommerce
         
-        // For non-admin users, filter invoices by matching order numbers
-        if (req.user?.role !== 'admin' && req.user?.role !== 'superadmin' && req.user?.companyId) {
-          try {
-            // Query cached orders directly from database for this company
-            console.log(`[Invoices] Fetching cached orders for company ${req.user.companyId}, customer ${req.user.customerId}`);
-            const cachedOrderRecords = await db.select()
-              .from(bigcommerceOrdersCache)
-              .where(eq(bigcommerceOrdersCache.companyId, String(req.user.companyId)));
-            
-            console.log(`[Invoices] Found ${cachedOrderRecords.length} cached order records`);
-            
-            // Parse order data and filter by customer ID
-            const userOrders = cachedOrderRecords
-              .map(record => {
-                try {
-                  return JSON.parse(record.orderData);
-                } catch (e) {
-                  console.error('[Invoices] Failed to parse order data:', e);
-                  return null;
-                }
-              })
-              .filter((order: any) => {
-                if (!order) return false;
-                // Check both camelCase and snake_case versions
-                const orderCustomerId = order.customerId || order.customer_id;
-                const matches = orderCustomerId === req.user?.customerId;
-                return matches;
-              });
-            
-            console.log(`[Invoices] User has ${userOrders.length} orders for customer ${req.user.customerId}`);
-            
-            if (userOrders.length > 0) {
-              // Build set of order IDs for fast lookup
-              const orderIds = new Set(
-                userOrders.map((order: any) => String(order.bcOrderId || order.id))
-              );
-              
-              console.log(`[Invoices] Order IDs: ${Array.from(orderIds).join(', ')}`);
-              
-              // Filter invoices by orderNumber
-              filteredInvoices = enrichedInvoices.filter((invoice: any) => {
-                const invoiceOrderNumber = String(invoice.orderNumber || '');
-                const matches = orderIds.has(invoiceOrderNumber);
-                if (!matches) {
-                  console.log(`[Invoices] Filtering out invoice ${invoice.id}: orderNumber ${invoiceOrderNumber} not in user's order list`);
-                }
-                return matches;
-              });
-              
-              console.log(`[Invoices] Filtered from ${enrichedInvoices.length} to ${filteredInvoices.length} invoices by order matching`);
-            } else {
-              console.log('[Invoices] WARNING: No orders found for user, showing all invoices');
-            }
-          } catch (orderError) {
-            console.error('[Invoices] Failed to fetch orders for filtering:', orderError);
-            // On error, don't filter - return all invoices
-          }
-        } else {
-          console.log('[Invoices] Admin user - returning all invoices without filtering');
-        }
-        
-        console.log(`[Invoices] Returning ${filteredInvoices.length} invoices`);
-        res.json(filteredInvoices);
+        console.log(`[Invoices] Returning ${enrichedInvoices.length} invoices for company ${req.user?.companyId}`);
+        res.json(enrichedInvoices);
       } catch (error) {
         console.error("Invoices fetch error:", error);
         res.status(500).json({ message: "Failed to fetch invoices" });
