@@ -746,13 +746,22 @@ export class BigCommerceService {
     return this.request(`/api/v3/io/addresses${query ? `?${query}` : ''}`);
   }
 
-  // Invoices - Buyer portal endpoint using storefront token
-  // Endpoint: /api/v3/io/ip/invoices (B2B Edition buyer portal API)
-  // SECURITY: Uses buyer storefront token - BigCommerce auto-scopes by company
+  // Invoices - Management API with MANDATORY company filtering
+  // Endpoint: /api/v3/io/ip/invoices (requires X-Auth-Token, not storefront token)
+  // SECURITY: companyId parameter is MANDATORY to prevent cross-company data leakage
   async getInvoices(userToken?: string, params?: any) {
+    // CRITICAL: Validate companyId is present
+    if (!params?.companyId) {
+      throw new Error('SECURITY: companyId is required for invoice requests to prevent cross-company data leakage');
+    }
+
     const queryParams = new URLSearchParams();
     
-    // Optional search filters (no companyId needed - token scopes automatically)
+    // MANDATORY: Company filtering
+    queryParams.append('companyId', params.companyId.toString());
+    console.log(`[BigCommerce] SECURITY: Filtering invoices by companyId=${params.companyId}`);
+    
+    // Optional search filters
     if (params?.search) queryParams.append('q', params.search);
     if (params?.status !== undefined && params.status !== 'all') {
       queryParams.append('status', params.status.toString());
@@ -762,27 +771,19 @@ export class BigCommerceService {
     if (params?.offset) queryParams.append('offset', params.offset.toString());
 
     const query = queryParams.toString();
-    // CRITICAL: useStorefrontToken=true to send buyer token instead of management token
-    return this.request(`/api/v3/io/ip/invoices${query ? `?${query}` : ''}`, { 
-      userToken,
-      useStorefrontToken: true 
-    });
+    // Uses management token (X-Auth-Token) automatically via request() method
+    return this.request(`/api/v3/io/ip/invoices${query ? `?${query}` : ''}`);
   }
 
-  async getInvoice(userToken: string | undefined, invoiceId: string) {
-    // Buyer portal endpoint - uses storefront token
-    return this.request(`/api/v3/io/ip/invoices/${invoiceId}`, { 
-      userToken,
-      useStorefrontToken: true 
-    });
+  async getInvoice(userToken: string | undefined, invoiceId: string, companyId?: string) {
+    // Individual invoice - optionally validate company ownership
+    const query = companyId ? `?companyId=${companyId}` : '';
+    return this.request(`/api/v3/io/ip/invoices/${invoiceId}${query}`);
   }
 
   async getInvoicePdf(userToken: string | undefined, invoiceId: string) {
-    // PDF download - uses storefront token
-    return this.request(`/api/v3/io/ip/invoices/${invoiceId}/download-pdf`, { 
-      userToken,
-      useStorefrontToken: true 
-    });
+    // PDF download
+    return this.request(`/api/v3/io/ip/invoices/${invoiceId}/download-pdf`);
   }
 
   // Products

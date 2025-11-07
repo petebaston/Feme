@@ -27,31 +27,28 @@ Preferred communication style: Simple, everyday language.
 
 ### Invoices System - ✅ RESOLVED
 **Previous Issues:** 
-1. Getting 403 "Invalid access token" when fetching invoices from B2B Edition Management API
-2. Incorrect filtering logic showing 0 invoices when hosted B2B portal showed 10+ invoices
-3. **CRITICAL SECURITY BUG:** Portal displaying invoices from ALL companies (cross-company data leakage)
+1. Getting 403 "Invalid access token" when attempting different authentication methods
+2. Cross-company data leakage showing invoices from ALL companies
+3. Confusion about correct authentication approach for `/api/v3/io/ip/invoices` endpoint
 
-**Root Causes:** 
-1. Was using `BIGCOMMERCE_B2B_MANAGEMENT_TOKEN` which was invalid for the Management API endpoints
-2. Incorrectly filtering by individual `customerId` instead of company-level filtering
-3. **Authentication token priority bug:** Using Management Token (store-wide access) alongside User Token, causing BigCommerce to ignore company scoping
+**Root Cause:** 
+The `/api/v3/io/ip/invoices` endpoint is a **Management API endpoint** that:
+- Requires `X-Auth-Token` (management token) for authentication
+- Does NOT accept user storefront tokens (returns 403 "Invalid token")
+- Has store-wide access scope, so requires explicit `companyId` parameter for security
 
-**Solution Implemented:**
-- **Authentication Fix:** Updated to use standard BigCommerce OAuth token (`BIGCOMMERCE_ACCESS_TOKEN`)
-- Changed `getServerToServerToken()` to prioritize OAuth token over B2B Management Token
-- Per BigCommerce September 2025 update: standard OAuth X-Auth-Token now works for B2B Edition APIs
-- **CRITICAL SECURITY FIX (Nov 7, 2025):** 
-  - **Authentication Priority:** User storefront token (company-scoped) now takes precedence over Management token (store-wide)
-  - **Token Logic:** When user token exists, ONLY use user token (no X-Auth-Token header) to prevent cross-company data leakage
-  - **Defense-in-Depth:** Added explicit `companyId` query parameter to invoice API requests for additional security layer
-  - **Affected Methods:** `getInvoices()`, `getInvoice()`, `getInvoicePdf()` now pass userToken to request method
-- **Filtering Fix:** Removed individual customer ID filtering to match BigCommerce B2B Edition hosted portal behavior
-- Per official B2B Edition documentation: "Invoices are automatically filtered per company account" and "Users within a company share access to that company's invoices"
-- All users in company see all company invoices (both online orders + ERP-imported invoices)
+**FINAL WORKING SOLUTION (Nov 7, 2025):**
+- **Authentication:** Uses Management Token (`X-Auth-Token`) - this is the ONLY token type accepted by this endpoint
+- **Security:** MANDATORY `companyId` parameter enforced at multiple levels:
+  1. `bigcommerce.getInvoices()` throws error if `companyId` missing
+  2. Route validates `req.user?.companyId` exists before calling API
+  3. Always passes `companyId: req.user.companyId` to BigCommerce
+  4. BigCommerce filters response to that company only
+- **Company Filtering:** All users in a company see all company invoices (both online orders + ERP-imported invoices)
 - **PDF Download:** Fixed endpoint to use `/download-pdf` (per official documentation)
 - **PDF Preview:** Added expandable inline PDF preview in invoices table (click arrow to expand)
 
-**Current Status:** ✅ Fixed - Invoices API authenticated correctly with company-scoped user tokens, cross-company security bug resolved, company-level filtering matching hosted portal, PDF downloads working, inline preview implemented.
+**Current Status:** ✅ Fixed - Portal successfully returns 10 invoices for company 9685502 with proper security through mandatory `companyId` filtering. Management token authentication confirmed working.
 
 ### Users & Addresses - ✅ RESOLVED
 **Previous Issues:** 

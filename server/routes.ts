@@ -827,12 +827,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         console.log(`[Invoices] Fetching invoices for user: ${req.user?.email} (Customer: ${req.user?.customerId}, Company: ${req.user?.companyId}, Role: ${req.user?.role})`);
 
-        // Fetch invoices using buyer's storefront token (BigCommerce auto-scopes by company)
+        // SECURITY CHECK: Require companyId
+        if (!req.user?.companyId) {
+          return res.status(403).json({ message: 'Company ID required for invoice access' });
+        }
+
+        // Fetch invoices with MANDATORY company filtering
         let invoices: any[] = [];
         try {
-          console.log(`[Invoices] Using buyer storefront token (BigCommerce will auto-scope by company)`);
+          console.log(`[Invoices] Fetching with MANDATORY companyId filter: ${req.user.companyId}`);
           
           const response = await bigcommerce.getInvoices(bcToken, {
+            companyId: req.user.companyId, // MANDATORY - throws error if missing
             search: search as string,
             status: status as string,
             sortBy: sortBy as string,
@@ -841,14 +847,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
           invoices = response?.data?.list || response?.data || [];
           
-          console.log(`[Invoices] Retrieved ${invoices.length} invoices (company-scoped by BigCommerce)`);
+          console.log(`[Invoices] Retrieved ${invoices.length} invoices for company ${req.user.companyId}`);
         } catch (invoiceError: any) {
-          // Handle 403 as "no invoices available" (common when B2B Edition has no invoices created)
+          // Security error if companyId validation fails
+          if (invoiceError.message?.includes('companyId is required')) {
+            console.error('[Invoices] SECURITY ERROR: Missing companyId parameter');
+            return res.status(500).json({ message: 'Server configuration error' });
+          }
+          
+          // Handle 403 as "no invoices available"
           if (invoiceError.message?.includes('403') || invoiceError.message?.includes('Forbidden')) {
-            console.log('[Invoices] 403 error - likely no invoices in system or insufficient permissions');
+            console.log('[Invoices] 403 error - no invoices or insufficient permissions');
             invoices = [];
           } else {
-            throw invoiceError; // Re-throw other errors
+            throw invoiceError;
           }
         }
 
