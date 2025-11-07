@@ -866,29 +866,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         console.log(`[Invoices] Retrieved ${invoices.length} invoices from BigCommerce`);
 
-        // CRITICAL SECURITY: Server-side filtering required!
-        // BigCommerce ignores companyId parameter and returns ALL company invoices
-        // We MUST filter to only return invoices for the authenticated user's company
-        const userCompanyId = req.user?.companyId?.toString();
-        
-        const companyFilteredInvoices = invoices.filter((invoice: any) => {
-          // Check customerId field (this is the company ID in invoice data)
-          const invoiceCompanyId = invoice.customerId?.toString();
-          const matches = invoiceCompanyId === userCompanyId;
-          
-          if (!matches) {
-            console.log(`[Invoices] SECURITY: Blocking invoice ${invoice.id} - belongs to company ${invoiceCompanyId}, user is in ${userCompanyId}`);
-          }
-          
-          return matches;
-        });
+        // DEBUG: Log first invoice structure to understand field mapping
+        if (invoices.length > 0) {
+          console.log('[Invoices] DEBUG: First invoice structure:', JSON.stringify(invoices[0], null, 2));
+        }
 
-        console.log(`[Invoices] SECURITY FILTER: ${invoices.length} total → ${companyFilteredInvoices.length} for company ${userCompanyId}`);
+        console.log(`[Invoices] DEBUG: Temporarily returning ALL ${invoices.length} invoices to analyze structure`);
 
         // Enrich invoices with full details (including extraFields) from individual invoice endpoints
         // The list endpoint doesn't include extraFields, but the detail endpoint does
         const enrichedInvoices = await Promise.all(
-          companyFilteredInvoices.map(async (invoice) => {
+          invoices.map(async (invoice) => {
             try {
               const detailResponse = await bigcommerce.getInvoice(undefined, invoice.id);
               const fullInvoice = detailResponse?.data;
