@@ -21612,3 +21612,17 @@
 2025-11-07 10:36:53:3653 [32mhttp[39m: [32mGET /api/auth/me 304 - 4ms[39m
 2025-11-07 10:36:53:3653 [32mhttp[39m: [32mGET /@fs/home/runner/workspace/attached_assets/feme-logo.png 304 - 3ms[39m
 2025-11-07 10:36:55:3655 [32mhttp[39m: [32mGET /api/my-orders 304 - 1397ms[39m
+2025-11-07 10:37:02:372 [32mhttp[39m: [32mGET /api/company/credit 200 - 263ms[39m
+2025-11-07 10:37:02:372 [32mhttp[39m: [32mGET /api/invoices 200 - 385ms[39m
+2025-11-07 10:37:57:3757 [32mhttp[39m: [32mGET /src/index.css?t=1762511876448&v=ALzjV2YTnZl2w2ocNgkk2 200 - 466ms[39m
+2025-11-07 10:37:57:3757 [32mhttp[39m: [32mGET /src/pages/invoices.tsx?t=1762511876448 200 - 506ms[39m
+2025-11-07 10:37:58:3758 [32mhttp[39m: [32mGET /src/index.css?t=1762511878516&v=ALzjV2YTnZl2w2ocNgkk2 200 - 218ms[39m
+2025-11-07 10:37:58:3758 [32mhttp[39m: [32mGET /src/pages/invoices.tsx?t=1762511878516 200 - 232ms[39m
+2025-11-07 10:38:00:380 [32mhttp[39m: [32mGET /src/index.css?t=1762511880441&v=ALzjV2YTnZl2w2ocNgkk2 200 - 120ms[39m
+2025-11-07 10:38:00:380 [32mhttp[39m: [32mGET /src/pages/invoices.tsx?t=1762511880441 200 - 157ms[39m
+2025-11-07 10:38:02:382 [32mhttp[39m: [32mGET /src/index.css?t=1762511882276&v=ALzjV2YTnZl2w2ocNgkk2 200 - 192ms[39m
+2025-11-07 10:38:02:382 [32mhttp[39m: [32mGET /src/pages/invoices.tsx?t=1762511882276 200 - 210ms[39m
+2025-11-07 10:38:04:384 [32mhttp[39m: [32mGET /src/index.css?t=1762511884207&v=ALzjV2YTnZl2w2ocNgkk2 200 - 121ms[39m
+2025-11-07 10:38:04:384 [32mhttp[39m: [32mGET /src/pages/invoices.tsx?t=1762511884207 200 - 130ms[39m
+2025-11-07 10:38:07:387 [32minfo[39m: [32m🚀 Server running on port 5000[39m
+2025-11-07 10:38:07:387 [32minfo[39m: [32m📝 Environment: development[39m

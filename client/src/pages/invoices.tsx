@@ -418,6 +418,7 @@ export default function Invoices() {
                 </div>
               </TableHead>
               <TableHead className="font-medium">Company</TableHead>
+              <TableHead className="font-medium">Order Number</TableHead>
               <TableHead className="font-medium">Sales Order</TableHead>
               <TableHead className="font-medium">Invoice date</TableHead>
               <TableHead className="font-medium">Due date</TableHead>
@@ -432,7 +433,7 @@ export default function Invoices() {
             {isLoading ? (
               Array.from({ length: 3 }).map((_, i) => (
                 <TableRow key={i}>
-                  <TableCell colSpan={12}>
+                  <TableCell colSpan={13}>
                     <Skeleton className="h-8 w-full" />
                   </TableCell>
                 </TableRow>
@@ -525,6 +526,7 @@ export default function Invoices() {
                         {companyName}
                       </div>
                     </TableCell>
+                    <TableCell className="text-gray-700">{invoice.orderNumber || '-'}</TableCell>
                     <TableCell className="text-gray-700">{salesOrder}</TableCell>
                     <TableCell className="text-gray-700">
                       {invoiceDate ? invoiceDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '-'}
@@ -566,7 +568,7 @@ export default function Invoices() {
                   {/* Expandable PDF Preview */}
                   {expandedInvoiceId === invoice.id && (
                     <TableRow>
-                      <TableCell colSpan={12} className="bg-gray-50 p-6">
+                      <TableCell colSpan={13} className="bg-gray-50 p-6">
                         <div className="space-y-4">
                           <div className="flex items-center justify-between">
                             <h3 className="text-lg font-medium text-gray-900">Invoice Preview</h3>
@@ -619,7 +621,7 @@ export default function Invoices() {
               })
             ) : (
               <TableRow>
-                <TableCell colSpan={12} className="text-center py-12 text-gray-500">
+                <TableCell colSpan={13} className="text-center py-12 text-gray-500">
                   No invoices found
                 </TableCell>
               </TableRow>
