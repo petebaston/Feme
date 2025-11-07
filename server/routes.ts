@@ -873,16 +873,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         console.log(`[Invoices] Enriched ${enrichedInvoices.length} invoices with full details`);
 
-        // CRITICAL: Filter invoices by B2B Customer Account IDs (not user customerIds!)
-        // invoice.customerId refers to B2B "Customer Account" entities under the company
-        // These are managed in BigCommerce B2B and linked to ERP codes (FEM01, etc.)
-        
+        // CRITICAL: Filter invoices by matching orderNumber with user's cached orders
+        // Each order should have a corresponding invoice
         let filteredInvoices = enrichedInvoices;
         
-        // TEMPORARY: Disable filtering to debug invoice mismatch
-        // User has 6 orders but only 2 invoices showing with FEM01 filter
-        // Need to see ALL invoices to determine correct filtering logic
-        console.log('[Invoices] TEMPORARY: Showing all invoices without filtering (debugging)');
+        // For non-admin users, filter invoices by matching order numbers
+        if (req.user?.role !== 'admin' && req.user?.role !== 'superadmin' && req.user?.companyId) {
+          try {
+            // Fetch cached orders for this company and customer
+            console.log(`[Invoices] Fetching cached orders for company ${req.user.companyId}, customer ${req.user.customerId}`);
+            const cachedOrders = await storage.getOrdersForCompany(req.user.companyId);
+            
+            // Filter orders for this specific customer
+            const userOrders = cachedOrders.filter((order: any) => 
+              order.customerId === req.user?.customerId
+            );
+            
+            console.log(`[Invoices] User has ${userOrders.length} orders`);
+            
+            if (userOrders.length > 0) {
+              // Build set of order IDs for fast lookup
+              const orderIds = new Set(
+                userOrders.map((order: any) => String(order.bcOrderId || order.id))
+              );
+              
+              console.log(`[Invoices] Order IDs: ${Array.from(orderIds).join(', ')}`);
+              
+              // Filter invoices by orderNumber
+              filteredInvoices = enrichedInvoices.filter((invoice: any) => {
+                const invoiceOrderNumber = String(invoice.orderNumber || '');
+                const matches = orderIds.has(invoiceOrderNumber);
+                if (!matches) {
+                  console.log(`[Invoices] Filtering out invoice ${invoice.id}: orderNumber ${invoiceOrderNumber} not in user's order list`);
+                }
+                return matches;
+              });
+              
+              console.log(`[Invoices] Filtered from ${enrichedInvoices.length} to ${filteredInvoices.length} invoices by order matching`);
+            } else {
+              console.log('[Invoices] WARNING: No orders found for user, showing all invoices');
+            }
+          } catch (orderError) {
+            console.error('[Invoices] Failed to fetch orders for filtering:', orderError);
+            // On error, don't filter - return all invoices
+          }
+        } else {
+          console.log('[Invoices] Admin user - returning all invoices without filtering');
+        }
         
         console.log(`[Invoices] Returning ${filteredInvoices.length} invoices`);
         res.json(filteredInvoices);
