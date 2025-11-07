@@ -825,18 +825,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const bcToken = await getBigCommerceToken(req);
         const { search, status, sortBy, limit, recent } = req.query;
 
-        console.log(`[Invoices] Fetching invoices for user: ${req.user?.email} (Company: ${req.user?.companyId})`);
+        console.log(`[Invoices] Fetching invoices for user: ${req.user?.email} (Customer: ${req.user?.customerId}, Company: ${req.user?.companyId}, Role: ${req.user?.role})`);
 
-        // Fetch invoices from BigCommerce
+        // Fetch invoices from BigCommerce with API-level filtering by customerId
+        // NOTE: BigCommerce B2B Edition invoices can include BOTH:
+        // 1. Online orders placed through the storefront
+        // 2. Offline/ERP-imported invoices without matching online orders
+        // Therefore, we filter by customerId (not by order matching)
         let invoices: any[] = [];
         try {
-          const response = await bigcommerce.getInvoices(bcToken, {
+          const apiParams: any = {
             search: search as string,
             status: status as string,
             sortBy: sortBy as string,
             limit: limit ? parseInt(limit as string) : undefined,
             recent: recent === 'true',
-          });
+          };
+          
+          // CRITICAL: For non-admin users, filter by customerId at API level
+          // This ensures users only see their own invoices (both online orders + ERP imports)
+          if (req.user?.role !== 'admin' && req.user?.role !== 'superadmin' && req.user?.customerId) {
+            apiParams.customerId = req.user.customerId;
+            console.log(`[Invoices] Filtering by customerId ${req.user.customerId} at API level`);
+          } else if (req.user?.role === 'admin' || req.user?.role === 'superadmin') {
+            console.log('[Invoices] Admin user - fetching all company invoices (no customer filter)');
+          }
+          
+          const response = await bigcommerce.getInvoices(bcToken, apiParams);
           invoices = response?.data?.list || response?.data || [];
         } catch (invoiceError: any) {
           // Handle 403 as "no invoices available" (common when B2B Edition has no invoices created)
@@ -848,8 +863,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         }
 
-        console.log(`[Invoices] Retrieved ${invoices.length} total invoices`);
-        console.log(`[Invoices] User companyId: ${req.user?.companyId}, role: ${req.user?.role}`);
+        console.log(`[Invoices] Retrieved ${invoices.length} invoices after API filtering`);
 
         // Enrich invoices with full details (including extraFields) from individual invoice endpoints
         // The list endpoint doesn't include extraFields, but the detail endpoint does
@@ -875,65 +889,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         );
 
         console.log(`[Invoices] Enriched ${enrichedInvoices.length} invoices with full details`);
-
-        // CRITICAL SERVER-SIDE FILTERING: Fetch user's orders first, then filter invoices
-        // For non-admin users, only show invoices that match their actual orders
-        let filteredInvoices = enrichedInvoices;
-        
-        if (req.user?.role !== 'admin' && req.user?.role !== 'superadmin') {
-          try {
-            console.log(`[Invoices] Fetching user's orders to filter invoices (customer ${req.user.customerId})`);
-            
-            // Fetch all orders for this user using the same logic as /api/my-orders
-            const ordersResponse = await bigcommerce.getOrders(bcToken, {
-              limit: 1000,
-            }, req.user?.companyId);
-
-            const bcOrders = ordersResponse?.data?.list || ordersResponse?.data || [];
-            const allOrders = Array.isArray(bcOrders) ? bcOrders.map(transformOrder) : [];
-
-            // Filter orders by this user's customer ID only
-            const myOrders = allOrders.filter((order: any) => {
-              const orderCustomerId = order.customer_id || order.customerId;
-              return orderCustomerId === req.user?.customerId;
-            });
-
-            console.log(`[Invoices] User has ${myOrders.length} orders`);
-
-            if (myOrders.length > 0) {
-              // Build set of order IDs for fast lookup
-              const orderIds = new Set(
-                myOrders.map((order: any) => String(order.bcOrderId || order.id))
-              );
-              
-              console.log(`[Invoices] User's order IDs: ${Array.from(orderIds).join(', ')}`);
-              
-              // Filter invoices to only include those matching user's orders
-              filteredInvoices = enrichedInvoices.filter((invoice: any) => {
-                const invoiceOrderNumber = String(invoice.orderNumber || '');
-                const matches = orderIds.has(invoiceOrderNumber);
-                if (!matches && invoiceOrderNumber) {
-                  console.log(`[Invoices] Filtering out invoice ${invoice.id}: order ${invoiceOrderNumber} not in user's order list`);
-                }
-                return matches;
-              });
-              
-              console.log(`[Invoices] Filtered from ${enrichedInvoices.length} to ${filteredInvoices.length} invoices`);
-            } else {
-              console.log('[Invoices] WARNING: User has no orders, returning empty invoice list');
-              filteredInvoices = [];
-            }
-          } catch (orderError) {
-            console.error('[Invoices] Failed to fetch orders for filtering:', orderError);
-            // On error, return empty list for security (don't leak other users' invoices)
-            filteredInvoices = [];
-          }
-        } else {
-          console.log('[Invoices] Admin user - returning all company invoices without filtering');
-        }
-        
-        console.log(`[Invoices] Returning ${filteredInvoices.length} invoices`);
-        res.json(filteredInvoices);
+        console.log(`[Invoices] Returning ${enrichedInvoices.length} invoices for ${req.user?.role === 'admin' ? 'company' : 'customer'}`);
+        res.json(enrichedInvoices);
       } catch (error) {
         console.error("Invoices fetch error:", error);
         res.status(500).json({ message: "Failed to fetch invoices" });
