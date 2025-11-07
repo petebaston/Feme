@@ -828,10 +828,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log(`[Invoices] Fetching invoices for user: ${req.user?.email} (Customer: ${req.user?.customerId}, Company: ${req.user?.companyId}, Role: ${req.user?.role})`);
 
         // Fetch invoices from BigCommerce with STRICT company-level filtering
-        // CRITICAL SECURITY: Users within a company share access to their company's invoices
-        // BUT users from different companies MUST NOT see each other's invoices
+        // CRITICAL SECURITY: Invoices have customerId, not companyId
+        // We must fetch all customer IDs for this company, then filter invoices
         let invoices: any[] = [];
         try {
+          // Step 1: Get all customer IDs that belong to this company
+          console.log(`[Invoices] Fetching users for company ${req.user?.companyId} to get customer IDs`);
+          const companyCustomerIds = new Set<string>();
+          
+          try {
+            const usersResponse = await bigcommerce.getCompanyUsers(bcToken, req.user?.companyId?.toString());
+            const users = usersResponse?.data?.list || usersResponse?.data || [];
+            
+            for (const user of users) {
+              if (user.customerId) {
+                companyCustomerIds.add(String(user.customerId));
+              }
+            }
+            console.log(`[Invoices] Found ${companyCustomerIds.size} customer IDs for company ${req.user?.companyId}:`, Array.from(companyCustomerIds));
+          } catch (userError) {
+            console.error('[Invoices] Failed to fetch company users:', userError);
+            // Fallback: at minimum, include the current user's customer ID
+            if (req.user?.customerId) {
+              companyCustomerIds.add(String(req.user.customerId));
+              console.log(`[Invoices] Fallback: using only current user's customer ID: ${req.user.customerId}`);
+            }
+          }
+          
+          // Step 2: Fetch all invoices
           const response = await bigcommerce.getInvoices(bcToken, {
             search: search as string,
             status: status as string,
@@ -841,16 +865,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
           const allInvoices = response?.data?.list || response?.data || [];
           
-          // CRITICAL SERVER-SIDE FILTERING: Filter by company ID to prevent cross-company data leaks
-          // The BigCommerce API may return invoices from multiple companies, so we MUST filter server-side
+          // Step 3: Filter invoices by company's customer IDs
           invoices = allInvoices.filter((invoice: any) => {
-            // Check if invoice belongs to this user's company
-            // Invoice might have companyId or customerId that maps to a company
-            const invoiceCompanyId = invoice.companyId || invoice.company?.id;
-            const belongsToCompany = invoiceCompanyId === req.user?.companyId;
+            const invoiceCustomerId = String(invoice.customerId || '');
+            const belongsToCompany = companyCustomerIds.has(invoiceCustomerId);
             
-            if (!belongsToCompany && invoiceCompanyId) {
-              console.log(`[Invoices] SECURITY: Filtering out invoice ${invoice.id} from company ${invoiceCompanyId} (user company: ${req.user?.companyId})`);
+            if (!belongsToCompany && invoiceCustomerId) {
+              console.log(`[Invoices] SECURITY: Filtering out invoice ${invoice.id} with customerId ${invoiceCustomerId} (not in company customer list)`);
             }
             
             return belongsToCompany;
