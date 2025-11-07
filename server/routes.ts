@@ -864,12 +864,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         }
 
-        console.log(`[Invoices] Retrieved ${invoices.length} company invoices`);
+        console.log(`[Invoices] Retrieved ${invoices.length} invoices from BigCommerce`);
+
+        // CRITICAL SECURITY: Server-side filtering required!
+        // BigCommerce ignores companyId parameter and returns ALL company invoices
+        // We MUST filter to only return invoices for the authenticated user's company
+        const userCompanyId = req.user?.companyId?.toString();
+        
+        const companyFilteredInvoices = invoices.filter((invoice: any) => {
+          // Check customerId field (this is the company ID in invoice data)
+          const invoiceCompanyId = invoice.customerId?.toString();
+          const matches = invoiceCompanyId === userCompanyId;
+          
+          if (!matches) {
+            console.log(`[Invoices] SECURITY: Blocking invoice ${invoice.id} - belongs to company ${invoiceCompanyId}, user is in ${userCompanyId}`);
+          }
+          
+          return matches;
+        });
+
+        console.log(`[Invoices] SECURITY FILTER: ${invoices.length} total → ${companyFilteredInvoices.length} for company ${userCompanyId}`);
 
         // Enrich invoices with full details (including extraFields) from individual invoice endpoints
         // The list endpoint doesn't include extraFields, but the detail endpoint does
         const enrichedInvoices = await Promise.all(
-          invoices.map(async (invoice) => {
+          companyFilteredInvoices.map(async (invoice) => {
             try {
               const detailResponse = await bigcommerce.getInvoice(undefined, invoice.id);
               const fullInvoice = detailResponse?.data;
@@ -890,7 +909,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         );
 
         console.log(`[Invoices] Enriched ${enrichedInvoices.length} invoices with full details`);
-        console.log(`[Invoices] SECURITY CHECK: Returning ${enrichedInvoices.length} invoices for company ${req.user?.companyId} only`);
+        console.log(`[Invoices] FINAL SECURITY CHECK: Returning ${enrichedInvoices.length} invoices for company ${req.user?.companyId} ONLY`);
         res.json(enrichedInvoices);
       } catch (error) {
         console.error("Invoices fetch error:", error);
