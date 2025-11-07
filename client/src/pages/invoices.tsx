@@ -293,7 +293,7 @@ export default function Invoices() {
                 <Skeleton className="h-9 w-32" />
               ) : (
                 <div className="text-3xl font-normal text-black">
-                  {formatCurrency((companyCredit?.availableCredit || 0) + totalOpen, companyCredit?.creditCurrency || 'GBP')}
+                  {formatCurrency(companyCredit?.creditLimit || 0, companyCredit?.creditCurrency || 'GBP')}
                 </div>
               )}
             </div>
@@ -309,7 +309,7 @@ export default function Invoices() {
                 <Skeleton className="h-9 w-32" />
               ) : (
                 <div className="text-3xl font-normal text-green-600">
-                  {formatCurrency(companyCredit?.availableCredit || 0, companyCredit?.creditCurrency || 'GBP')}
+                  {formatCurrency(Math.max(0, (companyCredit?.creditLimit || 0) - totalOpen), companyCredit?.creditCurrency || 'GBP')}
                 </div>
               )}
             </div>
