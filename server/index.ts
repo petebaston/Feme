@@ -11,6 +11,16 @@ import { errorHandler, notFoundHandler, setupProcessErrorHandlers } from "./erro
 // Best Practice: Setup process-level error handlers
 setupProcessErrorHandlers();
 
+// Validate JWT_SECRET in production
+if (process.env.NODE_ENV === 'production') {
+  const jwtSecret = process.env.JWT_SECRET;
+  if (!jwtSecret || jwtSecret === 'your-secret-key-change-in-production') {
+    logger.error('❌ FATAL: JWT_SECRET must be set to a secure value in production!');
+    logger.error('   Set JWT_SECRET environment variable before deploying.');
+    process.exit(1);
+  }
+}
+
 const app = express();
 
 // Enable trust proxy for Replit's reverse proxy

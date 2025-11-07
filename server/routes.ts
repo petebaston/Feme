@@ -187,7 +187,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
 
       const accessToken = generateAccessToken(tokenPayload, rememberMe);
-      const refreshToken = generateRefreshToken(tokenPayload);
+      const refreshToken = generateRefreshToken(tokenPayload, rememberMe);
 
       // Track session
       trackSession(user.id, accessToken);
@@ -417,6 +417,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("[Reset Password] Error:", error);
       res.status(500).json({ message: "Failed to reset password" });
+    }
+  });
+
+  // GraphQL Proxy - Securely proxy GraphQL requests to BigCommerce
+  app.post("/api/graphql", authenticateToken, sessionTimeout, async (req: AuthRequest, res) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      // Get BigCommerce user token from server-side storage
+      const bcToken = await getBigCommerceToken(req);
+      
+      // Forward GraphQL query to BigCommerce with proper authentication
+      const storeHash = process.env.BIGCOMMERCE_STORE_HASH || '';
+      const channelId = process.env.VITE_CHANNEL_ID || '1';
+      
+      const graphqlEndpoint = 'https://api-b2b.bigcommerce.com/graphql';
+      
+      console.log('[GraphQL Proxy] Forwarding query to BigCommerce');
+      
+      const response = await fetch(graphqlEndpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Authorization': `Bearer ${bcToken}`,
+          'X-Store-Hash': storeHash,
+          'X-Channel-Id': channelId,
+        },
+        body: JSON.stringify(req.body),
+      });
+
+      const data = await response.json();
+      
+      if (!response.ok) {
+        console.error('[GraphQL Proxy] BigCommerce error:', data);
+        return res.status(response.status).json(data);
+      }
+
+      console.log('[GraphQL Proxy] Query successful');
+      res.json(data);
+    } catch (error: any) {
+      console.error('[GraphQL Proxy] Error:', error.message);
+      res.status(500).json({ 
+        errors: [{ message: 'GraphQL proxy error', extensions: { originalError: error.message } }] 
+      });
     }
   });
 
@@ -1199,7 +1246,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Company hierarchy endpoint (Item 11)
-  app.get("/api/company/hierarchy", async (req: AuthRequest, res) => {
+  app.get("/api/company/hierarchy", authenticateToken, sessionTimeout, async (req: AuthRequest, res) => {
     try {
       const companyId = req.query.companyId as string || req.user?.companyId;
 
@@ -1252,11 +1299,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Products endpoints
-  app.get("/api/products/search", async (req, res) => {
+  app.get("/api/products/search", authenticateToken, sessionTimeout, async (req: AuthRequest, res) => {
     try {
-      const userToken = getUserToken(req);
+      const bcToken = await getBigCommerceToken(req);
       const { query } = req.query;
-      const response = await bigcommerce.searchProducts(userToken, query as string || '');
+      const response = await bigcommerce.searchProducts(bcToken, query as string || '');
       res.json(response?.data?.list || response?.data || []);
     } catch (error) {
       console.error("Product search error:", error);
@@ -1265,9 +1312,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Cart endpoints (Items 31, 32)
-  app.get("/api/cart", async (req, res) => {
+  app.get("/api/cart", authenticateToken, sessionTimeout, async (req: AuthRequest, res) => {
     try {
-      const userToken = getUserToken(req);
+      const bcToken = await getBigCommerceToken(req);
       // In production, use BigCommerce cart API
       // For now, return mock cart data
       res.json({
@@ -1284,9 +1331,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/cart/items", async (req, res) => {
+  app.post("/api/cart/items", authenticateToken, sessionTimeout, async (req: AuthRequest, res) => {
     try {
-      const userToken = getUserToken(req);
+      const bcToken = await getBigCommerceToken(req);
       const { items } = req.body;
 
       // In production, add items to BigCommerce cart
@@ -1299,9 +1346,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/cart/items/:id", async (req, res) => {
+  app.patch("/api/cart/items/:id", authenticateToken, sessionTimeout, async (req: AuthRequest, res) => {
     try {
-      const userToken = getUserToken(req);
+      const bcToken = await getBigCommerceToken(req);
       const { quantity } = req.body;
 
       console.log(`[Cart] Updating item ${req.params.id} to quantity ${quantity}`);
@@ -1313,9 +1360,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/cart/items/:id", async (req, res) => {
+  app.delete("/api/cart/items/:id", authenticateToken, sessionTimeout, async (req: AuthRequest, res) => {
     try {
-      const userToken = getUserToken(req);
+      const bcToken = await getBigCommerceToken(req);
 
       console.log(`[Cart] Removing item ${req.params.id}`);
 
@@ -1327,10 +1374,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Shopping Lists endpoints - using BigCommerce API
-  app.get("/api/shopping-lists", async (req, res) => {
+  app.get("/api/shopping-lists", authenticateToken, sessionTimeout, async (req: AuthRequest, res) => {
     try {
-      const userToken = getUserToken(req);
-      const response = await bigcommerce.getShoppingLists(userToken);
+      const bcToken = await getBigCommerceToken(req);
+      const response = await bigcommerce.getShoppingLists(bcToken);
       res.json(response?.data?.list || response?.data || []);
     } catch (error) {
       console.error("Shopping lists fetch error:", error);
@@ -1338,10 +1385,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/shopping-lists/:id", async (req, res) => {
+  app.get("/api/shopping-lists/:id", authenticateToken, sessionTimeout, async (req: AuthRequest, res) => {
     try {
-      const userToken = getUserToken(req);
-      const response = await bigcommerce.getShoppingList(userToken, req.params.id);
+      const bcToken = await getBigCommerceToken(req);
+      const response = await bigcommerce.getShoppingList(bcToken, req.params.id);
       if (!response?.data) {
         return res.status(404).json({ message: "Shopping list not found" });
       }
@@ -1352,7 +1399,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/shopping-lists", async (req, res) => {
+  app.post("/api/shopping-lists", authenticateToken, sessionTimeout, async (req: AuthRequest, res) => {
     try {
       const list = await storage.createShoppingList(req.body);
       res.status(201).json(list);
@@ -1362,7 +1409,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/shopping-lists/:id", async (req, res) => {
+  app.patch("/api/shopping-lists/:id", authenticateToken, sessionTimeout, async (req: AuthRequest, res) => {
     try {
       const list = await storage.updateShoppingList(req.params.id, req.body);
       if (!list) {
@@ -1375,7 +1422,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/shopping-lists/:id", async (req, res) => {
+  app.delete("/api/shopping-lists/:id", authenticateToken, sessionTimeout, async (req: AuthRequest, res) => {
     try {
       const success = await storage.deleteShoppingList(req.params.id);
       if (!success) {
@@ -1389,7 +1436,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Shopping List Items endpoints - using local database
-  app.get("/api/shopping-lists/:id/items", async (req, res) => {
+  app.get("/api/shopping-lists/:id/items", authenticateToken, sessionTimeout, async (req: AuthRequest, res) => {
     try {
       const items = await storage.getShoppingListItems(req.params.id);
       res.json(items);
@@ -1399,7 +1446,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/shopping-lists/:id/items", async (req, res) => {
+  app.post("/api/shopping-lists/:id/items", authenticateToken, sessionTimeout, async (req: AuthRequest, res) => {
     try {
       const item = await storage.addShoppingListItem({
         ...req.body,
@@ -1412,7 +1459,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/shopping-list-items/:id", async (req, res) => {
+  app.patch("/api/shopping-list-items/:id", authenticateToken, sessionTimeout, async (req: AuthRequest, res) => {
     try {
       const item = await storage.updateShoppingListItem(req.params.id, req.body);
       if (!item) {
@@ -1425,7 +1472,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/shopping-list-items/:id", async (req, res) => {
+  app.delete("/api/shopping-list-items/:id", authenticateToken, sessionTimeout, async (req: AuthRequest, res) => {
     try {
       const success = await storage.deleteShoppingListItem(req.params.id);
       if (!success) {

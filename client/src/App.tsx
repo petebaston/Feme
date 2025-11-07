@@ -62,7 +62,7 @@ function Router() {
                 // Refresh failed - clear token and redirect to login
                 console.log('[Auth] Refresh failed, redirecting to login');
                 localStorage.removeItem('b2b_token');
-                localStorage.removeItem('user');
+                localStorage.removeItem('b2b_user');
                 setIsAuthenticated(false);
               }
             }

@@ -25,8 +25,9 @@ export function generateAccessToken(payload: JWTPayload, rememberMe?: boolean): 
 }
 
 // Generate refresh token
-export function generateRefreshToken(payload: JWTPayload): string {
-  return jwt.sign(payload, JWT_REFRESH_SECRET, { expiresIn: JWT_REFRESH_EXPIRES_IN });
+export function generateRefreshToken(payload: JWTPayload, rememberMe?: boolean): string {
+  const expiresIn = rememberMe ? '30d' : JWT_REFRESH_EXPIRES_IN;
+  return jwt.sign(payload, JWT_REFRESH_SECRET, { expiresIn });
 }
 
 // Verify access token

@@ -2,11 +2,14 @@ import { ApolloClient, InMemoryCache, createHttpLink, ApolloLink } from '@apollo
 import { setContext } from '@apollo/client/link/context';
 import { onError } from '@apollo/client/link/error';
 
+// Use backend GraphQL proxy instead of calling BigCommerce directly
+// This ensures proper token management and security
 const httpLink = createHttpLink({
-  uri: 'https://api-b2b.bigcommerce.com/graphql',
+  uri: '/api/graphql',
 });
 
-// Authentication link - adds token to headers
+// Authentication link - adds portal JWT token to headers
+// Backend proxy will exchange this for the correct BigCommerce token
 const authLink = setContext((_, { headers }) => {
   const token = localStorage.getItem('b2b_token');
 
@@ -32,7 +35,7 @@ const errorLink = onError(({ graphQLErrors, networkError, operation }) => {
       // Handle authentication errors
       if (extensions?.code === 'UNAUTHENTICATED' || message.includes('Unauthorized')) {
         localStorage.removeItem('b2b_token');
-        localStorage.removeItem('user');
+        localStorage.removeItem('b2b_user');
         window.location.href = '/login';
       }
     });

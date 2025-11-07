@@ -22,7 +22,7 @@ export default function MyOrders() {
   // If we get an auth error, clear token and force re-login
   if (error && (error as any)?.message?.includes('token')) {
     localStorage.removeItem('b2b_token');
-    localStorage.removeItem('user');
+    localStorage.removeItem('b2b_user');
     window.location.href = '/login';
   }
 

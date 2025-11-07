@@ -45,7 +45,7 @@ export default function Login() {
       }
 
       localStorage.setItem('b2b_token', data.accessToken);
-      localStorage.setItem('user', JSON.stringify(data.user));
+      localStorage.setItem('b2b_user', JSON.stringify(data.user));
 
       // Save email if remember me is checked
       if (rememberMe) {
