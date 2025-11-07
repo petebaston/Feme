@@ -20468,3 +20468,4 @@
 2025-11-07 10:16:52:1652 [32mhttp[39m: [32mGET /favicon.ico 200 - 10ms[39m
 2025-11-07 10:16:53:1653 [32mhttp[39m: [32mGET /api/company/credit 200 - 270ms[39m
 2025-11-07 10:16:53:1653 [32mhttp[39m: [32mGET /api/invoices 200 - 338ms[39m
+2025-11-07 10:17:25:1725 [32mhttp[39m: [32mGET /api/company/addresses 200 - 285ms[39m
