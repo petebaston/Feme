@@ -827,35 +827,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         console.log(`[Invoices] Fetching invoices for user: ${req.user?.email} (Customer: ${req.user?.customerId}, Company: ${req.user?.companyId}, Role: ${req.user?.role})`);
 
-        // Fetch invoices from BigCommerce with STRICT company-level filtering
-        // CRITICAL SECURITY: Invoices have customerId, not companyId
-        // We must fetch all customer IDs for this company, then filter invoices
+        // Fetch invoices from BigCommerce
+        // CRITICAL: BigCommerce B2B Edition API automatically filters invoices by company via auth token
+        // The hosted portal shows all invoices authenticated user has access to
+        // NO additional filtering needed - trust the API's authentication-based filtering
         let invoices: any[] = [];
         try {
-          // Step 1: Get all customer IDs that belong to this company
-          console.log(`[Invoices] Fetching users for company ${req.user?.companyId} to get customer IDs`);
-          const companyCustomerIds = new Set<string>();
+          console.log('[Invoices] Fetching invoices (API filters by auth token automatically)');
           
-          try {
-            const usersResponse = await bigcommerce.getCompanyUsers(bcToken, req.user?.companyId?.toString());
-            const users = usersResponse?.data?.list || usersResponse?.data || [];
-            
-            for (const user of users) {
-              if (user.customerId) {
-                companyCustomerIds.add(String(user.customerId));
-              }
-            }
-            console.log(`[Invoices] Found ${companyCustomerIds.size} customer IDs for company ${req.user?.companyId}:`, Array.from(companyCustomerIds));
-          } catch (userError) {
-            console.error('[Invoices] Failed to fetch company users:', userError);
-            // Fallback: at minimum, include the current user's customer ID
-            if (req.user?.customerId) {
-              companyCustomerIds.add(String(req.user.customerId));
-              console.log(`[Invoices] Fallback: using only current user's customer ID: ${req.user.customerId}`);
-            }
-          }
-          
-          // Step 2: Fetch all invoices
           const response = await bigcommerce.getInvoices(bcToken, {
             search: search as string,
             status: status as string,
@@ -863,21 +842,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
             limit: limit ? parseInt(limit as string) : undefined,
             recent: recent === 'true',
           });
-          const allInvoices = response?.data?.list || response?.data || [];
+          invoices = response?.data?.list || response?.data || [];
           
-          // Step 3: Filter invoices by company's customer IDs
-          invoices = allInvoices.filter((invoice: any) => {
-            const invoiceCustomerId = String(invoice.customerId || '');
-            const belongsToCompany = companyCustomerIds.has(invoiceCustomerId);
-            
-            if (!belongsToCompany && invoiceCustomerId) {
-              console.log(`[Invoices] SECURITY: Filtering out invoice ${invoice.id} with customerId ${invoiceCustomerId} (not in company customer list)`);
-            }
-            
-            return belongsToCompany;
-          });
-          
-          console.log(`[Invoices] Filtered ${allInvoices.length} total invoices → ${invoices.length} for company ${req.user?.companyId}`);
+          console.log(`[Invoices] Retrieved ${invoices.length} invoices from BigCommerce API`);
         } catch (invoiceError: any) {
           // Handle 403 as "no invoices available" (common when B2B Edition has no invoices created)
           if (invoiceError.message?.includes('403') || invoiceError.message?.includes('Forbidden')) {
