@@ -827,26 +827,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         console.log(`[Invoices] Fetching invoices for user: ${req.user?.email} (Customer: ${req.user?.customerId}, Company: ${req.user?.companyId}, Role: ${req.user?.role})`);
 
-        // Fetch invoices from BigCommerce
-        // NOTE: BigCommerce B2B Edition automatically filters invoices by company (via auth token)
-        // Users within a company SHARE access to all company invoices (per official B2B Edition behavior)
-        // Invoices can include BOTH online orders AND offline/ERP-imported invoices
+        // Fetch invoices from BigCommerce with STRICT company-level filtering
+        // CRITICAL SECURITY: Users within a company share access to their company's invoices
+        // BUT users from different companies MUST NOT see each other's invoices
         let invoices: any[] = [];
         try {
-          const apiParams: any = {
+          const response = await bigcommerce.getInvoices(bcToken, {
             search: search as string,
             status: status as string,
             sortBy: sortBy as string,
             limit: limit ? parseInt(limit as string) : undefined,
             recent: recent === 'true',
-          };
+          });
+          const allInvoices = response?.data?.list || response?.data || [];
           
-          // NO customerId filtering - BigCommerce B2B Edition hosted portal shows all company invoices
-          // The API automatically filters by company via the authentication token
-          console.log('[Invoices] Fetching all company invoices (per B2B Edition standard behavior)');
+          // CRITICAL SERVER-SIDE FILTERING: Filter by company ID to prevent cross-company data leaks
+          // The BigCommerce API may return invoices from multiple companies, so we MUST filter server-side
+          invoices = allInvoices.filter((invoice: any) => {
+            // Check if invoice belongs to this user's company
+            // Invoice might have companyId or customerId that maps to a company
+            const invoiceCompanyId = invoice.companyId || invoice.company?.id;
+            const belongsToCompany = invoiceCompanyId === req.user?.companyId;
+            
+            if (!belongsToCompany && invoiceCompanyId) {
+              console.log(`[Invoices] SECURITY: Filtering out invoice ${invoice.id} from company ${invoiceCompanyId} (user company: ${req.user?.companyId})`);
+            }
+            
+            return belongsToCompany;
+          });
           
-          const response = await bigcommerce.getInvoices(bcToken, apiParams);
-          invoices = response?.data?.list || response?.data || [];
+          console.log(`[Invoices] Filtered ${allInvoices.length} total invoices → ${invoices.length} for company ${req.user?.companyId}`);
         } catch (invoiceError: any) {
           // Handle 403 as "no invoices available" (common when B2B Edition has no invoices created)
           if (invoiceError.message?.includes('403') || invoiceError.message?.includes('Forbidden')) {
@@ -883,7 +893,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         );
 
         console.log(`[Invoices] Enriched ${enrichedInvoices.length} invoices with full details`);
-        console.log(`[Invoices] Returning ${enrichedInvoices.length} company invoices (shared access per B2B Edition standard)`);
+        console.log(`[Invoices] SECURITY CHECK: Returning ${enrichedInvoices.length} invoices for company ${req.user?.companyId} only`);
         res.json(enrichedInvoices);
       } catch (error) {
         console.error("Invoices fetch error:", error);
