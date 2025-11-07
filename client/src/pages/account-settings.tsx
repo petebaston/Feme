@@ -1,8 +1,10 @@
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
+import { formatCurrency } from "@/lib/currency";
 
 export default function AccountSettings() {
   const { toast } = useToast();
@@ -15,6 +17,14 @@ export default function AccountSettings() {
     newPassword: "",
     confirmPassword: "",
   });
+
+  const { data: companyCredit } = useQuery<{
+    creditEnabled: boolean;
+    creditCurrency: string;
+    creditLimit: number;
+    availableCredit: number;
+    balance: number;
+  }>({ queryKey: ['/api/company/credit'] });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -129,7 +139,7 @@ export default function AccountSettings() {
             Credit limit
           </Label>
           <div className="h-11 px-3 py-2 bg-gray-100 border border-gray-300 text-gray-500">
-            £25,000.00
+            {formatCurrency(companyCredit?.creditLimit || 0, companyCredit?.creditCurrency || 'GBP')}
           </div>
         </div>
 
