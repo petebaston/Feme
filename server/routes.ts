@@ -1591,6 +1591,531 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Compatibility: /api/v3 route aliases for client parity
+  // These mirror existing /api/* endpoints to support clients expecting /api/v3/* paths
+
+  // Auth (v3 aliases)
+  app.post("/api/v3/login", async (req, res) => {
+    try {
+      const { email, password, rememberMe } = req.body;
+
+      if (!email || !password) {
+        return res.status(400).json({ message: "Email and password are required" });
+      }
+
+      console.log('[Login v3] Attempting BigCommerce login for:', email);
+      const result = await bigcommerce.login(email, password);
+
+      // Extract customerId from BigCommerce JWT token
+      let customerId: number | undefined;
+      try {
+        const decoded = jwt.decode(result.token) as any;
+        if (decoded?.bc_customer_id) {
+          customerId = decoded.bc_customer_id;
+          console.log('[Login v3] Extracted customerId from BC token:', customerId);
+        }
+      } catch (_) {}
+
+      // Get or create user locally
+      let user = await storage.getUserByEmail(email);
+
+      // Fetch company data from BigCommerce using the token
+      let companyId = user?.companyId;
+      try {
+        const companyData = await bigcommerce.getCompany(result.token);
+        if (companyData?.data?.companyId || companyData?.data?.id) {
+          companyId = companyData.data.companyId || companyData.data.id;
+        }
+      } catch (_) {}
+
+      if (!user) {
+        user = await storage.createUser({
+          email,
+          password: await bcrypt.hash(password, 10),
+          name: email.split('@')[0],
+          role: 'buyer',
+          companyId,
+          customerId,
+        });
+      } else {
+        const updates: any = {};
+        if (companyId && user.companyId !== companyId) updates.companyId = companyId;
+        if (customerId && user.customerId !== customerId) updates.customerId = customerId;
+        if (Object.keys(updates).length > 0) {
+          const updatedUser = await storage.updateUser(user.id, updates);
+          if (updatedUser) user = updatedUser;
+        }
+      }
+
+      if (!user) {
+        throw new Error('User creation failed');
+      }
+
+      await storage.storeUserToken(user.id, result.token, companyId || undefined);
+
+      const tokenPayload = {
+        userId: user.id,
+        email: user.email,
+        companyId: user.companyId || companyId || undefined,
+        customerId: customerId || user.customerId || undefined,
+        role: user.role || 'buyer',
+      };
+
+      const accessToken = generateAccessToken(tokenPayload, rememberMe);
+      const refreshToken = generateRefreshToken(tokenPayload, rememberMe);
+
+      trackSession(user.id, accessToken);
+
+      if (rememberMe) {
+        res.cookie('refreshToken', refreshToken, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'strict',
+          maxAge: 30 * 24 * 60 * 60 * 1000,
+        });
+      }
+
+      res.json({
+        accessToken,
+        refreshToken: rememberMe ? undefined : refreshToken,
+        user: {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          role: user.role,
+          companyId: user.companyId,
+        },
+      });
+    } catch (error: any) {
+      console.error("[Login v3] Login failed:", error.message);
+      res.status(401).json({ message: "Invalid credentials" });
+    }
+  });
+
+  app.post("/api/v3/logout", authenticateToken, async (req: AuthRequest, res) => {
+    try {
+      if (req.user) {
+        clearSession(req.user.userId);
+        await storage.clearUserToken(req.user.userId);
+      }
+      res.clearCookie('refreshToken');
+      res.json({ message: "Logged out successfully" });
+    } catch (error) {
+      console.error("[Logout v3] Error:", error);
+      res.status(500).json({ message: "Logout failed" });
+    }
+  });
+
+  // Dashboard stats (v3 alias)
+  app.get("/api/v3/dashboard/stats",
+    authenticateToken,
+    sessionTimeout,
+    async (req: AuthRequest, res) => {
+      try {
+        const bcToken = await getBigCommerceToken(req);
+        const stats = await bigcommerce.getDashboardStats(bcToken);
+        res.json(stats);
+      } catch (error) {
+        console.error("[Dashboard v3] stats error:", error);
+        res.status(500).json({ message: "Failed to fetch dashboard stats" });
+      }
+    }
+  );
+
+  // Orders (v3 aliases)
+  app.get("/api/v3/orders",
+    authenticateToken,
+    sessionTimeout,
+    async (req: AuthRequest, res) => {
+      try {
+        console.log('[Orders v3] Fetching company orders for user:', req.user?.email);
+        const bcToken = await getBigCommerceToken(req);
+        const { search, status, sortBy, limit, recent } = req.query as any;
+
+        const companyId = req.user?.companyId;
+        if (!companyId) {
+          console.warn('[Orders v3] No company ID found for user');
+          return res.json([]);
+        }
+
+        const customerIds = await bigcommerce.getCompanyCustomerIds(bcToken, companyId);
+        if (customerIds.length === 0) {
+          console.warn('[Orders v3] No customer IDs found for company', companyId);
+          return res.json([]);
+        }
+
+        const response = await bigcommerce.getOrders(bcToken, {
+          search,
+          status,
+          sortBy,
+          limit: limit ? parseInt(String(limit)) : 1000,
+          recent: String(recent) === 'true',
+        }, companyId);
+
+        if (response?.errMsg || response?.error) {
+          console.warn("[Orders v3] BigCommerce returned error:", response.errMsg || response.error);
+          return res.json([]);
+        }
+
+        const bcOrders = response?.data?.list || response?.data || [];
+        const allOrders = Array.isArray(bcOrders) ? bcOrders.map(transformOrder) : [];
+        const companyOrders = allOrders.filter((order: any) => {
+          const orderCustomerId = order.customer_id || order.customerId;
+          return customerIds.includes(orderCustomerId);
+        });
+        res.json(companyOrders);
+      } catch (error) {
+        console.error("[Orders v3] fetch error:", error);
+        res.status(500).json({ message: "Failed to fetch orders" });
+      }
+    }
+  );
+
+  app.get("/api/v3/orders/:id",
+    authenticateToken,
+    sessionTimeout,
+    async (req: AuthRequest, res) => {
+      try {
+        const bcToken = await getBigCommerceToken(req);
+
+        let companyId: string | undefined;
+        try {
+          const companyResponse = await bigcommerce.getCompany(bcToken);
+          companyId = companyResponse?.data?.companyId || companyResponse?.data?.id;
+        } catch (_) {}
+
+        const response = await bigcommerce.getOrder(bcToken, req.params.id, companyId);
+        const bcOrder = response?.data;
+        if (!bcOrder) {
+          return res.status(404).json({ message: "Order not found" });
+        }
+
+        const order = transformOrder(bcOrder);
+
+        if (req.user?.role !== 'admin' && req.user?.role !== 'superadmin') {
+          if (!req.user?.companyId) {
+            return res.status(403).json({ message: 'Company ID not found' });
+          }
+          const customerIds = await bigcommerce.getCompanyCustomerIds(bcToken, req.user.companyId);
+          const orderCustomerId = order.customerId || order.customer_id;
+          if (!customerIds.includes(orderCustomerId)) {
+            return res.status(403).json({ message: 'Access denied to this order' });
+          }
+        }
+
+        res.json(order);
+      } catch (error: any) {
+        console.error("[Orders v3] fetch error:", error);
+        if (error.message && error.message.includes('Order not found')) {
+          return res.status(404).json({ message: "Order not found" });
+        }
+        res.status(500).json({ message: "Failed to fetch order" });
+      }
+    }
+  );
+
+  // Quotes (v3 aliases)
+  app.get("/api/v3/quotes",
+    authenticateToken,
+    sessionTimeout,
+    async (req: AuthRequest, res) => {
+      try {
+        const bcToken = await getBigCommerceToken(req);
+        const { search, status, sortBy, limit, recent } = req.query as any;
+        const response = await bigcommerce.getQuotes(bcToken, {
+          search,
+          status,
+          sortBy,
+          limit: limit ? parseInt(String(limit)) : undefined,
+          recent: String(recent) === 'true',
+        });
+        if (response?.errMsg || response?.error) {
+          console.warn("[Quotes v3] BigCommerce returned error:", response.errMsg || response.error);
+          return res.json([]);
+        }
+        const quotes = response?.data?.list || response?.data || [];
+        const filteredQuotes = filterByCompany(quotes, req.user?.companyId, req.user?.role);
+        res.json(filteredQuotes);
+      } catch (error) {
+        console.error("[Quotes v3] fetch error:", error);
+        res.status(500).json({ message: "Failed to fetch quotes" });
+      }
+    }
+  );
+
+  app.get("/api/v3/quotes/:id",
+    authenticateToken,
+    sessionTimeout,
+    async (req: AuthRequest, res) => {
+      try {
+        const bcToken = await getBigCommerceToken(req);
+        const response = await bigcommerce.getQuote(bcToken, req.params.id);
+        const quote = response?.data;
+        if (quote && !verifyResourceOwnership(quote, req.user?.companyId, req.user?.role)) {
+          return res.status(403).json({ message: 'Access denied to this quote' });
+        }
+        res.json(quote || null);
+      } catch (error) {
+        console.error("[Quotes v3] fetch error:", error);
+        res.status(500).json({ message: "Failed to fetch quote" });
+      }
+    }
+  );
+
+  // Company (v3 aliases)
+  app.get("/api/v3/company",
+    authenticateToken,
+    sessionTimeout,
+    async (req: AuthRequest, res) => {
+      try {
+        const bcToken = await getBigCommerceToken(req);
+        const response = await bigcommerce.getCompany(bcToken);
+        const company = response?.data;
+        if (company && !verifyResourceOwnership(company, req.user?.companyId, req.user?.role)) {
+          return res.status(403).json({ message: 'Access denied to this company' });
+        }
+        res.json(company || {});
+      } catch (error) {
+        console.error("[Company v3] fetch error:", error);
+        res.status(500).json({ message: "Failed to fetch company" });
+      }
+    }
+  );
+
+  app.get("/api/v3/company/users",
+    authenticateToken,
+    sessionTimeout,
+    async (req: AuthRequest, res) => {
+      try {
+        res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+        res.set('Pragma', 'no-cache');
+        res.set('Expires', '0');
+        const bcToken = await getBigCommerceToken(req);
+        const companyIdForQuery = (req.user?.role === 'admin' || req.user?.role === 'superadmin')
+          ? undefined
+          : req.user?.companyId;
+        const response = await bigcommerce.getCompanyUsers(bcToken, companyIdForQuery);
+        const users = response?.data?.list || response?.data || [];
+        const filteredUsers = filterByCompany(users, req.user?.companyId, req.user?.role);
+        res.json(filteredUsers);
+      } catch (error) {
+        console.error("[Company v3] users fetch error:", error);
+        res.status(500).json({ message: "Failed to fetch company users" });
+      }
+    }
+  );
+
+  app.get("/api/v3/company/addresses",
+    authenticateToken,
+    sessionTimeout,
+    async (req: AuthRequest, res) => {
+      try {
+        res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+        res.set('Pragma', 'no-cache');
+        res.set('Expires', '0');
+        const bcToken = await getBigCommerceToken(req);
+        const response = await bigcommerce.getCompanyAddresses(bcToken, req.user?.companyId);
+        const addresses = response?.data?.list || response?.data || [];
+        let uniqueAddresses = addresses.filter((addr: any, index: number, self: any[]) =>
+          index === self.findIndex((a: any) => (a.id && a.id === addr.id) || (a.addressId && a.addressId === addr.addressId))
+        );
+        if (uniqueAddresses.length === 0 && req.user?.companyId) {
+          try {
+            const companyResponse = await bigcommerce.getCompanyDetails(req.user.companyId);
+            const company = companyResponse?.data;
+            if (company && company.addressLine1) {
+              const defaultAddress = {
+                id: `company-${company.companyId}`,
+                addressId: `company-${company.companyId}`,
+                companyId: company.companyId,
+                firstName: company.companyName?.split(' ')[0] || '',
+                lastName: company.companyName?.split(' ').slice(1).join(' ') || '',
+                addressLine1: company.addressLine1,
+                addressLine2: company.addressLine2 || '',
+                city: company.city || '',
+                stateCode: company.state || '',
+                stateName: company.state || '',
+                zipCode: company.zipCode || '',
+                country: company.country || '',
+                countryCode: company.country || '',
+                countryName: company.country || '',
+                phoneNumber: company.companyPhone || '',
+                isDefaultShipping: true,
+                isDefaultBilling: true,
+                label: 'Company Headquarters'
+              };
+              uniqueAddresses = [defaultAddress];
+            }
+          } catch (_) {}
+        }
+        const filteredAddresses = filterByCompany(uniqueAddresses, req.user?.companyId, req.user?.role);
+        res.json(filteredAddresses);
+      } catch (error) {
+        console.error("[Company v3] addresses fetch error:", error);
+        res.status(500).json({ message: "Failed to fetch company addresses" });
+      }
+    }
+  );
+
+  // Invoices (v3 aliases)
+  app.get("/api/v3/invoices",
+    authenticateToken,
+    sessionTimeout,
+    async (req: AuthRequest, res) => {
+      try {
+        res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+        res.set('Pragma', 'no-cache');
+        res.set('Expires', '0');
+        const bcToken = await getBigCommerceToken(req);
+        const { search, status, sortBy, limit, recent } = req.query as any;
+
+        if (!req.user?.companyId) {
+          return res.status(403).json({ message: 'Company ID required for invoice access' });
+        }
+
+        let invoices: any[] = [];
+        try {
+          const response = await bigcommerce.getInvoices(bcToken, {
+            companyId: req.user.companyId,
+            search,
+            status,
+            sortBy,
+            limit: limit ? parseInt(String(limit)) : undefined,
+            recent: String(recent) === 'true',
+          });
+          invoices = response?.data?.list || response?.data || [];
+        } catch (invoiceError: any) {
+          if (invoiceError.message?.includes('companyId is required')) {
+            console.error('[Invoices v3] SECURITY ERROR: Missing companyId parameter');
+            return res.status(500).json({ message: 'Server configuration error' });
+          }
+          if (invoiceError.message?.includes('403') || invoiceError.message?.includes('Forbidden')) {
+            invoices = [];
+          } else {
+            throw invoiceError;
+          }
+        }
+
+        const enrichedInvoices = await Promise.all(
+          invoices.map(async (invoice) => {
+            try {
+              const detailResponse = await bigcommerce.getInvoice(undefined, invoice.id);
+              const fullInvoice = detailResponse?.data;
+              return { ...invoice, extraFields: fullInvoice?.extraFields || [], details: fullInvoice?.details || invoice.details };
+            } catch (_) {
+              return { ...invoice, extraFields: [] };
+            }
+          })
+        );
+
+        // Company extraFields filter as defense-in-depth
+        let companyInvoices: any[] = [];
+        try {
+          const companyResponse = await bigcommerce.getCompany(req.user.companyId);
+          const companyData = companyResponse?.data;
+          const customerIdField = companyData?.extraFields?.find((f: any) => f.fieldName === 'Customer ID');
+          const companyCustomerId = customerIdField?.fieldValue || null;
+          companyInvoices = companyCustomerId ? enrichedInvoices.filter((invoice: any) => {
+            const customerField = invoice.extraFields?.find((f: any) => f.fieldName === 'Customer');
+            const invoiceCustomerId = customerField?.fieldValue;
+            return invoiceCustomerId === companyCustomerId;
+          }) : [];
+        } catch (_) {
+          companyInvoices = [];
+        }
+
+        res.json(companyInvoices);
+      } catch (error) {
+        console.error("[Invoices v3] fetch error:", error);
+        res.status(500).json({ message: "Failed to fetch invoices" });
+      }
+    }
+  );
+
+  app.get("/api/v3/invoices/:id",
+    authenticateToken,
+    sessionTimeout,
+    async (req: AuthRequest, res) => {
+      try {
+        const bcToken = await getBigCommerceToken(req);
+        if (!req.user?.companyId) {
+          return res.status(403).json({ message: 'Company ID required for invoice access' });
+        }
+        const response = await bigcommerce.getInvoice(undefined, req.params.id);
+        const invoice = response?.data;
+        if (!invoice) {
+          return res.status(404).json({ message: 'Invoice not found' });
+        }
+        try {
+          const companyResponse = await bigcommerce.getCompany(req.user.companyId);
+          const companyData = companyResponse?.data;
+          const customerIdField = companyData?.extraFields?.find((f: any) => f.fieldName === 'Customer ID');
+          const companyCustomerId = customerIdField?.fieldValue || null;
+          if (companyCustomerId) {
+            const customerField = invoice.extraFields?.find((f: any) => f.fieldName === 'Customer');
+            const invoiceCustomerId = customerField?.fieldValue;
+            if (invoiceCustomerId !== companyCustomerId) {
+              return res.status(403).json({ message: 'Access denied to this invoice' });
+            }
+          }
+        } catch (_) {}
+        res.json(invoice);
+      } catch (error) {
+        console.error("[Invoices v3] fetch error:", error);
+        res.status(500).json({ message: "Failed to fetch invoice" });
+      }
+    }
+  );
+
+  app.get("/api/v3/invoices/:id/pdf",
+    authenticateToken,
+    sessionTimeout,
+    async (req: AuthRequest, res) => {
+      try {
+        const bcToken = await getBigCommerceToken(req);
+        if (!req.user?.companyId) {
+          return res.status(403).json({ message: 'Company ID required for invoice access' });
+        }
+        const invoiceResponse = await bigcommerce.getInvoice(undefined, req.params.id);
+        const invoice = invoiceResponse?.data;
+        if (!invoice) {
+          return res.status(404).json({ message: 'Invoice not found' });
+        }
+        try {
+          const companyResponse = await bigcommerce.getCompany(req.user.companyId);
+          const companyData = companyResponse?.data;
+          const customerIdField = companyData?.extraFields?.find((f: any) => f.fieldName === 'Customer ID');
+          const companyCustomerId = customerIdField?.fieldValue || null;
+          if (companyCustomerId) {
+            const customerField = invoice.extraFields?.find((f: any) => f.fieldName === 'Customer');
+            const invoiceCustomerId = customerField?.fieldValue;
+            if (invoiceCustomerId !== companyCustomerId) {
+              return res.status(403).json({ message: 'Access denied to this invoice' });
+            }
+          }
+        } catch (error) {
+          return res.status(500).json({ message: 'Failed to verify access' });
+        }
+        const pdfResponse = await bigcommerce.getInvoicePdf(undefined, req.params.id);
+        const pdfUrl = pdfResponse?.data?.url;
+        if (!pdfUrl) {
+          return res.status(404).json({ message: 'PDF not available for this invoice' });
+        }
+        const pdfFileResponse = await fetch(pdfUrl);
+        if (!pdfFileResponse.ok) {
+          throw new Error('Failed to download PDF from storage');
+        }
+        const pdfBuffer = await pdfFileResponse.arrayBuffer();
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `inline; filename=invoice-${invoice.invoiceNumber || req.params.id}.pdf`);
+        res.send(Buffer.from(pdfBuffer));
+      } catch (error: any) {
+        console.error("[Invoices v3] PDF error:", error);
+        res.status(500).json({ message: error.message || "Failed to generate invoice PDF" });
+      }
+    }
+  );
+
   const httpServer = createServer(app);
   return httpServer;
 }
