@@ -25,30 +25,33 @@ Preferred communication style: Simple, everyday language.
 - `BIGCOMMERCE_CLIENT_SECRET` - OAuth client secret
 - `BIGCOMMERCE_STORE_HASH` - Store identifier (e.g., "pyrenapwe2")
 
-### Invoices System - ✅ RESOLVED
+### Invoices System - ✅ RESOLVED (Nov 10, 2025)
 **Previous Issues:** 
 1. Getting 403 "Invalid access token" when attempting different authentication methods
 2. Cross-company data leakage showing invoices from ALL companies
-3. Confusion about correct authentication approach for `/api/v3/io/ip/invoices` endpoint
+3. BigCommerce API ignoring `companyId` parameter when using management token
 
-**Root Cause:** 
-The `/api/v3/io/ip/invoices` endpoint is a **Management API endpoint** that:
-- Requires `X-Auth-Token` (management token) for authentication
-- Does NOT accept user storefront tokens (returns 403 "Invalid token")
-- Has store-wide access scope, so requires explicit `companyId` parameter for security
+**Root Causes (Confirmed via Testing):** 
+1. The `/api/v3/io/ip/invoices` endpoint **ONLY accepts management tokens** - buyer storefront tokens return `403 "Invalid token"`
+2. BigCommerce **IGNORES the `companyId` parameter** when using management tokens - returns ALL invoices
+3. GraphQL `getCompany()` method returns basic data WITHOUT `extraFields` (no Customer ID)
+4. Need to use REST API `getCompanyDetails()` to get full company data WITH `extraFields.Customer ID`
 
-**FINAL WORKING SOLUTION (Nov 7, 2025):**
-- **Authentication:** Uses Management Token (`X-Auth-Token`) - this is the ONLY token type accepted by this endpoint
-- **Security:** MANDATORY `companyId` parameter enforced at multiple levels:
-  1. `bigcommerce.getInvoices()` throws error if `companyId` missing
-  2. Route validates `req.user?.companyId` exists before calling API
-  3. Always passes `companyId: req.user.companyId` to BigCommerce
-  4. BigCommerce filters response to that company only
-- **Company Filtering:** All users in a company see all company invoices (both online orders + ERP-imported invoices)
-- **PDF Download:** Fixed endpoint to use `/download-pdf` (per official documentation)
-- **PDF Preview:** Added expandable inline PDF preview in invoices table (click arrow to expand)
+**FINAL WORKING SOLUTION (Architect-Approved):**
+- **Authentication:** Management Token (`X-Auth-Token`) - buyer tokens don't work
+- **Company Customer ID:** Fetched via `getCompanyDetails(companyId)` REST API to get `extraFields.Customer ID` (e.g., "FEM01")
+- **Invoice Filtering:** Server-side filtering by matching `invoice.extraFields.Customer === company.extraFields.Customer ID`
+- **Implementation:**
+  1. Fetch ALL invoices using management token
+  2. Get company's Customer ID from `getCompanyDetails()` REST endpoint
+  3. Enrich each invoice with full details (including extraFields)
+  4. Filter where `invoice.extraFields.Customer` matches company's Customer ID
+  5. Return only matching invoices
+- **Security:** Defense-in-depth validation at 3 endpoints (list, detail, PDF) - blocks access if Customer IDs don't match
+- **PDF Download:** Uses `/download-pdf` endpoint (per official documentation)
+- **PDF Preview:** Expandable inline PDF preview in invoices table
 
-**Current Status:** ✅ Fixed - Portal successfully returns 10 invoices for company 9685502 with proper security through mandatory `companyId` filtering. Management token authentication confirmed working.
+**Current Status:** ✅ Production-ready - Portal filters invoices by matching Customer ID in extraFields. Architect confirmed security is sound.
 
 ### Users & Addresses - ✅ RESOLVED
 **Previous Issues:** 

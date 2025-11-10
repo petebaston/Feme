@@ -826,10 +826,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         console.log(`[Invoices] Fetching invoices for user: ${req.user?.email} (Company: ${req.user?.companyId})`);
 
-        // Get company's Customer ID from extraFields
+        // Get company's Customer ID from extraFields using REST API (not GraphQL)
         let companyCustomerId: string | null = null;
         try {
-          const companyResponse = await bigcommerce.getCompany(bcToken);
+          const companyResponse = await bigcommerce.getCompanyDetails(req.user.companyId!);
           const companyData = companyResponse?.data;
           const customerIdField = companyData?.extraFields?.find((f: any) => f.fieldName === 'Customer ID');
           companyCustomerId = customerIdField?.fieldValue || null;
@@ -898,10 +898,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       try {
         const bcToken = await getBigCommerceToken(req);
 
-        // Get company's Customer ID
+        // Get company's Customer ID using REST API (not GraphQL)
         let companyCustomerId: string | null = null;
         try {
-          const companyResponse = await bigcommerce.getCompany(bcToken);
+          const companyResponse = await bigcommerce.getCompanyDetails(req.user!.companyId!);
           const companyData = companyResponse?.data;
           const customerIdField = companyData?.extraFields?.find((f: any) => f.fieldName === 'Customer ID');
           companyCustomerId = customerIdField?.fieldValue || null;
@@ -944,10 +944,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       try {
         const bcToken = await getBigCommerceToken(req);
 
-        // Get company's Customer ID
+        // Get company's Customer ID using REST API (not GraphQL)
         let companyCustomerId: string | null = null;
         try {
-          const companyResponse = await bigcommerce.getCompany(bcToken);
+          const companyResponse = await bigcommerce.getCompanyDetails(req.user!.companyId!);
           const companyData = companyResponse?.data;
           const customerIdField = companyData?.extraFields?.find((f: any) => f.fieldName === 'Customer ID');
           companyCustomerId = customerIdField?.fieldValue || null;
