@@ -75,3 +75,10 @@
 2025-11-07 09:20:14:2014 [31merror[39m: [31mGET /api/my-orders 500 - 100ms[39m
 2025-11-09 17:55:39:5539 [31merror[39m: [31mGET /api/my-orders 500 - 232ms[39m
 2025-11-09 18:16:15:1615 [31merror[39m: [31mGET /api/my-orders 500 - 87ms[39m
+2025-11-10 09:38:49:3849 [31merror[39m: [31mUNCAUGHT EXCEPTION! Shutting down...[39m
+2025-11-10 09:39:13:3913 [31merror[39m: [31mGET /api/invoices 500 - 140ms[39m
+2025-11-10 09:39:14:3914 [31merror[39m: [31mGET /api/invoices 500 - 132ms[39m
+2025-11-10 09:39:16:3916 [31merror[39m: [31mGET /api/invoices 500 - 142ms[39m
+2025-11-10 09:39:32:3932 [31merror[39m: [31mGET /api/invoices 500 - 253ms[39m
+2025-11-10 09:39:33:3933 [31merror[39m: [31mGET /api/invoices 500 - 132ms[39m
+2025-11-10 09:39:35:3935 [31merror[39m: [31mGET /api/invoices 500 - 132ms[39m
