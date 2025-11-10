@@ -809,7 +809,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   );
 
-  // Invoices endpoints
+  // Invoices endpoints  
   app.get("/api/invoices",
     authenticateToken,
     sessionTimeout,
@@ -821,14 +821,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
         res.set('Pragma', 'no-cache');
         res.set('Expires', '0');
 
-        // Get user's BigCommerce storefront token
         const bcToken = await getBigCommerceToken(req);
         const { search, status, sortBy, limit, recent } = req.query;
 
         console.log(`[Invoices] Fetching invoices for user: ${req.user?.email} (Company: ${req.user?.companyId})`);
 
-        // Fetch invoices - BigCommerce automatically filters by company when using buyer token
-        const response = await bigcommerce.getInvoices(bcToken, {
+        // Get company's Customer ID from extraFields
+        let companyCustomerId: string | null = null;
+        try {
+          const companyResponse = await bigcommerce.getCompany(bcToken);
+          const companyData = companyResponse?.data;
+          const customerIdField = companyData?.extraFields?.find((f: any) => f.fieldName === 'Customer ID');
+          companyCustomerId = customerIdField?.fieldValue || null;
+          console.log(`[Invoices] Company ${req.user.companyId} Customer ID: ${companyCustomerId}`);
+        } catch (error) {
+          console.error(`[Invoices] Failed to get company Customer ID:`, error);
+          return res.status(500).json({ message: 'Failed to verify company access' });
+        }
+
+        if (!companyCustomerId) {
+          console.warn(`[Invoices] No Customer ID found for company ${req.user?.companyId}`);
+          return res.json([]);
+        }
+
+        // Fetch all invoices (BigCommerce ignores companyId parameter with management token)
+        const response = await bigcommerce.getInvoices(undefined, {
           search: search as string,
           status: status as string,
           sortBy: sortBy as string,
@@ -836,10 +853,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
           recent: recent === 'true',
         });
 
-        const invoices = response?.data?.list || response?.data || [];
-        console.log(`[Invoices] Retrieved ${invoices.length} invoices (auto-scoped to company ${req.user?.companyId})`);
+        const allInvoices = response?.data?.list || response?.data || [];
+        console.log(`[Invoices] Retrieved ${allInvoices.length} total invoices from BigCommerce`);
 
-        res.json(invoices);
+        // Enrich invoices with full details (including extraFields)
+        const enrichedInvoices = await Promise.all(
+          allInvoices.map(async (invoice: any) => {
+            try {
+              const detailResponse = await bigcommerce.getInvoice(undefined, invoice.id);
+              const fullInvoice = detailResponse?.data;
+              return {
+                ...invoice,
+                extraFields: fullInvoice?.extraFields || [],
+                details: fullInvoice?.details || invoice.details
+              };
+            } catch (error) {
+              console.error(`[Invoices] Failed to enrich invoice ${invoice.id}:`, error);
+              return { ...invoice, extraFields: [] };
+            }
+          })
+        );
+
+        // CRITICAL: Filter by company's Customer ID in invoice extraFields
+        const companyInvoices = enrichedInvoices.filter((invoice: any) => {
+          const customerField = invoice.extraFields?.find((f: any) => f.fieldName === 'Customer');
+          const invoiceCustomerId = customerField?.fieldValue;
+          return invoiceCustomerId === companyCustomerId;
+        });
+
+        console.log(`[Invoices] Filtered ${enrichedInvoices.length} total → ${companyInvoices.length} for company ${req.user?.companyId} (Customer ID: ${companyCustomerId})`);
+        res.json(companyInvoices);
       } catch (error) {
         console.error("Invoices fetch error:", error);
         res.status(500).json({ message: "Failed to fetch invoices" });
@@ -853,15 +896,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     async (req: AuthRequest, res) => {
       try {
-        // Get user's BigCommerce storefront token
         const bcToken = await getBigCommerceToken(req);
 
-        // Fetch the invoice - BigCommerce automatically validates ownership with buyer token
-        const response = await bigcommerce.getInvoice(bcToken, req.params.id);
+        // Get company's Customer ID
+        let companyCustomerId: string | null = null;
+        try {
+          const companyResponse = await bigcommerce.getCompany(bcToken);
+          const companyData = companyResponse?.data;
+          const customerIdField = companyData?.extraFields?.find((f: any) => f.fieldName === 'Customer ID');
+          companyCustomerId = customerIdField?.fieldValue || null;
+        } catch (error) {
+          console.error(`[Invoice Detail] Failed to get company Customer ID:`, error);
+          return res.status(500).json({ message: 'Failed to verify access' });
+        }
+
+        // Fetch the invoice
+        const response = await bigcommerce.getInvoice(undefined, req.params.id);
         const invoice = response?.data;
 
         if (!invoice) {
           return res.status(404).json({ message: 'Invoice not found' });
+        }
+
+        // SECURITY: Verify invoice belongs to user's company
+        const customerField = invoice.extraFields?.find((f: any) => f.fieldName === 'Customer');
+        const invoiceCustomerId = customerField?.fieldValue;
+
+        if (invoiceCustomerId !== companyCustomerId) {
+          console.log(`[Invoice Detail] SECURITY: Blocking invoice ${req.params.id} - Customer ${invoiceCustomerId} !== ${companyCustomerId}`);
+          return res.status(403).json({ message: 'Access denied to this invoice' });
         }
 
         console.log(`[Invoice Detail] Retrieved invoice ${req.params.id} for company ${req.user?.companyId}`);
@@ -879,19 +942,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     async (req: AuthRequest, res) => {
       try {
-        // Get user's BigCommerce storefront token
         const bcToken = await getBigCommerceToken(req);
 
-        // Fetch invoice first to get invoice number - BigCommerce validates ownership with buyer token
-        const invoiceResponse = await bigcommerce.getInvoice(bcToken, req.params.id);
+        // Get company's Customer ID
+        let companyCustomerId: string | null = null;
+        try {
+          const companyResponse = await bigcommerce.getCompany(bcToken);
+          const companyData = companyResponse?.data;
+          const customerIdField = companyData?.extraFields?.find((f: any) => f.fieldName === 'Customer ID');
+          companyCustomerId = customerIdField?.fieldValue || null;
+        } catch (error) {
+          console.error(`[Invoice PDF] Failed to get company Customer ID:`, error);
+          return res.status(500).json({ message: 'Failed to verify access' });
+        }
+
+        // Fetch invoice first to verify ownership
+        const invoiceResponse = await bigcommerce.getInvoice(undefined, req.params.id);
         const invoice = invoiceResponse?.data;
 
         if (!invoice) {
           return res.status(404).json({ message: 'Invoice not found' });
         }
 
+        // SECURITY: Verify invoice belongs to user's company
+        const customerField = invoice.extraFields?.find((f: any) => f.fieldName === 'Customer');
+        const invoiceCustomerId = customerField?.fieldValue;
+
+        if (invoiceCustomerId !== companyCustomerId) {
+          console.log(`[Invoice PDF] SECURITY: Blocking invoice ${req.params.id} - Customer ${invoiceCustomerId} !== ${companyCustomerId}`);
+          return res.status(403).json({ message: 'Access denied to this invoice' });
+        }
+
         // Get PDF URL from BigCommerce
-        const pdfResponse = await bigcommerce.getInvoicePdf(bcToken, req.params.id);
+        const pdfResponse = await bigcommerce.getInvoicePdf(undefined, req.params.id);
         const pdfUrl = pdfResponse?.data?.url;
 
         if (!pdfUrl) {
