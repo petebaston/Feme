@@ -744,6 +744,10 @@ export class BigCommerceService {
     console.log(`[BigCommerce] Fetching customer IDs for company ${companyId}`);
     
     const customerIdSet = new Set<number>();
+    const validCompanyIdentifiers = new Set<string>();
+    
+    // Add current company ID as valid identifier
+    validCompanyIdentifiers.add(companyId);
     
     // Method 1: Get customer IDs from B2B registered users
     const response = await this.getCompanyUsers(userToken, companyId);
@@ -755,8 +759,7 @@ export class BigCommerceService {
       console.log(`[BigCommerce] Found ${customerIdSet.size} customer IDs from B2B users`);
     }
     
-    // Method 2: Scan ALL orders and find customer IDs by matching billing_address.company field
-    // This field may contain: company name, company ID, old company ID, or other identifiers
+    // Method 2: Discover company identifiers and customer IDs from orders
     try {
       const companyDetails = await this.getCompanyDetails(companyId);
       const companyName = companyDetails?.data?.companyName;
@@ -766,42 +769,52 @@ export class BigCommerceService {
         const standardResponse = await this.getStandardBigCommerceOrders({ limit: 250 });
         const allOrders = standardResponse?.data?.list || [];
         
-        console.log(`[BigCommerce] Scanning ${allOrders.length} orders to find company matches...`);
+        console.log(`[BigCommerce] Scanning ${allOrders.length} orders to discover company identifiers...`);
         
-        // Collect all unique company values to understand what we're dealing with
-        // Check both companyName (from transformation) and billingAddress.company (raw field)
-        const companyValues = new Map<string, number>(); // company value -> count
-        allOrders.forEach((order: any) => {
-          const companyField = order.companyName || order.billingAddress?.company || order.billing_address?.company;
-          if (companyField && companyField.trim()) {
-            companyValues.set(companyField.trim(), (companyValues.get(companyField.trim()) || 0) + 1);
+        // STRATEGY A: If we have B2B users, use them as seed to discover identifiers
+        if (customerIdSet.size > 0) {
+          // STEP 1: Find company identifiers used by KNOWN company customers
+          const knownCustomerOrders = allOrders.filter((order: any) => 
+            order.customer_id && customerIdSet.has(order.customer_id)
+          );
+          
+          knownCustomerOrders.forEach((order: any) => {
+            const orderCompany = (order.companyName || order.billingAddress?.company || order.billing_address?.company || '').trim();
+            if (orderCompany) {
+              validCompanyIdentifiers.add(orderCompany);
+            }
+          });
+          
+          console.log(`[BigCommerce] Discovered company identifiers from known customers:`, Array.from(validCompanyIdentifiers));
+        } 
+        // STRATEGY B (FALLBACK): If NO B2B users, discover identifiers by matching company name
+        else {
+          console.log(`[BigCommerce] No B2B users found, using fallback: matching by company name "${companyName}"`);
+          
+          // Find orders where billing company name matches
+          if (companyName) {
+            const companyNameOrders = allOrders.filter((order: any) => {
+              const orderCompany = (order.companyName || order.billingAddress?.company || order.billing_address?.company || '').trim();
+              return orderCompany && orderCompany.toLowerCase().includes(companyName.toLowerCase());
+            });
+            
+            // Collect all company identifiers from these orders
+            companyNameOrders.forEach((order: any) => {
+              const orderCompany = (order.companyName || order.billingAddress?.company || order.billing_address?.company || '').trim();
+              if (orderCompany) {
+                validCompanyIdentifiers.add(orderCompany);
+              }
+            });
+            
+            console.log(`[BigCommerce] Fallback discovered ${companyNameOrders.length} orders matching company name`);
+            console.log(`[BigCommerce] Fallback discovered company identifiers:`, Array.from(validCompanyIdentifiers));
           }
-        });
+        }
         
-        console.log(`[BigCommerce] Found ${companyValues.size} unique company values:`, 
-          Array.from(companyValues.entries()).map(([val, count]) => `"${val}" (${count} orders)`));
-        
-        // Find orders where company field matches any of these patterns:
-        // 1. Exact company name match
-        // 2. Company ID (current or historical)
-        // 3. Partial name match
+        // STEP 2: Find ALL customers who have orders with these validated company identifiers
         const matchingOrders = allOrders.filter((order: any) => {
           const orderCompany = (order.companyName || order.billingAddress?.company || order.billing_address?.company || '').trim();
-          if (!orderCompany) return false;
-          
-          // Pattern 1: Exact company name match
-          if (companyName && orderCompany.toLowerCase() === companyName.toLowerCase()) {
-            return true;
-          }
-          
-          // Pattern 2: Company ID match (current or historical like "8810354")
-          // Check if it's a numeric ID that might be related to this company
-          if (/^\d+$/.test(orderCompany)) {
-            // For now, include all numeric company IDs - we'll manually review which ones are valid
-            return true;
-          }
-          
-          return false;
+          return orderCompany && validCompanyIdentifiers.has(orderCompany);
         });
         
         // Extract unique customer IDs from matching orders
@@ -811,7 +824,7 @@ export class BigCommerceService {
           }
         });
         
-        console.log(`[BigCommerce] Found ${matchingOrders.length} orders with company identifiers`);
+        console.log(`[BigCommerce] Found ${matchingOrders.length} orders matching validated company identifiers`);
         console.log(`[BigCommerce] Total unique customer IDs discovered: ${customerIdSet.size}`);
       }
     } catch (error) {
