@@ -901,25 +901,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         console.log(`[Invoices] Fetching invoices for user: ${req.user?.email} (Company: ${req.user?.companyId})`);
 
-        // Get company's Customer ID from extraFields using REST API (not GraphQL)
-        let companyCustomerId: string | null = null;
-        try {
-          const companyResponse = await bigcommerce.getCompanyDetails(req.user.companyId!);
-          const companyData = companyResponse?.data;
-          const customerIdField = companyData?.extraFields?.find((f: any) => f.fieldName === 'Customer ID');
-          companyCustomerId = customerIdField?.fieldValue || null;
-          console.log(`[Invoices] Company ${req.user.companyId} Customer ID: ${companyCustomerId}`);
-        } catch (error) {
-          console.error(`[Invoices] Failed to get company Customer ID:`, error);
-          return res.status(500).json({ message: 'Failed to verify company access' });
-        }
+        // Get company's customer IDs to fetch orders
+        const customerIds = await bigcommerce.getCompanyCustomerIds(bcToken, req.user.companyId!);
+        console.log(`[Invoices] Company ${req.user.companyId} has ${customerIds.length} customer IDs`);
 
-        if (!companyCustomerId) {
-          console.warn(`[Invoices] No Customer ID found for company ${req.user?.companyId}`);
+        if (customerIds.length === 0) {
+          console.warn(`[Invoices] No customer IDs found for company ${req.user?.companyId}`);
           return res.json([]);
         }
 
-        // Fetch all invoices (BigCommerce ignores companyId parameter with management token)
+        // Get company orders (to match invoice.orderNumber to order.id)
+        const ordersResponse = await bigcommerce.getOrders(bcToken, { limit: 1000, offset: 0 });
+        const b2bOrders = ordersResponse?.data?.list || [];
+        
+        let companyOrders = [...b2bOrders];
+        
+        // If B2B API returns no orders, fall back to standard API and filter by customer IDs
+        if (b2bOrders.length === 0) {
+          try {
+            const standardOrders = await bigcommerce.getStandardOrders({ limit: 250 });
+            companyOrders = standardOrders.filter((order: any) => {
+              const orderCustomerId = order.customer_id || order.customerId;
+              return customerIds.includes(orderCustomerId);
+            });
+          } catch (error) {
+            console.error('[Invoices] Failed to fetch from standard API:', error);
+          }
+        } else {
+          // Filter B2B orders by customer IDs
+          companyOrders = b2bOrders.filter((order: any) => {
+            const orderCustomerId = order.customer_id || order.customerId;
+            return customerIds.includes(orderCustomerId);
+          });
+        }
+
+        const companyOrderIds = companyOrders.map((order: any) => order.id || order.bcOrderId);
+        console.log(`[Invoices] Found ${companyOrderIds.length} company orders: ${JSON.stringify(companyOrderIds)}`);
+
+        // Fetch all invoices
         const response = await bigcommerce.getInvoices(undefined, {
           search: search as string,
           status: status as string,
@@ -931,9 +950,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const allInvoices = response?.data?.list || response?.data || [];
         console.log(`[Invoices] Retrieved ${allInvoices.length} total invoices from BigCommerce`);
 
-        // Enrich invoices with full details (including extraFields)
+        // CRITICAL: Filter invoices by matching orderNumber to company order IDs
+        const companyInvoices = allInvoices.filter((invoice: any) => {
+          const orderNumber = invoice.orderNumber ? String(invoice.orderNumber) : null;
+          return orderNumber && companyOrderIds.some((orderId: any) => String(orderId) === orderNumber);
+        });
+
+        console.log(`[Invoices] Filtered ${allInvoices.length} total → ${companyInvoices.length} for company ${req.user?.companyId} (matching ${companyOrderIds.length} orders)`);
+
+        // Enrich company invoices with full details (including extraFields)
         const enrichedInvoices = await Promise.all(
-          allInvoices.map(async (invoice: any) => {
+          companyInvoices.map(async (invoice: any) => {
             try {
               const detailResponse = await bigcommerce.getInvoice(undefined, invoice.id);
               const fullInvoice = detailResponse?.data;
@@ -949,15 +976,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           })
         );
 
-        // CRITICAL: Filter by company's Customer ID in invoice extraFields
-        const companyInvoices = enrichedInvoices.filter((invoice: any) => {
-          const customerField = invoice.extraFields?.find((f: any) => f.fieldName === 'Customer');
-          const invoiceCustomerId = customerField?.fieldValue;
-          return invoiceCustomerId === companyCustomerId;
-        });
-
-        console.log(`[Invoices] Filtered ${enrichedInvoices.length} total → ${companyInvoices.length} for company ${req.user?.companyId} (Customer ID: ${companyCustomerId})`);
-        res.json(companyInvoices);
+        res.json(enrichedInvoices);
       } catch (error) {
         console.error("Invoices fetch error:", error);
         res.status(500).json({ message: "Failed to fetch invoices" });
