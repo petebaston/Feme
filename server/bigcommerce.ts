@@ -352,6 +352,22 @@ export class BigCommerceService {
         if (standardResponse?.data?.list?.length > 0) {
           standardOrders = standardResponse.data.list;
           console.log(`[BigCommerce] ✅ Retrieved ${standardOrders.length} orders from standard API`);
+          
+          // CRITICAL: Filter standard orders to only the current company's customer IDs
+          if (companyId) {
+            const companyCustomerIds = await this.getCompanyCustomerIds(userToken, companyId);
+            if (companyCustomerIds.length > 0) {
+              const customerIdSet = new Set(companyCustomerIds);
+              const beforeFilter = standardOrders.length;
+              standardOrders = standardOrders.filter((order: any) => {
+                return order.customer_id && customerIdSet.has(order.customer_id);
+              });
+              console.log(`[BigCommerce] Filtered standard orders: ${beforeFilter} total → ${standardOrders.length} for company ${companyId}`);
+            } else {
+              console.warn(`[BigCommerce] No customer IDs found for company ${companyId}, excluding all standard orders`);
+              standardOrders = [];
+            }
+          }
         }
       } catch (fallbackError: any) {
         console.error('[BigCommerce] Standard API fetch failed:', fallbackError.message);
