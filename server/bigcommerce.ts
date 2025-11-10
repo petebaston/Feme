@@ -700,14 +700,41 @@ export class BigCommerceService {
 
   async getCompanyUsers(userToken: string, companyId?: string) {
     // Management API v3 endpoint - per official B2B Edition documentation
-    // GET /api/v3/io/users - Get All Users
+    // GET /api/v3/io/users - Get All Users (with full pagination support)
     // Uses OAuth X-Auth-Token (same authentication as invoices)
-    const queryParams = new URLSearchParams();
-    if (companyId) {
-      queryParams.append('companyId', companyId);
-    }
-    const query = queryParams.toString();
-    return this.request(`/api/v3/io/users${query ? `?${query}` : ''}`);
+    
+    let allUsers: any[] = [];
+    let offset = 0;
+    const limit = 100; // Fetch 100 users per request
+    let totalCount = 0;
+    
+    do {
+      const queryParams = new URLSearchParams();
+      if (companyId) {
+        queryParams.append('companyId', companyId);
+      }
+      queryParams.append('limit', limit.toString());
+      queryParams.append('offset', offset.toString());
+      
+      const query = queryParams.toString();
+      const response = await this.request(`/api/v3/io/users?${query}`);
+      
+      const users = response?.data || [];
+      allUsers = allUsers.concat(users);
+      
+      totalCount = response?.meta?.pagination?.totalCount || users.length;
+      offset += users.length;
+      
+      console.log(`[BigCommerce] Fetched ${users.length} users (${offset}/${totalCount} total)${companyId ? ` for company ${companyId}` : ''}`);
+      
+      // Stop if no more users or we've fetched everything
+      if (users.length === 0 || offset >= totalCount) {
+        break;
+      }
+    } while (offset < totalCount);
+    
+    console.log(`[BigCommerce] Total users fetched: ${allUsers.length}${companyId ? ` for company ${companyId}` : ''}`);
+    return { data: allUsers };
   }
 
   async getCompanyCustomerIds(userToken: string, companyId: string): Promise<number[]> {
