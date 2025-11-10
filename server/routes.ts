@@ -656,6 +656,81 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   );
 
+  // Get invoice linked to an order
+  app.get("/api/orders/:id/invoice",
+    authenticateToken,
+    sessionTimeout,
+    async (req: AuthRequest, res) => {
+      try {
+        const bcToken = await getBigCommerceToken(req);
+        const orderId = req.params.id;
+
+        console.log(`[Order→Invoice] Fetching invoice for order ${orderId}`);
+
+        // Get company's Customer ID for filtering
+        let companyCustomerId: string | null = null;
+        try {
+          const companyResponse = await bigcommerce.getCompanyDetails(req.user!.companyId!);
+          const companyData = companyResponse?.data;
+          const customerIdField = companyData?.extraFields?.find((f: any) => f.fieldName === 'Customer ID');
+          companyCustomerId = customerIdField?.fieldValue || null;
+        } catch (error) {
+          console.error(`[Order→Invoice] Failed to get company Customer ID:`, error);
+          return res.status(500).json({ message: 'Failed to verify company access' });
+        }
+
+        if (!companyCustomerId) {
+          console.warn(`[Order→Invoice] No Customer ID found for company ${req.user?.companyId}`);
+          return res.json(null);
+        }
+
+        // Fetch all invoices
+        const response = await bigcommerce.getInvoices(undefined, {});
+        const allInvoices = response?.data?.list || response?.data || [];
+
+        // Enrich and filter invoices
+        const enrichedInvoices = await Promise.all(
+          allInvoices.map(async (invoice: any) => {
+            try {
+              const detailResponse = await bigcommerce.getInvoice(undefined, invoice.id);
+              const fullInvoice = detailResponse?.data;
+              return {
+                ...invoice,
+                ...fullInvoice,
+                extraFields: fullInvoice?.extraFields || [],
+              };
+            } catch (error) {
+              return { ...invoice, extraFields: [] };
+            }
+          })
+        );
+
+        // Filter by company Customer ID
+        const companyInvoices = enrichedInvoices.filter((invoice: any) => {
+          const customerField = invoice.extraFields?.find((f: any) => f.fieldName === 'Customer');
+          const invoiceCustomerId = customerField?.fieldValue;
+          return invoiceCustomerId === companyCustomerId;
+        });
+
+        // Find invoice matching this order's ID
+        const linkedInvoice = companyInvoices.find((invoice: any) => {
+          return invoice.orderNumber === orderId || invoice.orderNumber === String(orderId);
+        });
+
+        if (linkedInvoice) {
+          console.log(`[Order→Invoice] Found invoice ${linkedInvoice.id} for order ${orderId}`);
+          res.json(linkedInvoice);
+        } else {
+          console.log(`[Order→Invoice] No invoice found for order ${orderId}`);
+          res.json(null);
+        }
+      } catch (error) {
+        console.error("Order invoice fetch error:", error);
+        res.status(500).json({ message: "Failed to fetch invoice for order" });
+      }
+    }
+  );
+
   app.patch("/api/orders/:id",
     authenticateToken,
     sessionTimeout,

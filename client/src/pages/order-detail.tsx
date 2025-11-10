@@ -20,6 +20,13 @@ export default function OrderDetail() {
     enabled: !!id,
   });
 
+  // Fetch linked invoice for this order
+  const { data: linkedInvoice, isLoading: isInvoiceLoading } = useQuery<any>({
+    queryKey: [`/api/orders/${id}/invoice`],
+    enabled: !!id,
+    retry: false, // Don't retry if no invoice exists
+  });
+
   const reorderMutation = useMutation({
     mutationFn: async () => {
       return new Promise((resolve) => setTimeout(resolve, 500));
@@ -147,15 +154,28 @@ export default function OrderDetail() {
           </h1>
           <p className="text-sm md:text-base text-gray-600 mt-1">Order Details</p>
         </div>
-        <Button
-          onClick={() => reorderMutation.mutate()}
-          disabled={reorderMutation.isPending || order.status?.toLowerCase() === 'cancelled'}
-          className="bg-black text-white hover:bg-gray-800"
-          data-testid="button-reorder"
-        >
-          <RefreshCw className={`w-4 h-4 mr-2 ${reorderMutation.isPending ? 'animate-spin' : ''}`} />
-          {reorderMutation.isPending ? 'Adding...' : 'Reorder'}
-        </Button>
+        <div className="flex gap-2">
+          {linkedInvoice && (
+            <Button
+              onClick={() => setLocation(`/invoices/${linkedInvoice.id}`)}
+              variant="outline"
+              className="border-black text-black hover:bg-gray-50"
+              data-testid="button-view-invoice"
+            >
+              <FileText className="w-4 h-4 mr-2" />
+              View Invoice
+            </Button>
+          )}
+          <Button
+            onClick={() => reorderMutation.mutate()}
+            disabled={reorderMutation.isPending || order.status?.toLowerCase() === 'cancelled'}
+            className="bg-black text-white hover:bg-gray-800"
+            data-testid="button-reorder"
+          >
+            <RefreshCw className={`w-4 h-4 mr-2 ${reorderMutation.isPending ? 'animate-spin' : ''}`} />
+            {reorderMutation.isPending ? 'Adding...' : 'Reorder'}
+          </Button>
+        </div>
       </div>
 
       {/* Order Information */}
