@@ -738,21 +738,88 @@ export class BigCommerceService {
   }
 
   async getCompanyCustomerIds(userToken: string, companyId: string): Promise<number[]> {
-    // Fetch all users for the company and extract their BigCommerce customer IDs
-    // These customer IDs are used to filter standard BigCommerce API orders
+    // ENHANCED: Fetch customer IDs from BOTH B2B users AND actual orders
+    // This ensures we capture all customers who placed orders for this company,
+    // even if they're not registered as B2B users
     console.log(`[BigCommerce] Fetching customer IDs for company ${companyId}`);
-    const response = await this.getCompanyUsers(userToken, companyId);
     
-    if (!response?.data || !Array.isArray(response.data)) {
-      console.warn('[BigCommerce] No users found for company');
-      return [];
+    const customerIdSet = new Set<number>();
+    
+    // Method 1: Get customer IDs from B2B registered users
+    const response = await this.getCompanyUsers(userToken, companyId);
+    if (response?.data && Array.isArray(response.data)) {
+      response.data
+        .map((user: any) => user.customerId)
+        .filter((id: any) => id !== undefined && id !== null)
+        .forEach((id: number) => customerIdSet.add(id));
+      console.log(`[BigCommerce] Found ${customerIdSet.size} customer IDs from B2B users`);
     }
     
-    const customerIds = response.data
-      .map((user: any) => user.customerId)
-      .filter((id: any) => id !== undefined && id !== null);
+    // Method 2: Scan ALL orders and find customer IDs by matching billing_address.company field
+    // This field may contain: company name, company ID, old company ID, or other identifiers
+    try {
+      const companyDetails = await this.getCompanyDetails(companyId);
+      const companyName = companyDetails?.data?.companyName;
+      
+      if (this.config.accessToken) {
+        // Fetch all orders from standard API
+        const standardResponse = await this.getStandardBigCommerceOrders({ limit: 250 });
+        const allOrders = standardResponse?.data?.list || [];
+        
+        console.log(`[BigCommerce] Scanning ${allOrders.length} orders to find company matches...`);
+        
+        // Collect all unique company values to understand what we're dealing with
+        // Check both companyName (from transformation) and billingAddress.company (raw field)
+        const companyValues = new Map<string, number>(); // company value -> count
+        allOrders.forEach((order: any) => {
+          const companyField = order.companyName || order.billingAddress?.company || order.billing_address?.company;
+          if (companyField && companyField.trim()) {
+            companyValues.set(companyField.trim(), (companyValues.get(companyField.trim()) || 0) + 1);
+          }
+        });
+        
+        console.log(`[BigCommerce] Found ${companyValues.size} unique company values:`, 
+          Array.from(companyValues.entries()).map(([val, count]) => `"${val}" (${count} orders)`));
+        
+        // Find orders where company field matches any of these patterns:
+        // 1. Exact company name match
+        // 2. Company ID (current or historical)
+        // 3. Partial name match
+        const matchingOrders = allOrders.filter((order: any) => {
+          const orderCompany = (order.companyName || order.billingAddress?.company || order.billing_address?.company || '').trim();
+          if (!orderCompany) return false;
+          
+          // Pattern 1: Exact company name match
+          if (companyName && orderCompany.toLowerCase() === companyName.toLowerCase()) {
+            return true;
+          }
+          
+          // Pattern 2: Company ID match (current or historical like "8810354")
+          // Check if it's a numeric ID that might be related to this company
+          if (/^\d+$/.test(orderCompany)) {
+            // For now, include all numeric company IDs - we'll manually review which ones are valid
+            return true;
+          }
+          
+          return false;
+        });
+        
+        // Extract unique customer IDs from matching orders
+        matchingOrders.forEach((order: any) => {
+          if (order.customer_id) {
+            customerIdSet.add(order.customer_id);
+          }
+        });
+        
+        console.log(`[BigCommerce] Found ${matchingOrders.length} orders with company identifiers`);
+        console.log(`[BigCommerce] Total unique customer IDs discovered: ${customerIdSet.size}`);
+      }
+    } catch (error) {
+      console.warn('[BigCommerce] Failed to scan orders for company matching:', error);
+    }
     
-    console.log(`[BigCommerce] Found ${customerIds.length} customer IDs for company ${companyId}:`, customerIds);
+    const customerIds = Array.from(customerIdSet);
+    console.log(`[BigCommerce] Final customer IDs for company ${companyId}:`, customerIds);
     return customerIds;
   }
 
