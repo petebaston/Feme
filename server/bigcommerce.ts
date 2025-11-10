@@ -746,21 +746,12 @@ export class BigCommerceService {
     return this.request(`/api/v3/io/addresses${query ? `?${query}` : ''}`);
   }
 
-  // Invoices - Management API with MANDATORY company filtering
+  // Invoices - Use buyer storefront token for automatic company scoping
   // Primary list endpoint (observed): /api/v3/io/invoice-management/invoice
   // Alternate (some tenants): /api/v3/io/ip/invoices
-  // SECURITY: companyId parameter is MANDATORY to prevent cross-company data leakage
-  async getInvoices(userToken?: string, params?: any) {
-    // CRITICAL: Validate companyId is present
-    if (!params?.companyId) {
-      throw new Error('SECURITY: companyId is required for invoice requests to prevent cross-company data leakage');
-    }
-
+  // SECURITY: BigCommerce automatically scopes invoices by company when using buyer storefront token
+  async getInvoices(userToken: string, params?: any) {
     const queryParams = new URLSearchParams();
-    
-    // MANDATORY: Company filtering
-    queryParams.append('companyId', params.companyId.toString());
-    console.log(`[BigCommerce] SECURITY: Filtering invoices by companyId=${params.companyId}`);
     
     // Optional search filters
     if (params?.search) queryParams.append('q', params.search);
@@ -772,27 +763,40 @@ export class BigCommerceService {
     if (params?.offset) queryParams.append('offset', params.offset.toString());
 
     const query = queryParams.toString();
-    // Try primary endpoint first
+    // Try primary endpoint first with buyer storefront token
     try {
-      return await this.request(`/api/v3/io/invoice-management/invoice${query ? `?${query}` : ''}`);
+      console.log('[BigCommerce] Fetching invoices with buyer storefront token (auto-scoped by company)');
+      return await this.request(`/api/v3/io/invoice-management/invoice${query ? `?${query}` : ''}`, {
+        userToken,
+        useStorefrontToken: true
+      });
     } catch (err: any) {
       // Fallback to alternate path if 404
       if (String(err?.message || '').includes('404')) {
-        return await this.request(`/api/v3/io/ip/invoices${query ? `?${query}` : ''}`);
+        return await this.request(`/api/v3/io/ip/invoices${query ? `?${query}` : ''}`, {
+          userToken,
+          useStorefrontToken: true
+        });
       }
       throw err;
     }
   }
 
-  async getInvoice(userToken: string | undefined, invoiceId: string, companyId?: string) {
-    // Individual invoice - optionally validate company ownership
-    const query = companyId ? `?companyId=${companyId}` : '';
-    return this.request(`/api/v3/io/ip/invoices/${invoiceId}${query}`);
+  async getInvoice(userToken: string, invoiceId: string) {
+    // Individual invoice - uses buyer token for automatic company scoping
+    console.log('[BigCommerce] Fetching invoice with buyer storefront token (auto-scoped by company)');
+    return this.request(`/api/v3/io/ip/invoices/${invoiceId}`, {
+      userToken,
+      useStorefrontToken: true
+    });
   }
 
-  async getInvoicePdf(userToken: string | undefined, invoiceId: string) {
-    // PDF download
-    return this.request(`/api/v3/io/ip/invoices/${invoiceId}/download-pdf`);
+  async getInvoicePdf(userToken: string, invoiceId: string) {
+    // PDF download - uses buyer token for automatic company scoping
+    return this.request(`/api/v3/io/ip/invoices/${invoiceId}/download-pdf`, {
+      userToken,
+      useStorefrontToken: true
+    });
   }
 
   // Products

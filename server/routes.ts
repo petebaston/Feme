@@ -821,99 +821,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         res.set('Pragma', 'no-cache');
         res.set('Expires', '0');
 
-        // Get user's BigCommerce token
+        // Get user's BigCommerce storefront token
         const bcToken = await getBigCommerceToken(req);
         const { search, status, sortBy, limit, recent } = req.query;
 
-        console.log(`[Invoices] Fetching invoices for user: ${req.user?.email} (Customer: ${req.user?.customerId}, Company: ${req.user?.companyId}, Role: ${req.user?.role})`);
+        console.log(`[Invoices] Fetching invoices for user: ${req.user?.email} (Company: ${req.user?.companyId})`);
 
-        // SECURITY CHECK: Require companyId
-        if (!req.user?.companyId) {
-          return res.status(403).json({ message: 'Company ID required for invoice access' });
-        }
+        // Fetch invoices - BigCommerce automatically filters by company when using buyer token
+        const response = await bigcommerce.getInvoices(bcToken, {
+          search: search as string,
+          status: status as string,
+          sortBy: sortBy as string,
+          limit: limit ? parseInt(limit as string) : undefined,
+          recent: recent === 'true',
+        });
 
-        // Fetch invoices with MANDATORY company filtering
-        let invoices: any[] = [];
-        try {
-          console.log(`[Invoices] Fetching with MANDATORY companyId filter: ${req.user.companyId}`);
-          
-          const response = await bigcommerce.getInvoices(bcToken, {
-            companyId: req.user.companyId, // MANDATORY - throws error if missing
-            search: search as string,
-            status: status as string,
-            sortBy: sortBy as string,
-            limit: limit ? parseInt(limit as string) : undefined,
-            recent: recent === 'true',
-          });
-          invoices = response?.data?.list || response?.data || [];
-          
-          console.log(`[Invoices] Retrieved ${invoices.length} invoices for company ${req.user.companyId}`);
-        } catch (invoiceError: any) {
-          // Security error if companyId validation fails
-          if (invoiceError.message?.includes('companyId is required')) {
-            console.error('[Invoices] SECURITY ERROR: Missing companyId parameter');
-            return res.status(500).json({ message: 'Server configuration error' });
-          }
-          
-          // Handle 403 as "no invoices available"
-          if (invoiceError.message?.includes('403') || invoiceError.message?.includes('Forbidden')) {
-            console.log('[Invoices] 403 error - no invoices or insufficient permissions');
-            invoices = [];
-          } else {
-            throw invoiceError;
-          }
-        }
+        const invoices = response?.data?.list || response?.data || [];
+        console.log(`[Invoices] Retrieved ${invoices.length} invoices (auto-scoped to company ${req.user?.companyId})`);
 
-        console.log(`[Invoices] Retrieved ${invoices.length} invoices from BigCommerce`);
-
-        // Get company's customer ID from extraFields for filtering invoices
-        let companyCustomerId: string | null = null;
-        try {
-          const companyResponse = await bigcommerce.getCompany(bcToken);
-          const companyData = companyResponse?.data;
-          const customerIdField = companyData?.extraFields?.find((f: any) => f.fieldName === 'Customer ID');
-          companyCustomerId = customerIdField?.fieldValue || null;
-          console.log(`[Invoices] Company ${req.user.companyId} customer ID: ${companyCustomerId}`);
-        } catch (error) {
-          console.error(`[Invoices] Failed to get company customer ID:`, error);
-        }
-
-        // Enrich invoices with full details (including extraFields) from individual invoice endpoints
-        const enrichedInvoices = await Promise.all(
-          invoices.map(async (invoice) => {
-            try {
-              const detailResponse = await bigcommerce.getInvoice(undefined, invoice.id);
-              const fullInvoice = detailResponse?.data;
-              
-              return {
-                ...invoice,
-                extraFields: fullInvoice?.extraFields || [],
-                details: fullInvoice?.details || invoice.details
-              };
-            } catch (error) {
-              console.error(`[Invoices] Failed to enrich invoice ${invoice.id}:`, error);
-              return { ...invoice, extraFields: [] };
-            }
-          })
-        );
-
-        // CRITICAL SECURITY FILTER: Filter by company customer ID in invoice extraFields
-        // This is ESSENTIAL defense-in-depth in case BigCommerce API doesn't properly filter by companyId
-        const companyInvoices = companyCustomerId ? enrichedInvoices.filter((invoice: any) => {
-          const customerField = invoice.extraFields?.find((f: any) => f.fieldName === 'Customer');
-          const invoiceCustomerId = customerField?.fieldValue;
-          const matches = invoiceCustomerId === companyCustomerId;
-
-          if (!matches && invoiceCustomerId) {
-            console.log(`[Invoices] SECURITY: Blocking invoice ${invoice.id} - customer ${invoiceCustomerId} !== ${companyCustomerId}`);
-          }
-
-          return matches;
-        }) : [];  // CRITICAL FIX: If no companyCustomerId, return EMPTY array (not all invoices!)
-
-        console.log(`[Invoices] SECURITY FILTER: ${enrichedInvoices.length} total → ${companyInvoices.length} for company ${req.user?.companyId}`);
-        console.log(`[Invoices] FINAL: Returning ${companyInvoices.length} invoices for company ${req.user?.companyId}`);
-        res.json(companyInvoices);
+        res.json(invoices);
       } catch (error) {
         console.error("Invoices fetch error:", error);
         res.status(500).json({ message: "Failed to fetch invoices" });
@@ -927,41 +853,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     async (req: AuthRequest, res) => {
       try {
+        // Get user's BigCommerce storefront token
         const bcToken = await getBigCommerceToken(req);
 
-        // SECURITY CHECK: Require companyId
-        if (!req.user?.companyId) {
-          return res.status(403).json({ message: 'Company ID required for invoice access' });
-        }
-
-        // Fetch the invoice
-        const response = await bigcommerce.getInvoice(undefined, req.params.id);
+        // Fetch the invoice - BigCommerce automatically validates ownership with buyer token
+        const response = await bigcommerce.getInvoice(bcToken, req.params.id);
         const invoice = response?.data;
 
         if (!invoice) {
           return res.status(404).json({ message: 'Invoice not found' });
         }
 
-        // SECURITY: Verify invoice belongs to user's company
-        try {
-          const companyResponse = await bigcommerce.getCompany(bcToken);
-          const companyData = companyResponse?.data;
-          const customerIdField = companyData?.extraFields?.find((f: any) => f.fieldName === 'Customer ID');
-          const companyCustomerId = customerIdField?.fieldValue || null;
-
-          if (companyCustomerId) {
-            const customerField = invoice.extraFields?.find((f: any) => f.fieldName === 'Customer');
-            const invoiceCustomerId = customerField?.fieldValue;
-
-            if (invoiceCustomerId !== companyCustomerId) {
-              console.log(`[Invoice Detail] SECURITY: Blocking invoice ${req.params.id} - customer ${invoiceCustomerId} !== ${companyCustomerId}`);
-              return res.status(403).json({ message: 'Access denied to this invoice' });
-            }
-          }
-        } catch (error) {
-          console.error(`[Invoice Detail] Failed to verify company ownership:`, error);
-        }
-
+        console.log(`[Invoice Detail] Retrieved invoice ${req.params.id} for company ${req.user?.companyId}`);
         res.json(invoice);
       } catch (error) {
         console.error("Invoice fetch error:", error);
@@ -976,44 +879,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     async (req: AuthRequest, res) => {
       try {
+        // Get user's BigCommerce storefront token
         const bcToken = await getBigCommerceToken(req);
 
-        // SECURITY CHECK: Require companyId
-        if (!req.user?.companyId) {
-          return res.status(403).json({ message: 'Company ID required for invoice access' });
-        }
-
-        // Fetch invoice with company validation
-        const invoiceResponse = await bigcommerce.getInvoice(undefined, req.params.id);
+        // Fetch invoice first to get invoice number - BigCommerce validates ownership with buyer token
+        const invoiceResponse = await bigcommerce.getInvoice(bcToken, req.params.id);
         const invoice = invoiceResponse?.data;
 
         if (!invoice) {
           return res.status(404).json({ message: 'Invoice not found' });
         }
 
-        // SECURITY: Verify invoice belongs to user's company
-        try {
-          const companyResponse = await bigcommerce.getCompany(bcToken);
-          const companyData = companyResponse?.data;
-          const customerIdField = companyData?.extraFields?.find((f: any) => f.fieldName === 'Customer ID');
-          const companyCustomerId = customerIdField?.fieldValue || null;
-
-          if (companyCustomerId) {
-            const customerField = invoice.extraFields?.find((f: any) => f.fieldName === 'Customer');
-            const invoiceCustomerId = customerField?.fieldValue;
-
-            if (invoiceCustomerId !== companyCustomerId) {
-              console.log(`[Invoice PDF] SECURITY: Blocking invoice ${req.params.id} - customer ${invoiceCustomerId} !== ${companyCustomerId}`);
-              return res.status(403).json({ message: 'Access denied to this invoice' });
-            }
-          }
-        } catch (error) {
-          console.error(`[Invoice PDF] Failed to verify company ownership:`, error);
-          return res.status(500).json({ message: 'Failed to verify access' });
-        }
-
         // Get PDF URL from BigCommerce
-        const pdfResponse = await bigcommerce.getInvoicePdf(undefined, req.params.id);
+        const pdfResponse = await bigcommerce.getInvoicePdf(bcToken, req.params.id);
         const pdfUrl = pdfResponse?.data?.url;
 
         if (!pdfUrl) {
@@ -1029,6 +907,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         const pdfBuffer = await pdfFileResponse.arrayBuffer();
 
+        console.log(`[Invoice PDF] Generated PDF for invoice ${req.params.id} for company ${req.user?.companyId}`);
         res.setHeader('Content-Type', 'application/pdf');
         res.setHeader('Content-Disposition', `inline; filename=invoice-${invoice.invoiceNumber || req.params.id}.pdf`);
         res.send(Buffer.from(pdfBuffer));
