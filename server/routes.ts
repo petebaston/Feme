@@ -869,7 +869,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Get company's customer ID from extraFields for filtering invoices
         let companyCustomerId: string | null = null;
         try {
-          const companyResponse = await bigcommerce.getCompany(req.user.companyId);
+          const companyResponse = await bigcommerce.getCompany(bcToken);
           const companyData = companyResponse?.data;
           const customerIdField = companyData?.extraFields?.find((f: any) => f.fieldName === 'Customer ID');
           companyCustomerId = customerIdField?.fieldValue || null;
@@ -944,7 +944,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // SECURITY: Verify invoice belongs to user's company
         try {
-          const companyResponse = await bigcommerce.getCompany(req.user.companyId);
+          const companyResponse = await bigcommerce.getCompany(bcToken);
           const companyData = companyResponse?.data;
           const customerIdField = companyData?.extraFields?.find((f: any) => f.fieldName === 'Customer ID');
           const companyCustomerId = customerIdField?.fieldValue || null;
@@ -993,7 +993,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // SECURITY: Verify invoice belongs to user's company
         try {
-          const companyResponse = await bigcommerce.getCompany(req.user.companyId);
+          const companyResponse = await bigcommerce.getCompany(bcToken);
           const companyData = companyResponse?.data;
           const customerIdField = companyData?.extraFields?.find((f: any) => f.fieldName === 'Customer ID');
           const companyCustomerId = customerIdField?.fieldValue || null;
@@ -2011,7 +2011,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Company extraFields filter as defense-in-depth
         let companyInvoices: any[] = [];
         try {
-          const companyResponse = await bigcommerce.getCompany(req.user.companyId);
+          const companyResponse = await bigcommerce.getCompany(bcToken);
           const companyData = companyResponse?.data;
           const customerIdField = companyData?.extraFields?.find((f: any) => f.fieldName === 'Customer ID');
           const companyCustomerId = customerIdField?.fieldValue || null;
@@ -2047,7 +2047,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.status(404).json({ message: 'Invoice not found' });
         }
         try {
-          const companyResponse = await bigcommerce.getCompany(req.user.companyId);
+          const companyResponse = await bigcommerce.getCompany(bcToken);
           const companyData = companyResponse?.data;
           const customerIdField = companyData?.extraFields?.find((f: any) => f.fieldName === 'Customer ID');
           const companyCustomerId = customerIdField?.fieldValue || null;
@@ -2082,7 +2082,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.status(404).json({ message: 'Invoice not found' });
         }
         try {
-          const companyResponse = await bigcommerce.getCompany(req.user.companyId);
+          const companyResponse = await bigcommerce.getCompany(bcToken);
           const companyData = companyResponse?.data;
           const customerIdField = companyData?.extraFields?.find((f: any) => f.fieldName === 'Customer ID');
           const companyCustomerId = customerIdField?.fieldValue || null;

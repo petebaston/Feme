@@ -747,7 +747,8 @@ export class BigCommerceService {
   }
 
   // Invoices - Management API with MANDATORY company filtering
-  // Endpoint: /api/v3/io/ip/invoices (requires X-Auth-Token, not storefront token)
+  // Primary list endpoint (observed): /api/v3/io/invoice-management/invoice
+  // Alternate (some tenants): /api/v3/io/ip/invoices
   // SECURITY: companyId parameter is MANDATORY to prevent cross-company data leakage
   async getInvoices(userToken?: string, params?: any) {
     // CRITICAL: Validate companyId is present
@@ -771,8 +772,16 @@ export class BigCommerceService {
     if (params?.offset) queryParams.append('offset', params.offset.toString());
 
     const query = queryParams.toString();
-    // Uses management token (X-Auth-Token) automatically via request() method
-    return this.request(`/api/v3/io/ip/invoices${query ? `?${query}` : ''}`);
+    // Try primary endpoint first
+    try {
+      return await this.request(`/api/v3/io/invoice-management/invoice${query ? `?${query}` : ''}`);
+    } catch (err: any) {
+      // Fallback to alternate path if 404
+      if (String(err?.message || '').includes('404')) {
+        return await this.request(`/api/v3/io/ip/invoices${query ? `?${query}` : ''}`);
+      }
+      throw err;
+    }
   }
 
   async getInvoice(userToken: string | undefined, invoiceId: string, companyId?: string) {
