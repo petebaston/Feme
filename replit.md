@@ -11,19 +11,27 @@ Preferred communication style: Simple, everyday language.
 ### Orders System - ✅ RESOLVED (Nov 10, 2025)
 **Background:** BigCommerce B2B Edition has a completely separate orders system from the regular BigCommerce store. Orders placed through regular BigCommerce checkout are NOT automatically visible in B2B Edition.
 
-**Solution Implemented:** Dual API fallback system with company filtering
+**Solution Implemented:** Dual API fallback system with enhanced customer discovery
 1. Portal first attempts to fetch orders from B2B Edition API
 2. If B2B Edition returns 0 orders, automatically falls back to standard BigCommerce V2 API
 3. **CRITICAL:** Standard API orders are filtered to only include the current company's customer IDs (prevents cross-company data leakage)
 4. Standard API orders are transformed to match B2B Edition format (currency, status, etc.)
 5. All orders (from either source) are cached in PostgreSQL for reliability
 
-**Company Filtering Logic:**
-- Fetches company's user customer IDs via `getCompanyUsers()` (e.g., customer ID 433 for company 9685502)
-- Filters standard API orders where `order.customer_id` matches company customer IDs
-- Ensures users only see their company's orders, maintaining 1:1 relationship with invoices
+**Enhanced Customer Discovery (Nov 10, 2025):**
+- **Problem**: B2B API may only return subset of company users (e.g., 1 user when multiple exist)
+- **Solution**: Dual-strategy customer discovery system:
+  - **Strategy A (Seeded)**: If B2B users exist → discover company identifiers from their orders → find ALL customers using those identifiers
+  - **Strategy B (Fallback)**: If NO B2B users → match by company name → discover identifiers → find all customers
+- **Security**: Only matches company identifiers validated from known company customers or official company name
+- **Result**: Company Orders finds multiple users (e.g., customers 433, 29) even when B2B API returns limited user data
 
-**Current Status:** ✅ Working - Portal correctly filters 23 total orders → 6 orders for company 9685502, matching invoice visibility.
+**Company Filtering Logic:**
+- Discovers company identifiers (current ID + historical IDs like "8810354") from validated sources
+- Filters standard API orders where `order.customer_id` matches discovered customer IDs
+- Ensures users only see their company's orders, preventing cross-company data leakage
+
+**Current Status:** ✅ Working - Portal correctly discovers multiple company customers and filters orders (e.g., 23 total orders → 10 orders for company 9685502 with 2 customers).
 
 **API Credentials Required:**
 - `BIGCOMMERCE_ACCESS_TOKEN` - Standard BigCommerce API access token (for fallback)
