@@ -24983,3 +24983,4 @@
 2025-11-10 10:08:38:838 [32mhttp[39m: [32mGET /@fs/home/runner/workspace/node_modules/.vite/deps/chunk-5G2SEJID.js?v=af071c2d 200 - 1ms[39m
 2025-11-10 10:08:39:839 [32mhttp[39m: [32mGET /@fs/home/runner/workspace/attached_assets/feme-logo.png 200 - 16ms[39m
 2025-11-10 10:08:39:839 [32mhttp[39m: [32mGET /favicon.ico 200 - 21ms[39m
+2025-11-10 10:09:10:910 [32mhttp[39m: [32mGET /api/orders 200 - 1334ms[39m
