@@ -24651,3 +24651,8 @@
 2025-11-10 09:57:42:5742 [32mhttp[39m: [32mGET /src/pages/order-detail.tsx?t=1762768661880 200 - 147ms[39m
 2025-11-10 09:58:03:583 [32mhttp[39m: [32mGET /src/index.css?t=1762768683604&v=hAzJ_d3WSMOrTAuu2sBUh 200 - 201ms[39m
 2025-11-10 09:58:04:584 [32mhttp[39m: [32mGET /src/pages/order-detail.tsx?t=1762768683604 200 - 242ms[39m
+2025-11-10 09:59:32:5932 [32mhttp[39m: [32mGET /api/company/credit 200 - 304ms[39m
+2025-11-10 09:59:33:5933 [32mhttp[39m: [32mGET /api/invoices 200 - 1076ms[39m
+2025-11-10 09:59:58:5958 [32mhttp[39m: [32mGET /api/orders 304 - 3040ms[39m
+2025-11-10 10:00:06:06 [32mhttp[39m: [32mGET /api/company/users 200 - 159ms[39m
+2025-11-10 10:00:07:07 [32mhttp[39m: [32mGET /api/company/addresses 200 - 254ms[39m
