@@ -38,6 +38,13 @@ export default function Invoices() {
     retry: 2,
   });
 
+  // Fetch company details to get aged invoice data from extraFields
+  const { data: companyData } = useQuery<any>({
+    queryKey: ['/api/company'],
+    staleTime: 300000,
+    retry: 2,
+  });
+
   // Get consistent currency code from invoices or company credit
   const getCurrencyCode = (): string => {
     if (companyCredit?.creditCurrency) return companyCredit.creditCurrency;
@@ -116,12 +123,25 @@ export default function Invoices() {
     setCurrentPage(1);
   }, [searchTerm, statusFilter]);
 
-  // Calculate aged invoice totals and status summaries
-  const calculateTotals = () => {
-    let aged1to30 = 0;
-    let aged31to60 = 0;
-    let aged61to90 = 0;
-    let aged90plus = 0;
+  // Get aged invoice totals from company extraFields (custom fields)
+  // These are authoritative values from the ERP system, not calculated client-side
+  const getAgedInvoiceTotals = () => {
+    // Extract aged invoice data from company extraFields
+    const extraFields = companyData?.extraFields || [];
+    
+    const find1to30 = extraFields.find((f: any) => f.fieldName === '1-30 Days' || f.fieldName === '1-30 days');
+    const find31to60 = extraFields.find((f: any) => f.fieldName === '31-60 Days' || f.fieldName === '31-60 days');
+    const find61to90 = extraFields.find((f: any) => f.fieldName === '61-90 Days' || f.fieldName === '61-90 days');
+    const find90plus = extraFields.find((f: any) => f.fieldName === 'Over 90 Days' || f.fieldName === 'Over 90 days' || f.fieldName === '90+ Days');
+    const findCurrent = extraFields.find((f: any) => f.fieldName === 'Current');
+    
+    const aged1to30 = parseFloat(find1to30?.fieldValue || '0');
+    const aged31to60 = parseFloat(find31to60?.fieldValue || '0');
+    const aged61to90 = parseFloat(find61to90?.fieldValue || '0');
+    const aged90plus = parseFloat(find90plus?.fieldValue || '0');
+    const currentAmount = parseFloat(findCurrent?.fieldValue || '0');
+    
+    // Calculate totals from invoices for display
     let totalOpen = 0;
     let totalOverdue = 0;
     const today = new Date();
@@ -145,23 +165,12 @@ export default function Invoices() {
       if (daysOverdue > 0) {
         totalOverdue += openBalance;
       }
-
-      // Categorize into aging buckets
-      if (daysOverdue >= 1 && daysOverdue <= 30) {
-        aged1to30 += openBalance;
-      } else if (daysOverdue >= 31 && daysOverdue <= 60) {
-        aged31to60 += openBalance;
-      } else if (daysOverdue >= 61 && daysOverdue <= 90) {
-        aged61to90 += openBalance;
-      } else if (daysOverdue > 90) {
-        aged90plus += openBalance;
-      }
     });
 
     return { aged1to30, aged31to60, aged61to90, aged90plus, totalOpen, totalOverdue };
   };
 
-  const { aged1to30, aged31to60, aged61to90, aged90plus, totalOpen, totalOverdue } = calculateTotals();
+  const { aged1to30, aged31to60, aged61to90, aged90plus, totalOpen, totalOverdue } = getAgedInvoiceTotals();
 
   const getStatusBadgeClass = (status: string) => {
     switch (status) {
