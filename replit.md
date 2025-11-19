@@ -89,15 +89,40 @@ Preferred communication style: Simple, everyday language.
 
 **Current Status:** ✅ All endpoints working correctly with real data, filtering by actual company ID (8810354), with proper cache control headers.
 
+### Authentication & Session Management - ✅ RESOLVED (Nov 19, 2025)
+**Previous Issues:**
+1. Users appeared "logged in" but received errors accessing orders/invoices
+2. BigCommerce token expired but JWT session token remained valid
+3. "Remember me" didn't work - users had to re-login frequently
+4. No clear messaging when session expired
+
+**Root Causes:**
+1. `/api/auth/me` only validated JWT token, not BigCommerce token existence
+2. BigCommerce tokens expire independently from JWT tokens (BigCommerce API limitation)
+3. Frontend token refresh loop attempted to refresh BigCommerce token (impossible without password)
+4. No automatic logout when BigCommerce token was missing
+
+**Solution Implemented:**
+- **Backend `/api/auth/me` Validation**: Now checks both JWT token AND BigCommerce token existence in database
+- **Automatic Logout**: System detects `reason: "bigcommerce_token_missing"` and immediately redirects to login
+- **Fixed Refresh Loop**: App.tsx skips token refresh attempt when BigCommerce token is missing (prevents infinite loop)
+- **User Messaging**: Login page displays "Session Expired" message when redirected with `?expired=true` parameter
+
+**"Remember Me" Limitations (BigCommerce API Constraint):**
+- ✅ "Remember me" extends JWT session to 30 days (vs 15 minutes without)
+- ❌ "Remember me" CANNOT refresh BigCommerce tokens - they expire based on BigCommerce's policy (~7-14 days)
+- **Result**: Users with "remember me" must still re-login when BigCommerce token expires (unavoidable API limitation)
+- **Alternative**: BigCommerce does not provide refresh tokens, so re-authentication with email/password is the only option
+
+**Current Status:** ✅ Production-ready - System now properly detects expired BigCommerce tokens and auto-logs out users with clear messaging.
+
 ### Required Secret Configuration
 **Currently Configured:** ✅
 - `BIGCOMMERCE_ACCESS_TOKEN` - Standard BigCommerce API access token
 - `BIGCOMMERCE_CLIENT_ID` - OAuth client ID
 - `BIGCOMMERCE_CLIENT_SECRET` - OAuth client secret
 - `BIGCOMMERCE_STORE_HASH` - Store identifier
-
-**Still Needed for Full Functionality:**
-- `BIGCOMMERCE_B2B_MANAGEMENT_TOKEN` - B2B Edition Management API token (for invoices, advanced features)
+- `BIGCOMMERCE_B2B_MANAGEMENT_TOKEN` - B2B Edition Management API token
 
 ## System Architecture
 
