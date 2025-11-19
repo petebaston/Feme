@@ -23,7 +23,20 @@ export default function Login() {
       setEmail(rememberedEmail);
       setRememberMe(true);
     }
-  }, []);
+
+    // Check if redirected due to session expiration
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('expired') === 'true') {
+      toast({
+        variant: "destructive",
+        title: "Session Expired",
+        description: "Your authentication has expired. Please sign in again.",
+        duration: 5000,
+      });
+      // Clean up URL parameter
+      window.history.replaceState({}, '', '/login');
+    }
+  }, [toast]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();

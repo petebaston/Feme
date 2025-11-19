@@ -311,6 +311,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "Not authenticated" });
       }
 
+      // CRITICAL: Validate BigCommerce token still exists
+      const bcToken = await storage.getUserToken(req.user.userId);
+      if (!bcToken) {
+        console.error("[Me] BigCommerce token not found for user:", req.user.email);
+        return res.status(401).json({ 
+          message: "Session expired", 
+          reason: "bigcommerce_token_missing" 
+        });
+      }
+
       // Return user info (token is valid)
       res.json({
         user: {

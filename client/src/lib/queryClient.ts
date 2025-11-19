@@ -7,7 +7,7 @@ function handleSessionExpired() {
   localStorage.removeItem('b2b_store_hash');
   localStorage.removeItem('b2b_channel_id');
   localStorage.removeItem('b2b_user');
-  window.location.href = '/login';
+  window.location.href = '/login?expired=true';
 }
 
 // Check if response indicates session expired
@@ -15,6 +15,8 @@ function checkSessionExpired(data: any) {
   if (data && (
     data.errMsg === 'Session expired, please login again' ||
     data.message === 'Session expired, please login again' ||
+    data.message === 'Session expired' ||
+    data.reason === 'bigcommerce_token_missing' ||
     data.code === 40101 ||
     (data.data && data.data.errMsg === 'Session expired, please login again')
   )) {
