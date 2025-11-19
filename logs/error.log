@@ -91,3 +91,4 @@
 2025-11-19 13:34:59:3459 [31merror[39m: [31mGET /api/company/addresses 500 - 228ms[39m
 2025-11-19 13:37:56:3756 [31merror[39m: [31mGET /api/company/addresses 500 - 708ms[39m
 2025-11-19 13:38:42:3842 [31merror[39m: [31mGET /api/company/addresses 500 - 171ms[39m
+2025-11-19 13:39:12:3912 [31merror[39m: [31mGET /api/my-orders 500 - 55ms[39m

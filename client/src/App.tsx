@@ -45,6 +45,22 @@ function Router() {
               // Token is still valid
               setIsAuthenticated(true);
             } else if (response.status === 401) {
+              // Check if BigCommerce token is missing
+              try {
+                const errorData = await response.json();
+                if (errorData.reason === 'bigcommerce_token_missing') {
+                  // BigCommerce token expired/missing - cannot refresh, must re-login
+                  console.log('[Auth] BigCommerce token missing, redirecting to login');
+                  localStorage.removeItem('b2b_token');
+                  localStorage.removeItem('b2b_user');
+                  setIsAuthenticated(false);
+                  window.location.href = '/login?expired=true';
+                  return;
+                }
+              } catch (e) {
+                // Response not JSON, continue with normal flow
+              }
+
               // Token expired - try to refresh using remember me cookie
               console.log('[Auth] Token expired, attempting refresh...');
               const refreshResponse = await fetch('/api/auth/refresh', {
