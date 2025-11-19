@@ -960,17 +960,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const allInvoices = response?.data?.list || response?.data || [];
         console.log(`[Invoices] Retrieved ${allInvoices.length} total invoices from BigCommerce`);
 
-        // CRITICAL: Filter invoices by matching orderNumber to company order IDs
-        const companyInvoices = allInvoices.filter((invoice: any) => {
-          const orderNumber = invoice.orderNumber ? String(invoice.orderNumber) : null;
-          return orderNumber && companyOrderIds.some((orderId: any) => String(orderId) === orderNumber);
-        });
+        // Get company's Customer ID from extraFields (e.g., "FEM01")
+        let companyCustomerId: string | null = null;
+        try {
+          const companyResponse = await bigcommerce.getCompanyDetails(req.user!.companyId!);
+          const companyData = companyResponse?.data;
+          const customerIdField = companyData?.extraFields?.find((f: any) => f.fieldName === 'Customer ID');
+          companyCustomerId = customerIdField?.fieldValue || null;
+          console.log(`[Invoices] Company ${req.user?.companyId} Customer ID: ${companyCustomerId}`);
+        } catch (error) {
+          console.error(`[Invoices] Failed to get company Customer ID:`, error);
+        }
 
-        console.log(`[Invoices] Filtered ${allInvoices.length} total → ${companyInvoices.length} for company ${req.user?.companyId} (matching ${companyOrderIds.length} orders)`);
-
-        // Enrich company invoices with full details (including extraFields)
-        const enrichedInvoices = await Promise.all(
-          companyInvoices.map(async (invoice: any) => {
+        // Enrich ALL invoices with full details FIRST (to get extraFields for filtering)
+        const enrichedAllInvoices = await Promise.all(
+          allInvoices.map(async (invoice: any) => {
             try {
               const detailResponse = await bigcommerce.getInvoice(undefined, invoice.id);
               const fullInvoice = detailResponse?.data;
@@ -986,7 +990,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
           })
         );
 
-        res.json(enrichedInvoices);
+        // CRITICAL: Filter invoices by matching Customer ID in extraFields (Architect-approved method)
+        let customerIdMatches = 0;
+        let orderNumberMatches = 0;
+        let missingBothFields = 0;
+        
+        const companyInvoices = enrichedAllInvoices.filter((invoice: any) => {
+          // Check if invoice has Customer field in extraFields
+          const invoiceCustomer = invoice.extraFields?.find((f: any) => f.fieldName === 'Customer');
+          const invoiceCustomerId = invoiceCustomer?.fieldValue || null;
+          
+          // Primary: If company has Customer ID AND invoice has Customer field, match by Customer ID
+          if (companyCustomerId && invoiceCustomerId) {
+            const matches = invoiceCustomerId === companyCustomerId;
+            if (matches) customerIdMatches++;
+            return matches;
+          }
+          
+          // Fallback: If invoice missing Customer field OR company missing Customer ID, filter by order numbers
+          const orderNumber = invoice.orderNumber ? String(invoice.orderNumber) : null;
+          const matchesOrder = orderNumber && companyOrderIds.some((orderId: any) => String(orderId) === orderNumber);
+          
+          if (matchesOrder) {
+            orderNumberMatches++;
+          } else if (!invoiceCustomerId && !orderNumber) {
+            missingBothFields++;
+          }
+          
+          return matchesOrder;
+        });
+
+        console.log(`[Invoices] Filtered ${allInvoices.length} total → ${companyInvoices.length} for company ${req.user?.companyId}`);
+        console.log(`[Invoices] Filtering stats: ${customerIdMatches} by Customer ID (${companyCustomerId}), ${orderNumberMatches} by order number, ${missingBothFields} missing both fields (excluded)`);
+
+        res.json(companyInvoices);
       } catch (error) {
         console.error("Invoices fetch error:", error);
         res.status(500).json({ message: "Failed to fetch invoices" });
