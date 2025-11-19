@@ -200,7 +200,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         res.cookie('refreshToken', refreshToken, {
           httpOnly: true,
           secure: process.env.NODE_ENV === 'production',
-          sameSite: 'strict',
+          sameSite: 'lax', // Changed from 'strict' to 'lax' for Replit iframe compatibility
           maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days to match token expiry
         });
       }
@@ -1760,7 +1760,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         res.cookie('refreshToken', refreshToken, {
           httpOnly: true,
           secure: process.env.NODE_ENV === 'production',
-          sameSite: 'strict',
+          sameSite: 'lax', // Changed from 'strict' to 'lax' for Replit iframe compatibility
           maxAge: 30 * 24 * 60 * 60 * 1000,
         });
       }
