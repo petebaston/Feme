@@ -39,7 +39,7 @@ export default function Invoices() {
   });
 
   // Fetch company details to get aged invoice data from extraFields
-  const { data: companyData } = useQuery<any>({
+  const { data: companyData, isLoading: isCompanyLoading, error: companyError } = useQuery<any>({
     queryKey: ['/api/company'],
     staleTime: 300000,
     retry: 2,

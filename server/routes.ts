@@ -1121,6 +1121,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.status(403).json({ message: 'Access denied to this company' });
         }
 
+        // Also fetch full company details to get extraFields (including aged invoice data)
+        if (company?.companyId) {
+          try {
+            const fullCompanyResponse = await bigcommerce.getCompanyDetails(company.companyId);
+            if (fullCompanyResponse?.data) {
+              // Merge extraFields from full company details into GraphQL company data
+              // Ensure extraFields is always an array for consistent frontend parsing
+              const extraFields = fullCompanyResponse.data.extraFields;
+              company.extraFields = Array.isArray(extraFields) ? extraFields : [];
+            } else {
+              // REST API returned but no data - set empty array
+              company.extraFields = [];
+            }
+          } catch (error: any) {
+            // Log error but don't fail the request - extraFields is optional
+            console.error(`[Company] Failed to fetch extraFields for company ${company.companyId}:`, error.message);
+            company.extraFields = [];
+            // Add error flag so frontend can show warning
+            company.extraFieldsError = true;
+          }
+        } else {
+          company.extraFields = [];
+        }
+
         res.json(company || {});
       } catch (error) {
         console.error("Company fetch error:", error);
