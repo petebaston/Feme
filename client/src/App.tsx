@@ -32,6 +32,33 @@ function Router() {
       try {
         const token = localStorage.getItem('b2b_token');
 
+        // If no token, try refresh (for "remember me" functionality)
+        if (!token) {
+          console.log('[Auth] No access token, attempting refresh with cookie...');
+          try {
+            const refreshResponse = await fetch('/api/auth/refresh', {
+              method: 'POST',
+              credentials: 'include', // Include refresh cookie
+            });
+
+            if (refreshResponse.ok) {
+              const data = await refreshResponse.json();
+              localStorage.setItem('b2b_token', data.accessToken);
+              setIsAuthenticated(true);
+              console.log('[Auth] Refreshed token successfully from cookie');
+              setIsLoading(false);
+              return;
+            }
+          } catch (e) {
+            // Refresh failed, continue to unauthenticated state
+            console.log('[Auth] Refresh from cookie failed');
+          }
+          setIsAuthenticated(false);
+          setIsLoading(false);
+          return;
+        }
+
+        // Token exists - verify it's still valid
         if (token) {
           // Try to verify token is still valid by making a lightweight API call
           try {
@@ -84,8 +111,10 @@ function Router() {
             }
           } catch (error) {
             console.error('[Auth] Token validation failed:', error);
-            // If network error, assume token is still good
-            setIsAuthenticated(true);
+            // SECURITY: Never assume authenticated on error - force re-login
+            localStorage.removeItem('b2b_token');
+            localStorage.removeItem('b2b_user');
+            setIsAuthenticated(false);
           }
         }
       } catch (error) {

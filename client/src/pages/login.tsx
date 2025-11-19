@@ -96,6 +96,14 @@ export default function Login() {
           <p className="text-sm md:text-base text-gray-600">Sign in to your business account</p>
         </div>
 
+        {/* Session Expired Message (visible even if JavaScript is disabled) */}
+        {typeof window !== 'undefined' && window.location.search.includes('expired=true') && (
+          <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded text-center">
+            <p className="text-sm text-red-800 font-medium">Session Expired</p>
+            <p className="text-xs text-red-600 mt-1">Your authentication has expired. Please sign in again.</p>
+          </div>
+        )}
+
         <Card className="border border-gray-200 shadow-sm">
           <CardHeader className="space-y-1">
             <CardTitle className="text-2xl font-semibold">Sign In</CardTitle>
