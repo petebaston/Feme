@@ -92,7 +92,7 @@ export default function Addresses() {
 
   const createAddressMutation = useMutation({
     mutationFn: (data: AddressFormData) => 
-      apiRequest('/api/company/addresses', { method: 'POST', body: JSON.stringify(data) }),
+      apiRequest('POST', '/api/company/addresses', data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/company/addresses'] });
       toast({ title: "Success", description: "Address created successfully" });
@@ -106,7 +106,7 @@ export default function Addresses() {
 
   const updateAddressMutation = useMutation({
     mutationFn: ({ id, data }: { id: number; data: AddressFormData }) =>
-      apiRequest(`/api/company/addresses/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+      apiRequest('PATCH', `/api/company/addresses/${id}`, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/company/addresses'] });
       toast({ title: "Success", description: "Address updated successfully" });
@@ -120,7 +120,7 @@ export default function Addresses() {
 
   const deleteAddressMutation = useMutation({
     mutationFn: (id: number) =>
-      apiRequest(`/api/company/addresses/${id}`, { method: 'DELETE' }),
+      apiRequest('DELETE', `/api/company/addresses/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/company/addresses'] });
       toast({ title: "Success", description: "Address deleted successfully" });
@@ -134,7 +134,7 @@ export default function Addresses() {
 
   const setDefaultMutation = useMutation({
     mutationFn: (id: number) =>
-      apiRequest(`/api/company/addresses/${id}/set-default`, { method: 'PATCH' }),
+      apiRequest('PATCH', `/api/company/addresses/${id}/set-default`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/company/addresses'] });
       toast({ title: "Success", description: "Default address updated" });

@@ -1,30 +1,72 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { formatCurrency } from "@/lib/currency";
+
+interface UserData {
+  id: string;
+  email: string;
+  firstName?: string;
+  lastName?: string;
+  phone?: string;
+  role?: string;
+  companyId?: string;
+  companyName?: string;
+}
+
+interface CompanyData {
+  id: string;
+  name: string;
+  email?: string;
+  phone?: string;
+  customerId?: string;
+}
 
 export default function AccountSettings() {
   const { toast } = useToast();
   const [formData, setFormData] = useState({
-    firstName: "Joe",
-    lastName: "Blogs",
-    email: "afrowholesaledirect@FEME.com",
+    firstName: "",
+    lastName: "",
+    email: "",
     phone: "",
     currentPassword: "**********",
     newPassword: "",
     confirmPassword: "",
   });
 
-  const { data: companyCredit } = useQuery<{
+  const { data: userData, isLoading: isUserLoading } = useQuery<UserData>({
+    queryKey: ['/api/auth/me'],
+    staleTime: 300000,
+  });
+
+  const { data: companyData, isLoading: isCompanyLoading } = useQuery<CompanyData>({
+    queryKey: ['/api/company'],
+    staleTime: 300000,
+  });
+
+  const { data: companyCredit, isLoading: isCreditLoading } = useQuery<{
     creditEnabled: boolean;
     creditCurrency: string;
     creditLimit: number;
     availableCredit: number;
     balance: number;
   }>({ queryKey: ['/api/company/credit'] });
+
+  useEffect(() => {
+    if (userData) {
+      setFormData(prev => ({
+        ...prev,
+        firstName: userData.firstName || '',
+        lastName: userData.lastName || '',
+        email: userData.email || '',
+        phone: userData.phone || '',
+      }));
+    }
+  }, [userData]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,6 +75,8 @@ export default function AccountSettings() {
       description: "Your account settings have been saved successfully.",
     });
   };
+
+  const isLoading = isUserLoading || isCompanyLoading;
 
   return (
     <div className="space-y-6 max-w-2xl">
@@ -50,13 +94,18 @@ export default function AccountSettings() {
           <Label htmlFor="firstName" className="text-sm font-medium text-gray-700">
             First name <span className="text-red-500">*</span>
           </Label>
-          <Input
-            id="firstName"
-            value={formData.firstName}
-            onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
-            className="h-11 border-gray-300"
-            required
-          />
+          {isLoading ? (
+            <Skeleton className="h-11 w-full" />
+          ) : (
+            <Input
+              id="firstName"
+              value={formData.firstName}
+              onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+              className="h-11 border-gray-300"
+              required
+              data-testid="input-firstName"
+            />
+          )}
         </div>
 
         {/* Last Name */}
@@ -64,13 +113,18 @@ export default function AccountSettings() {
           <Label htmlFor="lastName" className="text-sm font-medium text-gray-700">
             Last name <span className="text-red-500">*</span>
           </Label>
-          <Input
-            id="lastName"
-            value={formData.lastName}
-            onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
-            className="h-11 border-gray-300"
-            required
-          />
+          {isLoading ? (
+            <Skeleton className="h-11 w-full" />
+          ) : (
+            <Input
+              id="lastName"
+              value={formData.lastName}
+              onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+              className="h-11 border-gray-300"
+              required
+              data-testid="input-lastName"
+            />
+          )}
         </div>
 
         {/* Email */}
@@ -78,14 +132,19 @@ export default function AccountSettings() {
           <Label htmlFor="email" className="text-sm font-medium text-gray-700">
             Email <span className="text-red-500">*</span>
           </Label>
-          <Input
-            id="email"
-            type="email"
-            value={formData.email}
-            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-            className="h-11 border-gray-300"
-            required
-          />
+          {isLoading ? (
+            <Skeleton className="h-11 w-full" />
+          ) : (
+            <Input
+              id="email"
+              type="email"
+              value={formData.email}
+              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+              className="h-11 border-gray-300"
+              required
+              data-testid="input-email"
+            />
+          )}
         </div>
 
         {/* Phone Number */}
@@ -93,24 +152,33 @@ export default function AccountSettings() {
           <Label htmlFor="phone" className="text-sm font-medium text-gray-700">
             Phone number
           </Label>
-          <Input
-            id="phone"
-            type="tel"
-            value={formData.phone}
-            onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-            className="h-11 border-gray-300"
-            placeholder=""
-          />
+          {isLoading ? (
+            <Skeleton className="h-11 w-full" />
+          ) : (
+            <Input
+              id="phone"
+              type="tel"
+              value={formData.phone}
+              onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+              className="h-11 border-gray-300"
+              placeholder=""
+              data-testid="input-phone"
+            />
+          )}
         </div>
 
-        {/* Company User (Disabled) */}
+        {/* Customer ID (Disabled) */}
         <div className="space-y-2">
           <Label className="text-sm font-medium text-gray-500">
-            Company user 1234
+            Customer ID
           </Label>
-          <div className="h-11 px-3 py-2 bg-gray-100 border border-gray-300 text-gray-500">
-            Company user 1234
-          </div>
+          {isCompanyLoading ? (
+            <Skeleton className="h-11 w-full" />
+          ) : (
+            <div className="h-11 px-3 py-2 bg-gray-100 border border-gray-300 text-gray-500 flex items-center" data-testid="text-customerId">
+              {companyData?.customerId || 'N/A'}
+            </div>
+          )}
         </div>
 
         {/* Company (Disabled) */}
@@ -118,9 +186,13 @@ export default function AccountSettings() {
           <Label className="text-sm font-medium text-gray-500">
             Company
           </Label>
-          <div className="h-11 px-3 py-2 bg-gray-100 border border-gray-300 text-gray-500">
-            TEST Affro Wholesale Direct Ltd
-          </div>
+          {isCompanyLoading ? (
+            <Skeleton className="h-11 w-full" />
+          ) : (
+            <div className="h-11 px-3 py-2 bg-gray-100 border border-gray-300 text-gray-500 flex items-center" data-testid="text-company">
+              {companyData?.name || 'N/A'}
+            </div>
+          )}
         </div>
 
         {/* Role (Disabled) */}
@@ -128,9 +200,13 @@ export default function AccountSettings() {
           <Label className="text-sm font-medium text-gray-500">
             Role
           </Label>
-          <div className="h-11 px-3 py-2 bg-gray-100 border border-gray-300 text-gray-500">
-            Admin
-          </div>
+          {isUserLoading ? (
+            <Skeleton className="h-11 w-full" />
+          ) : (
+            <div className="h-11 px-3 py-2 bg-gray-100 border border-gray-300 text-gray-500 flex items-center" data-testid="text-role">
+              {userData?.role || 'User'}
+            </div>
+          )}
         </div>
 
         {/* Credit Limit (Disabled) */}
@@ -138,9 +214,13 @@ export default function AccountSettings() {
           <Label className="text-sm font-medium text-gray-500">
             Credit limit
           </Label>
-          <div className="h-11 px-3 py-2 bg-gray-100 border border-gray-300 text-gray-500">
-            {formatCurrency(companyCredit?.creditLimit || 0, companyCredit?.creditCurrency || 'GBP')}
-          </div>
+          {isCreditLoading ? (
+            <Skeleton className="h-11 w-full" />
+          ) : (
+            <div className="h-11 px-3 py-2 bg-gray-100 border border-gray-300 text-gray-500 flex items-center" data-testid="text-creditLimit">
+              {formatCurrency(companyCredit?.creditLimit || 0, companyCredit?.creditCurrency || 'GBP')}
+            </div>
+          )}
         </div>
 
         {/* Current Password */}
@@ -155,6 +235,7 @@ export default function AccountSettings() {
             onChange={(e) => setFormData({ ...formData, currentPassword: e.target.value })}
             className="h-11 border-gray-300 bg-gray-100"
             disabled
+            data-testid="input-currentPassword"
           />
         </div>
 
@@ -170,6 +251,7 @@ export default function AccountSettings() {
             onChange={(e) => setFormData({ ...formData, newPassword: e.target.value })}
             className="h-11 border-gray-300"
             placeholder=""
+            data-testid="input-newPassword"
           />
         </div>
 
@@ -185,6 +267,7 @@ export default function AccountSettings() {
             onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
             className="h-11 border-gray-300"
             placeholder=""
+            data-testid="input-confirmPassword"
           />
         </div>
 
@@ -192,6 +275,7 @@ export default function AccountSettings() {
         <Button
           type="submit"
           className="w-full h-12 bg-black text-white hover:bg-black/90 font-normal text-base"
+          data-testid="button-save"
         >
           SAVE UPDATES
         </Button>

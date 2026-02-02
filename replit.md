@@ -3,6 +3,11 @@
 ## Overview
 This project is a production-ready headless B2B buyer portal designed for BigCommerce B2B Edition (store: pyrenapwe2). It offers a comprehensive suite of enterprise-grade features, including advanced order management, quoting workflows, an analytics dashboard, a quick order pad, reorder templates, shopping list management, and robust user and address management. The portal integrates directly with the BigCommerce B2B API and features a modern React frontend with TypeScript, a responsive mobile-first design using Tailwind CSS and shadcn/ui, and is optimized for deployment on Replit. The project aims to provide a complete B2B e-commerce solution with a minimalist design aesthetic.
 
+## Test Credentials
+**Email:** afrowholesaledirect@FEME.com
+**Password:** Beauty_F3m3!
+**Company:** TEST Affro Wholesale Direct Ltd (Company ID: 9685502, Customer ID: FEM01)
+
 ## User Preferences
 Preferred communication style: Simple, everyday language.
 
