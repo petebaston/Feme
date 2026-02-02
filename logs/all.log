@@ -27323,3 +27323,26 @@
 2026-02-02 09:40:38:4038 [33mwarn[39m: [33mPOST /api/auth/refresh 401 - 1ms[39m
 2026-02-02 09:40:38:4038 [32mhttp[39m: [32mGET /favicon.ico 200 - 8ms[39m
 2026-02-02 09:40:38:4038 [32mhttp[39m: [32mGET /@fs/home/runner/workspace/attached_assets/feme-logo.png 304 - 8ms[39m
+2026-02-02 09:41:14:4114 [32mhttp[39m: [32mGET /user-management 200 - 7ms[39m
+2026-02-02 09:41:14:4114 [32mhttp[39m: [32mGET /@vite/client 200 - 20ms[39m
+2026-02-02 09:41:14:4114 [32mhttp[39m: [32mGET /@react-refresh 304 - 1ms[39m
+2026-02-02 09:41:16:4116 [32minfo[39m: [32m🚀 Server running on port 5000[39m
+2026-02-02 09:41:16:4116 [32minfo[39m: [32m📝 Environment: development[39m
+2026-02-02 09:41:27:4127 [32mhttp[39m: [32mPOST /api/auth/login 200 - 890ms[39m
+2026-02-02 09:41:34:4134 [32mhttp[39m: [32mGET /api/auth/me 200 - 41ms[39m
+2026-02-02 09:41:38:4138 [32mhttp[39m: [32mGET /api/company 200 - 279ms[39m
+2026-02-02 09:41:40:4140 [32mhttp[39m: [32mGET /api/company/credit 200 - 282ms[39m
+2026-02-02 09:41:46:4146 [32mhttp[39m: [32mGET /api/my-orders 200 - 1452ms[39m
+2026-02-02 09:41:49:4149 [32mhttp[39m: [32mGET /api/orders 200 - 1915ms[39m
+2026-02-02 09:41:52:4152 [32mhttp[39m: [32mGET /api/invoices 200 - 1521ms[39m
+2026-02-02 09:42:05:425 [32mhttp[39m: [32mGET /api/auth/me 200 - 163ms[39m
+2026-02-02 09:42:06:426 [32mhttp[39m: [32mGET /api/company 200 - 255ms[39m
+2026-02-02 09:42:06:426 [32mhttp[39m: [32mGET /api/company/credit 200 - 275ms[39m
+2026-02-02 09:42:10:4210 [32mhttp[39m: [32mGET /api/my-orders 200 - 1408ms[39m
+2026-02-02 09:42:13:4213 [32mhttp[39m: [32mGET /api/orders 200 - 1926ms[39m
+2026-02-02 09:42:16:4216 [32mhttp[39m: [32mGET /api/invoices 200 - 1497ms[39m
+2026-02-02 09:42:18:4218 [32mhttp[39m: [32mGET /api/company/addresses 200 - 153ms[39m
+2026-02-02 09:42:18:4218 [32mhttp[39m: [32mGET /api/company/users 200 - 152ms[39m
+2026-02-02 09:42:34:4234 [32mhttp[39m: [32mGET /api/orders/110 200 - 1196ms[39m
+2026-02-02 09:42:34:4234 [32mhttp[39m: [32mGET /api/orders/110/extra-fields 200 - 106ms[39m
+2026-02-02 09:42:36:4236 [32mhttp[39m: [32mGET /api/invoices/7880025 200 - 280ms[39m
