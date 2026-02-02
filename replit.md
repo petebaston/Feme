@@ -72,6 +72,35 @@ Preferred communication style: Simple, everyday language.
 
 **Current Status:** ✅ Production-ready - Portal filters invoices by matching Customer ID in extraFields. Architect confirmed security is sound.
 
+### Order Extra Fields - ✅ RESOLVED (Feb 2, 2026)
+**Previous Issues:**
+1. GraphQL query for order extra fields was using incorrect field names, causing schema errors
+2. Fields like `orderId`, `bcOrderId`, `orderStatus`, `createdAt`, `email`, `companyId` don't exist on `BcOrderType`
+3. `extraFields` is a `GenericScalar` in GraphQL, not an object with subfields
+
+**Root Cause:** 
+The B2B Edition GraphQL API schema differs from standard BigCommerce Storefront API. The order query structure was incorrect.
+
+**Solution Implemented:**
+- **Replaced GraphQL with REST API:** Changed `getOrderWithExtraFields()` to use B2B REST API endpoint
+- **Endpoint:** `GET /api/v3/io/orders?bcOrderId={orderId}&showExtra=true`
+- **Benefits:** More reliable, returns all extra fields including `extraFields[]`, `extraInt1-5`, `extraStr1-5`, `extraText`
+
+**API Response Format:**
+```json
+{
+  "extraFields": [
+    {"fieldName": "NetSuite SO", "fieldValue": ""},
+    {"fieldName": "Order 1234", "fieldValue": ""}
+  ],
+  "extraInt1": null,
+  "extraStr1": null,
+  ...
+}
+```
+
+**Current Status:** ✅ Working - Orders 110, 111, 116 return extra fields correctly. Order 120 returns empty (no B2B record, likely placed via standard checkout).
+
 ### Users & Addresses - ✅ RESOLVED
 **Previous Issues:** 
 1. Endpoints `/api/v2/users` and `/api/v2/addresses` returned 404 Not Found.

@@ -27346,3 +27346,11 @@
 2026-02-02 09:42:34:4234 [32mhttp[39m: [32mGET /api/orders/110 200 - 1196ms[39m
 2026-02-02 09:42:34:4234 [32mhttp[39m: [32mGET /api/orders/110/extra-fields 200 - 106ms[39m
 2026-02-02 09:42:36:4236 [32mhttp[39m: [32mGET /api/invoices/7880025 200 - 280ms[39m
+2026-02-02 09:46:28:4628 [32minfo[39m: [32m🚀 Server running on port 5000[39m
+2026-02-02 09:46:28:4628 [32minfo[39m: [32m📝 Environment: development[39m
+2026-02-02 09:46:42:4642 [32mhttp[39m: [32mPOST /api/auth/login 200 - 849ms[39m
+2026-02-02 09:46:42:4642 [32mhttp[39m: [32mGET /api/orders/110/extra-fields 200 - 141ms[39m
+2026-02-02 09:46:51:4651 [32mhttp[39m: [32mPOST /api/auth/login 200 - 655ms[39m
+2026-02-02 09:46:51:4651 [32mhttp[39m: [32mGET /api/orders/111/extra-fields 200 - 137ms[39m
+2026-02-02 09:46:52:4652 [32mhttp[39m: [32mGET /api/orders/116/extra-fields 200 - 143ms[39m
+2026-02-02 09:46:52:4652 [32mhttp[39m: [32mGET /api/orders/120/extra-fields 200 - 133ms[39m

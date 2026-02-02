@@ -1087,59 +1087,26 @@ export class BigCommerceService {
     }
   }
 
-  // Get order with extra fields via GraphQL
-  // Note: extraFields only available on single order query, not order list
+  // Get order with extra fields via B2B REST API
+  // Uses /api/v3/io/orders endpoint with showExtra=true parameter
   async getOrderWithExtraFields(userToken: string, orderId: string) {
     try {
-      console.log(`[BigCommerce] Fetching order ${orderId} with extra fields via GraphQL...`);
+      console.log(`[BigCommerce] Fetching order ${orderId} with extra fields via REST API...`);
 
-      const query = `
-        query GetOrderWithExtraFields($orderId: Int!) {
-          order(orderId: $orderId) {
-            orderId
-            bcOrderId
-            orderStatus
-            customOrderStatus
-            totalIncTax
-            totalExTax
-            createdAt
-            updatedAt
-            firstName
-            lastName
-            email
-            companyId
-            companyName
-            poNumber
-            referenceNumber
-            extraFields {
-              fieldName
-              fieldValue
-            }
-            extraInt1
-            extraInt2
-            extraInt3
-            extraInt4
-            extraInt5
-            extraStr1
-            extraStr2
-            extraStr3
-            extraStr4
-            extraStr5
-            extraText
-          }
-        }
-      `;
+      // Use the B2B REST API with showExtra=true to get extra fields
+      const response = await this.request(`/api/v3/io/orders?bcOrderId=${orderId}&showExtra=true`);
 
-      const result = await this.graphqlRequest(query, { orderId: parseInt(orderId) }, userToken);
-
-      if (result?.data?.order) {
-        console.log(`[BigCommerce] GraphQL order fetch successful with ${result.data.order.extraFields?.length || 0} extra fields`);
-        return { code: 200, data: result.data.order };
+      if (response?.code === 200 && response?.data?.length > 0) {
+        const orderData = response.data[0];
+        console.log(`[BigCommerce] REST API order fetch successful with ${orderData.extraFields?.length || 0} extra fields`);
+        return { code: 200, data: orderData };
       }
 
+      // If no B2B order found, return null (order might be a standard BC order without B2B record)
+      console.log(`[BigCommerce] No B2B order record found for bcOrderId ${orderId}`);
       return null;
     } catch (error: any) {
-      console.log('[BigCommerce] GraphQL order with extra fields failed:', error.message);
+      console.log('[BigCommerce] REST API order with extra fields failed:', error.message);
       return null;
     }
   }
