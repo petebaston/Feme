@@ -2243,6 +2243,115 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   );
 
+  // ============================================
+  // EXTRA FIELDS ENDPOINTS
+  // Per BigCommerce B2B API: Extra fields allow custom data
+  // for orders, companies, invoices, etc.
+  // Reference: https://developer.bigcommerce.com/b2b-edition/apis
+  // ============================================
+
+  // Get extra field configurations
+  app.get("/api/extra-fields/configs",
+    authenticateToken,
+    sessionTimeout,
+    async (req: AuthRequest, res) => {
+      try {
+        console.log('[Extra Fields] Fetching all extra field configurations...');
+
+        const [orderConfigs, companyConfigs, invoiceConfigs] = await Promise.all([
+          bigcommerce.getOrderExtraFieldConfigs(),
+          bigcommerce.getCompanyExtraFieldConfigs(),
+          bigcommerce.getInvoiceExtraFieldConfigs(),
+        ]);
+
+        res.json({
+          orders: orderConfigs?.data || [],
+          companies: companyConfigs?.data || [],
+          invoices: invoiceConfigs?.data || [],
+        });
+      } catch (error) {
+        console.error("[Extra Fields] Config fetch error:", error);
+        res.status(500).json({ message: "Failed to fetch extra field configurations" });
+      }
+    }
+  );
+
+  // Get order with extra fields (GraphQL)
+  app.get("/api/orders/:id/extra-fields",
+    authenticateToken,
+    sessionTimeout,
+    async (req: AuthRequest, res) => {
+      try {
+        const bcToken = await getBigCommerceToken(req);
+        const orderId = req.params.id;
+
+        console.log(`[Extra Fields] Fetching extra fields for order ${orderId}`);
+
+        const response = await bigcommerce.getOrderWithExtraFields(bcToken, orderId);
+
+        if (!response?.data) {
+          // Fallback: Return empty extra fields if GraphQL fails
+          return res.json({ extraFields: [], message: 'Extra fields not available for this order' });
+        }
+
+        // Extract just the extra fields from the order
+        const extraFields = response.data.extraFields || [];
+        const extraIntFields = {
+          extraInt1: response.data.extraInt1,
+          extraInt2: response.data.extraInt2,
+          extraInt3: response.data.extraInt3,
+          extraInt4: response.data.extraInt4,
+          extraInt5: response.data.extraInt5,
+        };
+        const extraStrFields = {
+          extraStr1: response.data.extraStr1,
+          extraStr2: response.data.extraStr2,
+          extraStr3: response.data.extraStr3,
+          extraStr4: response.data.extraStr4,
+          extraStr5: response.data.extraStr5,
+        };
+        const extraText = response.data.extraText;
+
+        res.json({
+          extraFields,
+          ...extraIntFields,
+          ...extraStrFields,
+          extraText,
+        });
+      } catch (error) {
+        console.error("[Extra Fields] Order extra fields error:", error);
+        res.status(500).json({ message: "Failed to fetch order extra fields" });
+      }
+    }
+  );
+
+  // Get company with extra fields
+  app.get("/api/company/extra-fields",
+    authenticateToken,
+    sessionTimeout,
+    async (req: AuthRequest, res) => {
+      try {
+        const bcToken = await getBigCommerceToken(req);
+
+        console.log('[Extra Fields] Fetching company extra fields');
+
+        const response = await bigcommerce.getCompanyWithExtraFields(bcToken);
+
+        if (!response?.data) {
+          return res.json({ extraFields: [], message: 'Extra fields not available' });
+        }
+
+        res.json({
+          company: response.data,
+          extraFields: response.data.extraFields || [],
+        });
+      } catch (error) {
+        console.error("[Extra Fields] Company extra fields error:", error);
+        res.status(500).json({ message: "Failed to fetch company extra fields" });
+      }
+    }
+  );
+
   const httpServer = createServer(app);
   return httpServer;
 }

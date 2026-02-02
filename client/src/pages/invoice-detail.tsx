@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ArrowLeft, Download } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { CustomFieldsDisplay } from "@/components/b2b/custom-fields-display";
 
 // Helper to extract cost values from BigCommerce costLines structure
 const getCostValue = (costLines: any[], description: string): number => {
@@ -348,6 +349,16 @@ export default function InvoiceDetail() {
           </Card>
         );
       })()}
+
+      {/* Custom Fields / ERP Integration Data */}
+      {invoice.extraFields && invoice.extraFields.length > 0 && (
+        <CustomFieldsDisplay
+          extraFields={invoice.extraFields}
+          title="Custom Fields (ERP Data)"
+          description="Integration data from your ERP system"
+          variant="card"
+        />
+      )}
     </div>
   );
 }

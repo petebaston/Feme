@@ -63,13 +63,18 @@ export class BigCommerceService {
 
   private async request(endpoint: string, options: any = {}) {
     const url = `${this.config.b2bApiUrl}${endpoint}`;
-    
+
     const channelId = process.env.VITE_CHANNEL_ID || '1';
-    
+
+    // Per BigCommerce Sept 2025 API authentication update:
+    // - X-Auth-Token + X-Store-Hash required for REST Management V3 API (/api/v3/io/*)
+    // - Authorization: Bearer required for GraphQL and REST Storefront (/api/v2/*)
+    // Reference: https://developer.bigcommerce.com/b2b-edition/docs/authentication
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
-      'X-Store-Hash': this.config.storeHash,
-      'X-Channel-Id': channelId,
+      'Accept': 'application/json',
+      'X-Store-Hash': this.config.storeHash,  // Required for all B2B API calls
+      'X-Channel-Id': channelId,              // Optional but useful for multi-storefront
       ...(options.headers || {}),
     };
 
@@ -548,25 +553,27 @@ export class BigCommerceService {
 
   private async graphqlRequest(query: string, variables: any = {}, userToken?: string) {
     const url = `${this.config.b2bApiUrl}/graphql`;
-    
+
     const channelId = process.env.VITE_CHANNEL_ID || '1';
-    
+
+    // Per BigCommerce Sept 2025 API authentication update:
+    // GraphQL Storefront API uses Authorization: Bearer {storefront_token}
+    // X-Store-Hash is required for all B2B API calls
+    // Reference: https://developer.bigcommerce.com/b2b-edition/docs/authentication
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
-      'X-Store-Hash': this.config.storeHash,
+      'Accept': 'application/json',
+      'X-Store-Hash': this.config.storeHash,  // Required for all B2B API calls
       'X-Channel-Id': channelId,
     };
 
-    // CRITICAL: GraphQL authentication for B2B Edition
-    // Use management token for GraphQL queries (required for B2B Edition)
-    if (this.config.managementToken) {
-      headers['X-Auth-Token'] = this.config.managementToken;
-    }
-
-    // Add user token for authenticated requests (filters to user's company context)
+    // For GraphQL, prefer user's storefront token for company-scoped queries
+    // Falls back to management token for admin-level queries
     if (userToken) {
       headers['Authorization'] = `Bearer ${userToken}`;
-      headers['authToken'] = userToken;
+    } else if (this.config.managementToken) {
+      // Fallback to management token for server-initiated queries
+      headers['X-Auth-Token'] = this.config.managementToken;
     }
 
     console.log(`[BigCommerce] GraphQL ${url}`, 'Headers:', Object.keys(headers));
@@ -1036,6 +1043,144 @@ export class BigCommerceService {
       return await this.request(`/api/v3/io/companies/${companyId}`);
     } catch (error: any) {
       console.log(`[BigCommerce] Company details fetch failed: ${error.message}`);
+      return null;
+    }
+  }
+
+  // ============================================
+  // EXTRA FIELDS SUPPORT
+  // Per BigCommerce B2B API: Extra fields allow custom data
+  // for orders, companies, invoices, etc.
+  // Reference: https://developer.bigcommerce.com/b2b-edition/apis
+  // ============================================
+
+  // Get extra field configurations for orders
+  async getOrderExtraFieldConfigs() {
+    try {
+      console.log('[BigCommerce] Fetching order extra field configurations...');
+      return await this.request('/api/v3/io/orders/extra-field-configs');
+    } catch (error: any) {
+      console.log('[BigCommerce] Order extra field configs fetch failed:', error.message);
+      return { data: [] };
+    }
+  }
+
+  // Get extra field configurations for companies
+  async getCompanyExtraFieldConfigs() {
+    try {
+      console.log('[BigCommerce] Fetching company extra field configurations...');
+      return await this.request('/api/v3/io/companies/extra-field-configs');
+    } catch (error: any) {
+      console.log('[BigCommerce] Company extra field configs fetch failed:', error.message);
+      return { data: [] };
+    }
+  }
+
+  // Get extra field configurations for invoices
+  async getInvoiceExtraFieldConfigs() {
+    try {
+      console.log('[BigCommerce] Fetching invoice extra field configurations...');
+      return await this.request('/api/v3/io/invoices/extra-field-configs');
+    } catch (error: any) {
+      console.log('[BigCommerce] Invoice extra field configs fetch failed:', error.message);
+      return { data: [] };
+    }
+  }
+
+  // Get order with extra fields via GraphQL
+  // Note: extraFields only available on single order query, not order list
+  async getOrderWithExtraFields(userToken: string, orderId: string) {
+    try {
+      console.log(`[BigCommerce] Fetching order ${orderId} with extra fields via GraphQL...`);
+
+      const query = `
+        query GetOrderWithExtraFields($orderId: Int!) {
+          order(orderId: $orderId) {
+            orderId
+            bcOrderId
+            orderStatus
+            customOrderStatus
+            totalIncTax
+            totalExTax
+            createdAt
+            updatedAt
+            firstName
+            lastName
+            email
+            companyId
+            companyName
+            poNumber
+            referenceNumber
+            extraFields {
+              fieldName
+              fieldValue
+            }
+            extraInt1
+            extraInt2
+            extraInt3
+            extraInt4
+            extraInt5
+            extraStr1
+            extraStr2
+            extraStr3
+            extraStr4
+            extraStr5
+            extraText
+          }
+        }
+      `;
+
+      const result = await this.graphqlRequest(query, { orderId: parseInt(orderId) }, userToken);
+
+      if (result?.data?.order) {
+        console.log(`[BigCommerce] GraphQL order fetch successful with ${result.data.order.extraFields?.length || 0} extra fields`);
+        return { code: 200, data: result.data.order };
+      }
+
+      return null;
+    } catch (error: any) {
+      console.log('[BigCommerce] GraphQL order with extra fields failed:', error.message);
+      return null;
+    }
+  }
+
+  // Get company with extra fields
+  async getCompanyWithExtraFields(userToken: string) {
+    try {
+      console.log('[BigCommerce] Fetching company with extra fields via GraphQL...');
+
+      const query = `
+        query GetCompanyWithExtraFields {
+          company {
+            id
+            companyName
+            companyStatus
+            companyEmail
+            addressLine1
+            addressLine2
+            city
+            state
+            zipCode
+            country
+            phone
+            extraFields {
+              fieldName
+              fieldValue
+            }
+          }
+        }
+      `;
+
+      const result = await this.graphqlRequest(query, {}, userToken);
+
+      if (result?.data?.company) {
+        console.log(`[BigCommerce] GraphQL company fetch successful with ${result.data.company.extraFields?.length || 0} extra fields`);
+        return { code: 200, data: result.data.company };
+      }
+
+      return null;
+    } catch (error: any) {
+      console.log('[BigCommerce] GraphQL company with extra fields failed:', error.message);
       return null;
     }
   }
