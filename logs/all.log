@@ -27129,3 +27129,5 @@
 2026-01-28 15:09:38:938 [33mwarn[39m: [33mPOST /api/auth/refresh 401 - 2ms[39m
 2026-01-28 15:09:38:938 [32mhttp[39m: [32mGET /favicon.ico 200 - 10ms[39m
 2026-01-28 15:09:38:938 [32mhttp[39m: [32mGET /@fs/home/runner/workspace/attached_assets/feme-logo.png 200 - 3ms[39m
+2026-02-02 07:10:38:1038 [32minfo[39m: [32m🚀 Server running on port 5000[39m
+2026-02-02 07:10:38:1038 [32minfo[39m: [32m📝 Environment: development[39m
