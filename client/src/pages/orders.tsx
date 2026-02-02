@@ -6,6 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Search, SlidersHorizontal, ChevronDown } from "lucide-react";
 import { formatCurrency } from "@/lib/currency";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { ExportButton } from "@/components/b2b/export-button";
 
 export default function Orders() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -61,8 +62,13 @@ export default function Orders() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
+      <div className="flex items-center justify-between">
         <h1 className="text-2xl font-normal text-black">Company Orders</h1>
+        <ExportButton
+          endpoint="/api/orders/export/csv"
+          label="Export Orders"
+          variant="outline"
+        />
       </div>
 
       {/* Search and Filter */}

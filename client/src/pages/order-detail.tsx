@@ -20,6 +20,33 @@ export default function OrderDetail() {
     enabled: !!id,
   });
 
+  // Fetch extra fields from GraphQL endpoint (BigCommerce B2B API)
+  // Extra fields contain ERP integration data like Customer ID, PO Number, etc.
+  const { data: extraFieldsData } = useQuery<any>({
+    queryKey: [`/api/orders/${id}/extra-fields`],
+    enabled: !!id && !!order,
+    retry: false,
+    staleTime: 600000, // Cache for 10 minutes
+  });
+
+  // Merge order with extra fields data
+  const orderWithExtraFields = order ? {
+    ...order,
+    extraFields: extraFieldsData?.extraFields || order.extraFields || [],
+    // Include individual extra field values
+    extraInt1: extraFieldsData?.extraInt1 ?? order.extraInt1,
+    extraInt2: extraFieldsData?.extraInt2 ?? order.extraInt2,
+    extraInt3: extraFieldsData?.extraInt3 ?? order.extraInt3,
+    extraInt4: extraFieldsData?.extraInt4 ?? order.extraInt4,
+    extraInt5: extraFieldsData?.extraInt5 ?? order.extraInt5,
+    extraStr1: extraFieldsData?.extraStr1 ?? order.extraStr1,
+    extraStr2: extraFieldsData?.extraStr2 ?? order.extraStr2,
+    extraStr3: extraFieldsData?.extraStr3 ?? order.extraStr3,
+    extraStr4: extraFieldsData?.extraStr4 ?? order.extraStr4,
+    extraStr5: extraFieldsData?.extraStr5 ?? order.extraStr5,
+    extraText: extraFieldsData?.extraText ?? order.extraText,
+  } : null;
+
   // Fetch linked invoice for this order
   const { data: linkedInvoice, isLoading: isInvoiceLoading } = useQuery<any>({
     queryKey: [`/api/orders/${id}/invoice`],
@@ -298,9 +325,12 @@ export default function OrderDetail() {
       )}
 
       {/* Custom Fields / ERP Integration Data */}
-      {order.extraFields && order.extraFields.length > 0 && (
+      {/* Extra fields from BigCommerce B2B GraphQL API - supports ERP integration data */}
+      {orderWithExtraFields?.extraFields && orderWithExtraFields.extraFields.length > 0 && (
         <CustomFieldsDisplay
-          extraFields={order.extraFields}
+          extraFields={orderWithExtraFields.extraFields}
+          title="Custom Fields (ERP Data)"
+          description="Integration data from your ERP system"
           variant="card"
         />
       )}
