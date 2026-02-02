@@ -2352,6 +2352,775 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   );
 
+  // ============================================
+  // COMPANY HIERARCHY ENDPOINTS
+  // Per BigCommerce B2B API: Parent-subsidiary company relationships
+  // ============================================
+
+  // Get company hierarchy
+  app.get("/api/company/hierarchy",
+    authenticateToken,
+    sessionTimeout,
+    async (req: AuthRequest, res) => {
+      try {
+        if (!req.user?.companyId) {
+          return res.status(400).json({ message: "Company ID required" });
+        }
+
+        console.log(`[Hierarchy] Fetching hierarchy for company ${req.user.companyId}`);
+        const response = await bigcommerce.getCompanyHierarchy(req.user.companyId);
+
+        res.json(response?.data || { parent: null, children: [] });
+      } catch (error) {
+        console.error("[Hierarchy] Error:", error);
+        res.status(500).json({ message: "Failed to fetch company hierarchy" });
+      }
+    }
+  );
+
+  // Get subsidiaries
+  app.get("/api/company/subsidiaries",
+    authenticateToken,
+    sessionTimeout,
+    async (req: AuthRequest, res) => {
+      try {
+        if (!req.user?.companyId) {
+          return res.status(400).json({ message: "Company ID required" });
+        }
+
+        console.log(`[Subsidiaries] Fetching subsidiaries for company ${req.user.companyId}`);
+        const response = await bigcommerce.getCompanySubsidiaries(req.user.companyId);
+
+        res.json(response?.data || []);
+      } catch (error) {
+        console.error("[Subsidiaries] Error:", error);
+        res.status(500).json({ message: "Failed to fetch subsidiaries" });
+      }
+    }
+  );
+
+  // Attach subsidiary (admin only)
+  app.post("/api/company/subsidiaries",
+    authenticateToken,
+    sessionTimeout,
+    async (req: AuthRequest, res) => {
+      try {
+        if (req.user?.role !== 'admin' && req.user?.role !== 'superadmin') {
+          return res.status(403).json({ message: "Admin access required" });
+        }
+        if (!req.user?.companyId) {
+          return res.status(400).json({ message: "Company ID required" });
+        }
+
+        const { childCompanyId } = req.body;
+        if (!childCompanyId) {
+          return res.status(400).json({ message: "Child company ID required" });
+        }
+
+        console.log(`[Subsidiaries] Attaching company ${childCompanyId} to ${req.user.companyId}`);
+        await bigcommerce.attachCompanyAsSubsidiary(req.user.companyId, childCompanyId);
+
+        res.json({ message: "Subsidiary attached successfully" });
+      } catch (error) {
+        console.error("[Subsidiaries] Attach error:", error);
+        res.status(500).json({ message: "Failed to attach subsidiary" });
+      }
+    }
+  );
+
+  // Detach subsidiary (admin only)
+  app.delete("/api/company/subsidiaries/:companyId",
+    authenticateToken,
+    sessionTimeout,
+    async (req: AuthRequest, res) => {
+      try {
+        if (req.user?.role !== 'admin' && req.user?.role !== 'superadmin') {
+          return res.status(403).json({ message: "Admin access required" });
+        }
+
+        const { companyId } = req.params;
+        console.log(`[Subsidiaries] Detaching company ${companyId}`);
+        await bigcommerce.detachCompanyFromParent(companyId);
+
+        res.json({ message: "Subsidiary detached successfully" });
+      } catch (error) {
+        console.error("[Subsidiaries] Detach error:", error);
+        res.status(500).json({ message: "Failed to detach subsidiary" });
+      }
+    }
+  );
+
+  // ============================================
+  // INVOICE PAYMENT ENDPOINTS
+  // Per BigCommerce B2B API: Record and track invoice payments
+  // ============================================
+
+  // Get payments for an invoice
+  app.get("/api/invoices/:id/payments",
+    authenticateToken,
+    sessionTimeout,
+    async (req: AuthRequest, res) => {
+      try {
+        console.log(`[Payments] Fetching payments for invoice ${req.params.id}`);
+        const response = await bigcommerce.getInvoicePayments(req.params.id);
+
+        res.json(response?.data || []);
+      } catch (error) {
+        console.error("[Payments] Error:", error);
+        res.status(500).json({ message: "Failed to fetch invoice payments" });
+      }
+    }
+  );
+
+  // Record a payment
+  app.post("/api/invoices/:id/payments",
+    authenticateToken,
+    sessionTimeout,
+    async (req: AuthRequest, res) => {
+      try {
+        const { amount, paymentMethod, reference, paymentDate, notes } = req.body;
+
+        if (!amount || !paymentMethod) {
+          return res.status(400).json({ message: "Amount and payment method are required" });
+        }
+
+        console.log(`[Payments] Recording payment of ${amount} for invoice ${req.params.id}`);
+        const response = await bigcommerce.recordInvoicePayment(req.params.id, {
+          amount: parseFloat(amount),
+          paymentMethod,
+          reference,
+          paymentDate,
+          notes,
+        });
+
+        res.json(response?.data || { success: true });
+      } catch (error) {
+        console.error("[Payments] Record error:", error);
+        res.status(500).json({ message: "Failed to record payment" });
+      }
+    }
+  );
+
+  // Get all payments (admin only)
+  app.get("/api/payments",
+    authenticateToken,
+    sessionTimeout,
+    async (req: AuthRequest, res) => {
+      try {
+        const { companyId, status, limit, offset } = req.query;
+
+        console.log('[Payments] Fetching all payments');
+        const response = await bigcommerce.getAllPayments({
+          companyId: companyId as string,
+          status: status as string,
+          limit: limit ? parseInt(limit as string) : undefined,
+          offset: offset ? parseInt(offset as string) : undefined,
+        });
+
+        res.json(response?.data || []);
+      } catch (error) {
+        console.error("[Payments] Error:", error);
+        res.status(500).json({ message: "Failed to fetch payments" });
+      }
+    }
+  );
+
+  // ============================================
+  // COMPANY ROLES & PERMISSIONS ENDPOINTS
+  // Per BigCommerce B2B API: Role-based access control
+  // ============================================
+
+  // Get company roles
+  app.get("/api/company/roles",
+    authenticateToken,
+    sessionTimeout,
+    async (req: AuthRequest, res) => {
+      try {
+        if (!req.user?.companyId) {
+          return res.status(400).json({ message: "Company ID required" });
+        }
+
+        console.log(`[Roles] Fetching roles for company ${req.user.companyId}`);
+        const response = await bigcommerce.getCompanyRoles(req.user.companyId);
+
+        res.json(response?.data || []);
+      } catch (error) {
+        console.error("[Roles] Error:", error);
+        res.status(500).json({ message: "Failed to fetch company roles" });
+      }
+    }
+  );
+
+  // Get role details
+  app.get("/api/company/roles/:roleId",
+    authenticateToken,
+    sessionTimeout,
+    async (req: AuthRequest, res) => {
+      try {
+        if (!req.user?.companyId) {
+          return res.status(400).json({ message: "Company ID required" });
+        }
+
+        console.log(`[Roles] Fetching role ${req.params.roleId}`);
+        const response = await bigcommerce.getCompanyRole(req.user.companyId, req.params.roleId);
+
+        if (!response?.data) {
+          return res.status(404).json({ message: "Role not found" });
+        }
+
+        res.json(response.data);
+      } catch (error) {
+        console.error("[Roles] Error:", error);
+        res.status(500).json({ message: "Failed to fetch role" });
+      }
+    }
+  );
+
+  // Get available permissions
+  app.get("/api/company/permissions",
+    authenticateToken,
+    sessionTimeout,
+    async (req: AuthRequest, res) => {
+      try {
+        if (!req.user?.companyId) {
+          return res.status(400).json({ message: "Company ID required" });
+        }
+
+        console.log(`[Permissions] Fetching permissions for company ${req.user.companyId}`);
+        const response = await bigcommerce.getCompanyPermissions(req.user.companyId);
+
+        res.json(response?.data || []);
+      } catch (error) {
+        console.error("[Permissions] Error:", error);
+        res.status(500).json({ message: "Failed to fetch permissions" });
+      }
+    }
+  );
+
+  // Create a role (admin only)
+  app.post("/api/company/roles",
+    authenticateToken,
+    sessionTimeout,
+    async (req: AuthRequest, res) => {
+      try {
+        if (req.user?.role !== 'admin' && req.user?.role !== 'superadmin') {
+          return res.status(403).json({ message: "Admin access required" });
+        }
+        if (!req.user?.companyId) {
+          return res.status(400).json({ message: "Company ID required" });
+        }
+
+        const { name, permissions } = req.body;
+        if (!name) {
+          return res.status(400).json({ message: "Role name is required" });
+        }
+
+        console.log(`[Roles] Creating role ${name}`);
+        const response = await bigcommerce.createCompanyRole(req.user.companyId, {
+          name,
+          permissions: permissions || [],
+        });
+
+        res.status(201).json(response?.data || { success: true });
+      } catch (error) {
+        console.error("[Roles] Create error:", error);
+        res.status(500).json({ message: "Failed to create role" });
+      }
+    }
+  );
+
+  // Update a role (admin only)
+  app.patch("/api/company/roles/:roleId",
+    authenticateToken,
+    sessionTimeout,
+    async (req: AuthRequest, res) => {
+      try {
+        if (req.user?.role !== 'admin' && req.user?.role !== 'superadmin') {
+          return res.status(403).json({ message: "Admin access required" });
+        }
+        if (!req.user?.companyId) {
+          return res.status(400).json({ message: "Company ID required" });
+        }
+
+        const { name, permissions } = req.body;
+        console.log(`[Roles] Updating role ${req.params.roleId}`);
+        const response = await bigcommerce.updateCompanyRole(req.user.companyId, req.params.roleId, {
+          name,
+          permissions,
+        });
+
+        res.json(response?.data || { success: true });
+      } catch (error) {
+        console.error("[Roles] Update error:", error);
+        res.status(500).json({ message: "Failed to update role" });
+      }
+    }
+  );
+
+  // Delete a role (admin only)
+  app.delete("/api/company/roles/:roleId",
+    authenticateToken,
+    sessionTimeout,
+    async (req: AuthRequest, res) => {
+      try {
+        if (req.user?.role !== 'admin' && req.user?.role !== 'superadmin') {
+          return res.status(403).json({ message: "Admin access required" });
+        }
+        if (!req.user?.companyId) {
+          return res.status(400).json({ message: "Company ID required" });
+        }
+
+        console.log(`[Roles] Deleting role ${req.params.roleId}`);
+        await bigcommerce.deleteCompanyRole(req.user.companyId, req.params.roleId);
+
+        res.status(204).send();
+      } catch (error) {
+        console.error("[Roles] Delete error:", error);
+        res.status(500).json({ message: "Failed to delete role" });
+      }
+    }
+  );
+
+  // ============================================
+  // PAYMENT TERMS & METHODS ENDPOINTS
+  // Per BigCommerce B2B API: Configure payment options
+  // ============================================
+
+  // Get all payment methods
+  app.get("/api/payment-methods",
+    authenticateToken,
+    sessionTimeout,
+    async (req: AuthRequest, res) => {
+      try {
+        console.log('[Payment Methods] Fetching all payment methods');
+        const response = await bigcommerce.getPaymentMethods();
+
+        res.json(response?.data || []);
+      } catch (error) {
+        console.error("[Payment Methods] Error:", error);
+        res.status(500).json({ message: "Failed to fetch payment methods" });
+      }
+    }
+  );
+
+  // Get company payment methods
+  app.get("/api/company/payment-methods",
+    authenticateToken,
+    sessionTimeout,
+    async (req: AuthRequest, res) => {
+      try {
+        if (!req.user?.companyId) {
+          return res.status(400).json({ message: "Company ID required" });
+        }
+
+        console.log(`[Payment Methods] Fetching for company ${req.user.companyId}`);
+        const response = await bigcommerce.getCompanyPaymentMethods(req.user.companyId);
+
+        res.json(response?.data || []);
+      } catch (error) {
+        console.error("[Payment Methods] Error:", error);
+        res.status(500).json({ message: "Failed to fetch company payment methods" });
+      }
+    }
+  );
+
+  // Update company payment methods (admin only)
+  app.put("/api/company/payment-methods",
+    authenticateToken,
+    sessionTimeout,
+    async (req: AuthRequest, res) => {
+      try {
+        if (req.user?.role !== 'admin' && req.user?.role !== 'superadmin') {
+          return res.status(403).json({ message: "Admin access required" });
+        }
+        if (!req.user?.companyId) {
+          return res.status(400).json({ message: "Company ID required" });
+        }
+
+        const { paymentMethodIds } = req.body;
+        if (!Array.isArray(paymentMethodIds)) {
+          return res.status(400).json({ message: "Payment method IDs required" });
+        }
+
+        console.log(`[Payment Methods] Updating for company ${req.user.companyId}`);
+        const response = await bigcommerce.updateCompanyPaymentMethods(req.user.companyId, paymentMethodIds);
+
+        res.json(response?.data || { success: true });
+      } catch (error) {
+        console.error("[Payment Methods] Update error:", error);
+        res.status(500).json({ message: "Failed to update payment methods" });
+      }
+    }
+  );
+
+  // Get company payment terms
+  app.get("/api/company/payment-terms",
+    authenticateToken,
+    sessionTimeout,
+    async (req: AuthRequest, res) => {
+      try {
+        if (!req.user?.companyId) {
+          return res.status(400).json({ message: "Company ID required" });
+        }
+
+        console.log(`[Payment Terms] Fetching for company ${req.user.companyId}`);
+        const response = await bigcommerce.getCompanyPaymentTerms(req.user.companyId);
+
+        res.json(response?.data || { paymentTerms: null, creditLimit: null });
+      } catch (error) {
+        console.error("[Payment Terms] Error:", error);
+        res.status(500).json({ message: "Failed to fetch payment terms" });
+      }
+    }
+  );
+
+  // Update company payment terms (admin only)
+  app.put("/api/company/payment-terms",
+    authenticateToken,
+    sessionTimeout,
+    async (req: AuthRequest, res) => {
+      try {
+        if (req.user?.role !== 'admin' && req.user?.role !== 'superadmin') {
+          return res.status(403).json({ message: "Admin access required" });
+        }
+        if (!req.user?.companyId) {
+          return res.status(400).json({ message: "Company ID required" });
+        }
+
+        const { paymentTerms, creditLimit, creditHold } = req.body;
+        console.log(`[Payment Terms] Updating for company ${req.user.companyId}`);
+        const response = await bigcommerce.updateCompanyPaymentTerms(req.user.companyId, {
+          paymentTerms,
+          creditLimit,
+          creditHold,
+        });
+
+        res.json(response?.data || { success: true });
+      } catch (error) {
+        console.error("[Payment Terms] Update error:", error);
+        res.status(500).json({ message: "Failed to update payment terms" });
+      }
+    }
+  );
+
+  // ============================================
+  // ORDER MANAGEMENT ENDPOINTS
+  // Per BigCommerce B2B API: Order operations
+  // ============================================
+
+  // Reassign order to different company (admin only)
+  app.put("/api/orders/:id/reassign",
+    authenticateToken,
+    sessionTimeout,
+    async (req: AuthRequest, res) => {
+      try {
+        if (req.user?.role !== 'admin' && req.user?.role !== 'superadmin') {
+          return res.status(403).json({ message: "Admin access required" });
+        }
+
+        const { targetCompanyId } = req.body;
+        if (!targetCompanyId) {
+          return res.status(400).json({ message: "Target company ID required" });
+        }
+
+        console.log(`[Orders] Reassigning order ${req.params.id} to company ${targetCompanyId}`);
+        const response = await bigcommerce.reassignOrder(req.params.id, targetCompanyId);
+
+        res.json(response?.data || { success: true });
+      } catch (error) {
+        console.error("[Orders] Reassign error:", error);
+        res.status(500).json({ message: "Failed to reassign order" });
+      }
+    }
+  );
+
+  // Bulk assign orders (admin only)
+  app.post("/api/orders/bulk-assign",
+    authenticateToken,
+    sessionTimeout,
+    async (req: AuthRequest, res) => {
+      try {
+        if (req.user?.role !== 'admin' && req.user?.role !== 'superadmin') {
+          return res.status(403).json({ message: "Admin access required" });
+        }
+
+        const { orderIds, companyId } = req.body;
+        if (!Array.isArray(orderIds) || orderIds.length === 0) {
+          return res.status(400).json({ message: "Order IDs required" });
+        }
+        if (!companyId) {
+          return res.status(400).json({ message: "Company ID required" });
+        }
+
+        console.log(`[Orders] Bulk assigning ${orderIds.length} orders to company ${companyId}`);
+        const response = await bigcommerce.bulkAssignOrders(orderIds, companyId);
+
+        res.json(response?.data || { success: true, count: orderIds.length });
+      } catch (error) {
+        console.error("[Orders] Bulk assign error:", error);
+        res.status(500).json({ message: "Failed to bulk assign orders" });
+      }
+    }
+  );
+
+  // ============================================
+  // CSV EXPORT ENDPOINTS
+  // Export data in CSV format for reporting
+  // ============================================
+
+  // Export orders as CSV
+  app.get("/api/orders/export/csv",
+    authenticateToken,
+    sessionTimeout,
+    async (req: AuthRequest, res) => {
+      try {
+        const bcToken = await getBigCommerceToken(req);
+        const companyId = req.user?.companyId;
+
+        if (!companyId) {
+          return res.status(400).json({ message: "Company ID required" });
+        }
+
+        console.log(`[Export] Exporting orders for company ${companyId}`);
+
+        // Fetch orders
+        const customerIds = await bigcommerce.getCompanyCustomerIds(bcToken, companyId);
+        const response = await bigcommerce.getOrders(bcToken, { limit: 1000 }, companyId);
+        const allOrders = response?.data?.list || response?.data || [];
+
+        // Filter to company orders
+        const companyOrders = allOrders.filter((order: any) => {
+          const orderCustomerId = order.customer_id || order.customerId;
+          return customerIds.includes(orderCustomerId);
+        });
+
+        // Build CSV
+        const csvHeaders = ['Order ID', 'Date', 'Customer', 'Company', 'PO Number', 'Status', 'Total'];
+        const csvRows = companyOrders.map((order: any) => {
+          return [
+            order.orderId || order.id,
+            new Date(order.createdAt || order.date_created).toISOString().split('T')[0],
+            `${order.firstName || ''} ${order.lastName || ''}`.trim() || order.customerName || '',
+            order.companyName || '',
+            order.poNumber || '',
+            order.orderStatus || order.status || '',
+            order.totalIncTax || order.total_inc_tax || 0,
+          ].map(v => `"${String(v).replace(/"/g, '""')}"`).join(',');
+        });
+
+        const csv = [csvHeaders.join(','), ...csvRows].join('\n');
+
+        res.setHeader('Content-Type', 'text/csv');
+        res.setHeader('Content-Disposition', `attachment; filename=orders-${new Date().toISOString().split('T')[0]}.csv`);
+        res.send(csv);
+      } catch (error) {
+        console.error("[Export] Orders CSV error:", error);
+        res.status(500).json({ message: "Failed to export orders" });
+      }
+    }
+  );
+
+  // Export invoices as CSV
+  app.get("/api/invoices/export/csv",
+    authenticateToken,
+    sessionTimeout,
+    async (req: AuthRequest, res) => {
+      try {
+        const bcToken = await getBigCommerceToken(req);
+
+        if (!req.user?.companyId) {
+          return res.status(400).json({ message: "Company ID required" });
+        }
+
+        console.log(`[Export] Exporting invoices for company ${req.user.companyId}`);
+
+        // Get company Customer ID for filtering
+        let companyCustomerId: string | null = null;
+        try {
+          const companyResponse = await bigcommerce.getCompanyDetails(req.user.companyId);
+          const customerIdField = companyResponse?.data?.extraFields?.find((f: any) => f.fieldName === 'Customer ID');
+          companyCustomerId = customerIdField?.fieldValue || null;
+        } catch (error) {
+          console.log('[Export] Could not get company Customer ID');
+        }
+
+        // Fetch invoices
+        const response = await bigcommerce.getInvoices(undefined, { limit: 1000 });
+        const allInvoices = response?.data?.list || response?.data || [];
+
+        // Filter to company invoices
+        const companyInvoices = companyCustomerId
+          ? allInvoices.filter((inv: any) => {
+              const customerField = inv.extraFields?.find((f: any) => f.fieldName === 'Customer');
+              return customerField?.fieldValue === companyCustomerId;
+            })
+          : allInvoices;
+
+        // Build CSV
+        const csvHeaders = ['Invoice Number', 'Date', 'Due Date', 'Customer', 'Status', 'Total'];
+        const csvRows = companyInvoices.map((invoice: any) => {
+          return [
+            invoice.invoiceNumber || invoice.id,
+            new Date(invoice.createdAt || invoice.invoiceDate).toISOString().split('T')[0],
+            invoice.dueDate ? new Date(invoice.dueDate).toISOString().split('T')[0] : '',
+            invoice.customerName || '',
+            invoice.status || '',
+            invoice.total || 0,
+          ].map(v => `"${String(v).replace(/"/g, '""')}"`).join(',');
+        });
+
+        const csv = [csvHeaders.join(','), ...csvRows].join('\n');
+
+        res.setHeader('Content-Type', 'text/csv');
+        res.setHeader('Content-Disposition', `attachment; filename=invoices-${new Date().toISOString().split('T')[0]}.csv`);
+        res.send(csv);
+      } catch (error) {
+        console.error("[Export] Invoices CSV error:", error);
+        res.status(500).json({ message: "Failed to export invoices" });
+      }
+    }
+  );
+
+  // ============================================
+  // BULK OPERATIONS ENDPOINTS
+  // Per BigCommerce B2B API: Bulk create/update operations
+  // ============================================
+
+  // Bulk create companies (admin only)
+  app.post("/api/companies/bulk",
+    authenticateToken,
+    sessionTimeout,
+    async (req: AuthRequest, res) => {
+      try {
+        if (req.user?.role !== 'admin' && req.user?.role !== 'superadmin') {
+          return res.status(403).json({ message: "Admin access required" });
+        }
+
+        const { companies } = req.body;
+        if (!Array.isArray(companies) || companies.length === 0) {
+          return res.status(400).json({ message: "Companies array required" });
+        }
+
+        console.log(`[Bulk] Creating ${companies.length} companies`);
+        const response = await bigcommerce.bulkCreateCompanies(companies);
+
+        res.status(201).json(response?.data || { success: true, count: companies.length });
+      } catch (error) {
+        console.error("[Bulk] Create companies error:", error);
+        res.status(500).json({ message: "Failed to bulk create companies" });
+      }
+    }
+  );
+
+  // Bulk create users (admin only)
+  app.post("/api/company/users/bulk",
+    authenticateToken,
+    sessionTimeout,
+    async (req: AuthRequest, res) => {
+      try {
+        if (req.user?.role !== 'admin' && req.user?.role !== 'superadmin') {
+          return res.status(403).json({ message: "Admin access required" });
+        }
+        if (!req.user?.companyId) {
+          return res.status(400).json({ message: "Company ID required" });
+        }
+
+        const { users } = req.body;
+        if (!Array.isArray(users) || users.length === 0) {
+          return res.status(400).json({ message: "Users array required" });
+        }
+
+        console.log(`[Bulk] Creating ${users.length} users for company ${req.user.companyId}`);
+        const response = await bigcommerce.bulkCreateUsers(req.user.companyId, users);
+
+        res.status(201).json(response?.data || { success: true, count: users.length });
+      } catch (error) {
+        console.error("[Bulk] Create users error:", error);
+        res.status(500).json({ message: "Failed to bulk create users" });
+      }
+    }
+  );
+
+  // Bulk update company statuses (admin only)
+  app.put("/api/companies/bulk-status",
+    authenticateToken,
+    sessionTimeout,
+    async (req: AuthRequest, res) => {
+      try {
+        if (req.user?.role !== 'admin' && req.user?.role !== 'superadmin') {
+          return res.status(403).json({ message: "Admin access required" });
+        }
+
+        const { updates } = req.body;
+        if (!Array.isArray(updates) || updates.length === 0) {
+          return res.status(400).json({ message: "Updates array required" });
+        }
+
+        console.log(`[Bulk] Updating ${updates.length} company statuses`);
+        const response = await bigcommerce.bulkUpdateCompanyStatuses(updates);
+
+        res.json(response?.data || { success: true, count: updates.length });
+      } catch (error) {
+        console.error("[Bulk] Update statuses error:", error);
+        res.status(500).json({ message: "Failed to bulk update company statuses" });
+      }
+    }
+  );
+
+  // ============================================
+  // SUPER ADMIN ENDPOINTS
+  // Per BigCommerce B2B API: Super admin masquerade functions
+  // ============================================
+
+  // Begin masquerade as company (super admin only)
+  app.post("/api/masquerade/begin",
+    authenticateToken,
+    sessionTimeout,
+    async (req: AuthRequest, res) => {
+      try {
+        if (req.user?.role !== 'superadmin') {
+          return res.status(403).json({ message: "Super admin access required" });
+        }
+
+        const { companyId } = req.body;
+        if (!companyId) {
+          return res.status(400).json({ message: "Company ID required" });
+        }
+
+        const bcToken = await getBigCommerceToken(req);
+        console.log(`[Masquerade] Beginning masquerade for company ${companyId}`);
+        const response = await bigcommerce.beginMasquerade(bcToken, companyId);
+
+        res.json(response?.data || { success: true, companyId });
+      } catch (error) {
+        console.error("[Masquerade] Begin error:", error);
+        res.status(500).json({ message: "Failed to begin masquerade" });
+      }
+    }
+  );
+
+  // End masquerade session (super admin only)
+  app.post("/api/masquerade/end",
+    authenticateToken,
+    sessionTimeout,
+    async (req: AuthRequest, res) => {
+      try {
+        if (req.user?.role !== 'superadmin') {
+          return res.status(403).json({ message: "Super admin access required" });
+        }
+
+        const bcToken = await getBigCommerceToken(req);
+        console.log('[Masquerade] Ending masquerade session');
+        const response = await bigcommerce.endMasquerade(bcToken);
+
+        res.json(response?.data || { success: true });
+      } catch (error) {
+        console.error("[Masquerade] End error:", error);
+        res.status(500).json({ message: "Failed to end masquerade" });
+      }
+    }
+  );
+
   const httpServer = createServer(app);
   return httpServer;
 }

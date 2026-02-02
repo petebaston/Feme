@@ -1184,6 +1184,435 @@ export class BigCommerceService {
       return null;
     }
   }
+
+  // ============================================
+  // COMPANY HIERARCHY SUPPORT
+  // Per BigCommerce B2B API: Companies can have parent-subsidiary relationships
+  // Reference: https://developer.bigcommerce.com/b2b-edition/apis/rest-management/company
+  // ============================================
+
+  // Get company hierarchy (parent and all descendants)
+  async getCompanyHierarchy(companyId: string) {
+    try {
+      console.log(`[BigCommerce] Fetching hierarchy for company ${companyId}...`);
+      return await this.request(`/api/v3/io/companies/${companyId}/hierarchy`);
+    } catch (error: any) {
+      console.log('[BigCommerce] Company hierarchy fetch failed:', error.message);
+      return { data: null };
+    }
+  }
+
+  // Get company subsidiaries (direct children only)
+  async getCompanySubsidiaries(companyId: string) {
+    try {
+      console.log(`[BigCommerce] Fetching subsidiaries for company ${companyId}...`);
+      return await this.request(`/api/v3/io/companies/${companyId}/subsidiaries`);
+    } catch (error: any) {
+      console.log('[BigCommerce] Company subsidiaries fetch failed:', error.message);
+      return { data: [] };
+    }
+  }
+
+  // Attach company as subsidiary to parent
+  async attachCompanyAsSubsidiary(parentCompanyId: string, childCompanyId: string) {
+    try {
+      console.log(`[BigCommerce] Attaching company ${childCompanyId} to parent ${parentCompanyId}...`);
+      return await this.request(`/api/v3/io/companies/${childCompanyId}/parent`, {
+        method: 'PUT',
+        body: JSON.stringify({ parentCompanyId }),
+      });
+    } catch (error: any) {
+      console.log('[BigCommerce] Attach subsidiary failed:', error.message);
+      throw error;
+    }
+  }
+
+  // Remove company from parent (make it top-level)
+  async detachCompanyFromParent(companyId: string) {
+    try {
+      console.log(`[BigCommerce] Detaching company ${companyId} from parent...`);
+      return await this.request(`/api/v3/io/companies/${companyId}/parent`, {
+        method: 'DELETE',
+      });
+    } catch (error: any) {
+      console.log('[BigCommerce] Detach subsidiary failed:', error.message);
+      throw error;
+    }
+  }
+
+  // ============================================
+  // INVOICE PAYMENT SUPPORT
+  // Per BigCommerce B2B API: Record and manage invoice payments
+  // Reference: https://developer.bigcommerce.com/b2b-edition/apis/rest-management/invoice-management
+  // ============================================
+
+  // Get payments for an invoice
+  async getInvoicePayments(invoiceId: string) {
+    try {
+      console.log(`[BigCommerce] Fetching payments for invoice ${invoiceId}...`);
+      return await this.request(`/api/v3/io/invoices/${invoiceId}/payments`);
+    } catch (error: any) {
+      console.log('[BigCommerce] Invoice payments fetch failed:', error.message);
+      return { data: [] };
+    }
+  }
+
+  // Record a payment for an invoice
+  async recordInvoicePayment(invoiceId: string, payment: {
+    amount: number;
+    paymentMethod: string;
+    reference?: string;
+    paymentDate?: string;
+    notes?: string;
+  }) {
+    try {
+      console.log(`[BigCommerce] Recording payment of ${payment.amount} for invoice ${invoiceId}...`);
+      return await this.request(`/api/v3/io/invoices/${invoiceId}/payments`, {
+        method: 'POST',
+        body: JSON.stringify({
+          amount: payment.amount,
+          paymentMethod: payment.paymentMethod,
+          reference: payment.reference || '',
+          paymentDate: payment.paymentDate || new Date().toISOString(),
+          notes: payment.notes || '',
+        }),
+      });
+    } catch (error: any) {
+      console.log('[BigCommerce] Record payment failed:', error.message);
+      throw error;
+    }
+  }
+
+  // Get all payments (for admin view)
+  async getAllPayments(params?: { companyId?: string; status?: string; limit?: number; offset?: number }) {
+    try {
+      const queryParams = new URLSearchParams();
+      if (params?.companyId) queryParams.append('companyId', params.companyId);
+      if (params?.status) queryParams.append('status', params.status);
+      if (params?.limit) queryParams.append('limit', params.limit.toString());
+      if (params?.offset) queryParams.append('offset', params.offset.toString());
+
+      const query = queryParams.toString();
+      console.log('[BigCommerce] Fetching all payments...');
+      return await this.request(`/api/v3/io/payments${query ? `?${query}` : ''}`);
+    } catch (error: any) {
+      console.log('[BigCommerce] All payments fetch failed:', error.message);
+      return { data: [] };
+    }
+  }
+
+  // ============================================
+  // COMPANY ROLES & PERMISSIONS
+  // Per BigCommerce B2B API: Manage role-based access control
+  // Reference: https://developer.bigcommerce.com/b2b-edition/apis/rest-management/company
+  // ============================================
+
+  // Get all company roles
+  async getCompanyRoles(companyId: string) {
+    try {
+      console.log(`[BigCommerce] Fetching roles for company ${companyId}...`);
+      return await this.request(`/api/v3/io/companies/${companyId}/roles`);
+    } catch (error: any) {
+      console.log('[BigCommerce] Company roles fetch failed:', error.message);
+      return { data: [] };
+    }
+  }
+
+  // Get role details
+  async getCompanyRole(companyId: string, roleId: string) {
+    try {
+      console.log(`[BigCommerce] Fetching role ${roleId} for company ${companyId}...`);
+      return await this.request(`/api/v3/io/companies/${companyId}/roles/${roleId}`);
+    } catch (error: any) {
+      console.log('[BigCommerce] Company role fetch failed:', error.message);
+      return null;
+    }
+  }
+
+  // Get all permissions available
+  async getCompanyPermissions(companyId: string) {
+    try {
+      console.log(`[BigCommerce] Fetching permissions for company ${companyId}...`);
+      return await this.request(`/api/v3/io/companies/${companyId}/permissions`);
+    } catch (error: any) {
+      console.log('[BigCommerce] Company permissions fetch failed:', error.message);
+      return { data: [] };
+    }
+  }
+
+  // Create a new role
+  async createCompanyRole(companyId: string, role: { name: string; permissions: string[] }) {
+    try {
+      console.log(`[BigCommerce] Creating role ${role.name} for company ${companyId}...`);
+      return await this.request(`/api/v3/io/companies/${companyId}/roles`, {
+        method: 'POST',
+        body: JSON.stringify(role),
+      });
+    } catch (error: any) {
+      console.log('[BigCommerce] Create role failed:', error.message);
+      throw error;
+    }
+  }
+
+  // Update a role
+  async updateCompanyRole(companyId: string, roleId: string, updates: { name?: string; permissions?: string[] }) {
+    try {
+      console.log(`[BigCommerce] Updating role ${roleId} for company ${companyId}...`);
+      return await this.request(`/api/v3/io/companies/${companyId}/roles/${roleId}`, {
+        method: 'PUT',
+        body: JSON.stringify(updates),
+      });
+    } catch (error: any) {
+      console.log('[BigCommerce] Update role failed:', error.message);
+      throw error;
+    }
+  }
+
+  // Delete a role
+  async deleteCompanyRole(companyId: string, roleId: string) {
+    try {
+      console.log(`[BigCommerce] Deleting role ${roleId} for company ${companyId}...`);
+      return await this.request(`/api/v3/io/companies/${companyId}/roles/${roleId}`, {
+        method: 'DELETE',
+      });
+    } catch (error: any) {
+      console.log('[BigCommerce] Delete role failed:', error.message);
+      throw error;
+    }
+  }
+
+  // ============================================
+  // PAYMENT TERMS & METHODS
+  // Per BigCommerce B2B API: Configure payment options for companies
+  // Reference: https://developer.bigcommerce.com/b2b-edition/apis/rest-management/payment
+  // ============================================
+
+  // Get all available payment methods
+  async getPaymentMethods() {
+    try {
+      console.log('[BigCommerce] Fetching payment methods...');
+      return await this.request('/api/v3/io/payment-methods');
+    } catch (error: any) {
+      console.log('[BigCommerce] Payment methods fetch failed:', error.message);
+      return { data: [] };
+    }
+  }
+
+  // Get company-specific payment methods
+  async getCompanyPaymentMethods(companyId: string) {
+    try {
+      console.log(`[BigCommerce] Fetching payment methods for company ${companyId}...`);
+      return await this.request(`/api/v3/io/companies/${companyId}/payment-methods`);
+    } catch (error: any) {
+      console.log('[BigCommerce] Company payment methods fetch failed:', error.message);
+      return { data: [] };
+    }
+  }
+
+  // Update company payment methods
+  async updateCompanyPaymentMethods(companyId: string, paymentMethodIds: string[]) {
+    try {
+      console.log(`[BigCommerce] Updating payment methods for company ${companyId}...`);
+      return await this.request(`/api/v3/io/companies/${companyId}/payment-methods`, {
+        method: 'PUT',
+        body: JSON.stringify({ paymentMethodIds }),
+      });
+    } catch (error: any) {
+      console.log('[BigCommerce] Update company payment methods failed:', error.message);
+      throw error;
+    }
+  }
+
+  // Get company payment terms
+  async getCompanyPaymentTerms(companyId: string) {
+    try {
+      console.log(`[BigCommerce] Fetching payment terms for company ${companyId}...`);
+      return await this.request(`/api/v3/io/companies/${companyId}/payment-terms`);
+    } catch (error: any) {
+      console.log('[BigCommerce] Company payment terms fetch failed:', error.message);
+      return { data: null };
+    }
+  }
+
+  // Update company payment terms
+  async updateCompanyPaymentTerms(companyId: string, terms: {
+    paymentTerms?: string;
+    creditLimit?: number;
+    creditHold?: boolean;
+  }) {
+    try {
+      console.log(`[BigCommerce] Updating payment terms for company ${companyId}...`);
+      return await this.request(`/api/v3/io/companies/${companyId}/payment-terms`, {
+        method: 'PUT',
+        body: JSON.stringify(terms),
+      });
+    } catch (error: any) {
+      console.log('[BigCommerce] Update payment terms failed:', error.message);
+      throw error;
+    }
+  }
+
+  // ============================================
+  // ORDER MANAGEMENT
+  // Per BigCommerce B2B API: Order operations including reassignment
+  // Reference: https://developer.bigcommerce.com/b2b-edition/apis/rest-management/order
+  // ============================================
+
+  // Reassign order to different company
+  async reassignOrder(orderId: string, targetCompanyId: string) {
+    try {
+      console.log(`[BigCommerce] Reassigning order ${orderId} to company ${targetCompanyId}...`);
+      return await this.request(`/api/v3/io/orders/${orderId}/reassign`, {
+        method: 'PUT',
+        body: JSON.stringify({ companyId: targetCompanyId }),
+      });
+    } catch (error: any) {
+      console.log('[BigCommerce] Order reassignment failed:', error.message);
+      throw error;
+    }
+  }
+
+  // Bulk assign orders to company
+  async bulkAssignOrders(orderIds: string[], companyId: string) {
+    try {
+      console.log(`[BigCommerce] Bulk assigning ${orderIds.length} orders to company ${companyId}...`);
+      return await this.request('/api/v3/io/orders/bulk-assign', {
+        method: 'POST',
+        body: JSON.stringify({
+          companyId,
+          orderIds: orderIds.map(id => parseInt(id)),
+        }),
+      });
+    } catch (error: any) {
+      console.log('[BigCommerce] Bulk order assignment failed:', error.message);
+      throw error;
+    }
+  }
+
+  // ============================================
+  // SUPER ADMIN SUPPORT
+  // Per BigCommerce B2B API: Super admin can access multiple companies
+  // Reference: https://developer.bigcommerce.com/b2b-edition/apis/rest-management/super-admin
+  // ============================================
+
+  // Get super admin's assigned companies
+  async getSuperAdminCompanies(superAdminId: string) {
+    try {
+      console.log(`[BigCommerce] Fetching companies for super admin ${superAdminId}...`);
+      return await this.request(`/api/v3/io/super-admin/${superAdminId}/companies`);
+    } catch (error: any) {
+      console.log('[BigCommerce] Super admin companies fetch failed:', error.message);
+      return { data: [] };
+    }
+  }
+
+  // Begin masquerade as company (for super admins)
+  async beginMasquerade(userToken: string, companyId: string) {
+    try {
+      console.log(`[BigCommerce] Beginning masquerade for company ${companyId}...`);
+      return await this.request('/api/v2/super-admin/masquerade', {
+        method: 'POST',
+        body: JSON.stringify({ companyId }),
+        userToken,
+      });
+    } catch (error: any) {
+      console.log('[BigCommerce] Begin masquerade failed:', error.message);
+      throw error;
+    }
+  }
+
+  // End masquerade session
+  async endMasquerade(userToken: string) {
+    try {
+      console.log('[BigCommerce] Ending masquerade session...');
+      return await this.request('/api/v2/super-admin/masquerade', {
+        method: 'DELETE',
+        userToken,
+      });
+    } catch (error: any) {
+      console.log('[BigCommerce] End masquerade failed:', error.message);
+      throw error;
+    }
+  }
+
+  // ============================================
+  // RATE LIMITING SUPPORT
+  // Per BigCommerce API: Handle rate limiting with proper retry logic
+  // ============================================
+
+  private async requestWithRetry(endpoint: string, options: any = {}, maxRetries: number = 3): Promise<any> {
+    let lastError: Error | null = null;
+
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        const result = await this.request(endpoint, options);
+        return result;
+      } catch (error: any) {
+        lastError = error;
+
+        // Check for rate limiting (429 status)
+        if (error.message?.includes('429')) {
+          const backoffMs = Math.pow(2, attempt) * 1000; // Exponential backoff: 1s, 2s, 4s, 8s
+          console.log(`[BigCommerce] Rate limited, waiting ${backoffMs}ms before retry ${attempt + 1}/${maxRetries}...`);
+          await new Promise(resolve => setTimeout(resolve, backoffMs));
+          continue;
+        }
+
+        // Don't retry other errors
+        throw error;
+      }
+    }
+
+    throw lastError || new Error('Request failed after retries');
+  }
+
+  // ============================================
+  // BULK OPERATIONS
+  // Per BigCommerce B2B API: Bulk create/update operations
+  // Reference: https://developer.bigcommerce.com/b2b-edition/apis/rest-management
+  // ============================================
+
+  // Bulk create companies
+  async bulkCreateCompanies(companies: any[]) {
+    try {
+      console.log(`[BigCommerce] Bulk creating ${companies.length} companies...`);
+      return await this.request('/api/v3/io/companies/bulk', {
+        method: 'POST',
+        body: JSON.stringify({ companies }),
+      });
+    } catch (error: any) {
+      console.log('[BigCommerce] Bulk create companies failed:', error.message);
+      throw error;
+    }
+  }
+
+  // Bulk create users
+  async bulkCreateUsers(companyId: string, users: any[]) {
+    try {
+      console.log(`[BigCommerce] Bulk creating ${users.length} users for company ${companyId}...`);
+      return await this.request(`/api/v3/io/companies/${companyId}/users/bulk`, {
+        method: 'POST',
+        body: JSON.stringify({ users }),
+      });
+    } catch (error: any) {
+      console.log('[BigCommerce] Bulk create users failed:', error.message);
+      throw error;
+    }
+  }
+
+  // Bulk update company statuses
+  async bulkUpdateCompanyStatuses(updates: { companyId: string; status: string }[]) {
+    try {
+      console.log(`[BigCommerce] Bulk updating ${updates.length} company statuses...`);
+      return await this.request('/api/v3/io/companies/bulk-status', {
+        method: 'PUT',
+        body: JSON.stringify({ updates }),
+      });
+    } catch (error: any) {
+      console.log('[BigCommerce] Bulk update company statuses failed:', error.message);
+      throw error;
+    }
+  }
 }
 
 export const bigcommerce = new BigCommerceService();

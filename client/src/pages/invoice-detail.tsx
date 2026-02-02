@@ -1,11 +1,12 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useParams, useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowLeft, Download } from "lucide-react";
+import { ArrowLeft, Download, CreditCard, History } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { CustomFieldsDisplay } from "@/components/b2b/custom-fields-display";
+import { RecordPaymentDialog } from "@/components/b2b/record-payment-dialog";
 
 // Helper to extract cost values from BigCommerce costLines structure
 const getCostValue = (costLines: any[], description: string): number => {
@@ -25,10 +26,19 @@ export default function InvoiceDetail() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
 
+  const queryClient = useQueryClient();
+
   const { data: invoice, isLoading, error } = useQuery<any>({
     queryKey: [`/api/invoices/${id}`],
     enabled: !!id,
     retry: 2,
+  });
+
+  // Fetch payment history for this invoice
+  const { data: payments } = useQuery<any[]>({
+    queryKey: [`/api/invoices/${id}/payments`],
+    enabled: !!id,
+    staleTime: 60000,
   });
 
   // Convert numeric status to string label
@@ -183,14 +193,29 @@ export default function InvoiceDetail() {
           </h1>
           <p className="text-sm md:text-base text-gray-600 mt-1">Invoice Details</p>
         </div>
-        <Button
-          onClick={handleDownloadPDF}
-          className="bg-black text-white hover:bg-gray-800"
-          data-testid="button-download-pdf"
-        >
-          <Download className="w-4 h-4 mr-2" />
-          Download PDF
-        </Button>
+        <div className="flex gap-2">
+          {/* Only show record payment for unpaid/overdue invoices */}
+          {(invoice.status === 0 || invoice.status === 2 ||
+            invoice.status === 'unpaid' || invoice.status === 'overdue') && (
+            <RecordPaymentDialog
+              invoiceId={id!}
+              invoiceNumber={invoice.invoiceNumber}
+              outstandingAmount={calculateTotal(invoice.details?.header?.costLines || [])}
+              currencySymbol={invoice.details?.header?.costLines?.[0]?.amount?.code === 'USD' ? '$' : '£'}
+              onPaymentRecorded={() => {
+                queryClient.invalidateQueries({ queryKey: [`/api/invoices/${id}`] });
+              }}
+            />
+          )}
+          <Button
+            onClick={handleDownloadPDF}
+            className="bg-black text-white hover:bg-gray-800"
+            data-testid="button-download-pdf"
+          >
+            <Download className="w-4 h-4 mr-2" />
+            Download PDF
+          </Button>
+        </div>
       </div>
 
       {/* Invoice Information */}
@@ -358,6 +383,55 @@ export default function InvoiceDetail() {
           description="Integration data from your ERP system"
           variant="card"
         />
+      )}
+
+      {/* Payment History */}
+      {payments && payments.length > 0 && (
+        <Card className="border border-gray-200">
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <History className="h-5 w-5" />
+              Payment History
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-gray-200">
+                    <th className="text-left py-3 px-2 text-sm font-medium text-gray-500">Date</th>
+                    <th className="text-left py-3 px-2 text-sm font-medium text-gray-500">Method</th>
+                    <th className="text-left py-3 px-2 text-sm font-medium text-gray-500">Reference</th>
+                    <th className="text-right py-3 px-2 text-sm font-medium text-gray-500">Amount</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {payments.map((payment: any, index: number) => {
+                    const currencyCode = invoice.details?.header?.costLines?.[0]?.amount?.code || 'GBP';
+                    const symbol = currencyCode === 'USD' ? '$' : '£';
+
+                    return (
+                      <tr key={index} className="border-b border-gray-100">
+                        <td className="py-3 px-2 text-sm">
+                          {new Date(payment.paymentDate || payment.createdAt).toLocaleDateString()}
+                        </td>
+                        <td className="py-3 px-2 text-sm capitalize">
+                          {payment.paymentMethod?.replace('_', ' ') || 'N/A'}
+                        </td>
+                        <td className="py-3 px-2 text-sm text-gray-600">
+                          {payment.reference || '-'}
+                        </td>
+                        <td className="py-3 px-2 text-sm text-right font-medium text-green-600">
+                          {symbol}{parseFloat(payment.amount || 0).toFixed(2)}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
       )}
     </div>
   );

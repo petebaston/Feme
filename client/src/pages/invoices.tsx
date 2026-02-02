@@ -14,6 +14,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { ExportButton } from "@/components/b2b/export-button";
 
 export default function Invoices() {
   const [, setLocation] = useLocation();
@@ -314,6 +315,11 @@ export default function Invoices() {
         <h1 className="text-2xl font-normal text-black">
           Invoices
         </h1>
+        <ExportButton
+          endpoint="/api/invoices/export/csv"
+          label="Export Invoices"
+          variant="outline"
+        />
       </div>
 
       {/* Error Messages */}
