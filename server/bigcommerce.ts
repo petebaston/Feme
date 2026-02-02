@@ -1111,6 +1111,29 @@ export class BigCommerceService {
     }
   }
 
+  // Get all B2B orders with extra fields for a company
+  // Uses /api/v3/io/orders endpoint with showExtra=true and companyId filter
+  async getB2BOrdersWithExtraFields(companyId: string) {
+    try {
+      console.log(`[BigCommerce] Fetching B2B orders with extra fields for company ${companyId}...`);
+
+      // Use the B2B REST API with showExtra=true to get all extra fields
+      const response = await this.request(`/api/v3/io/orders?companyId=${companyId}&showExtra=true&limit=250`);
+
+      if (response?.code === 200 && response?.data) {
+        const orders = response.data;
+        console.log(`[BigCommerce] Retrieved ${orders.length} B2B orders with extra fields for company ${companyId}`);
+        return { code: 200, data: orders };
+      }
+
+      console.log(`[BigCommerce] No B2B orders found for company ${companyId}`);
+      return { code: 200, data: [] };
+    } catch (error: any) {
+      console.log('[BigCommerce] B2B orders with extra fields fetch failed:', error.message);
+      return { code: 500, data: [] };
+    }
+  }
+
   // Get company with extra fields
   async getCompanyWithExtraFields(userToken: string) {
     try {

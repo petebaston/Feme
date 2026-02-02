@@ -605,7 +605,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return customerIds.includes(orderCustomerId);
         });
 
-        res.json(companyOrders);
+        // Fetch B2B orders with extra fields and merge them
+        const b2bOrdersResponse = await bigcommerce.getB2BOrdersWithExtraFields(companyId);
+        const b2bOrders = b2bOrdersResponse?.data || [];
+        
+        // Create a map of B2B orders by bcOrderId for quick lookup
+        const b2bOrderMap = new Map<string, any>();
+        for (const b2bOrder of b2bOrders) {
+          const bcOrderId = b2bOrder.bcOrderId?.toString();
+          if (bcOrderId) {
+            b2bOrderMap.set(bcOrderId, b2bOrder);
+          }
+        }
+
+        // Enrich orders with extra fields from B2B API
+        const enrichedOrders = companyOrders.map((order: any) => {
+          const orderId = order.id?.toString() || order.bcOrderId?.toString();
+          const b2bOrder = b2bOrderMap.get(orderId);
+          
+          if (b2bOrder) {
+            return {
+              ...order,
+              poNumber: b2bOrder.poNumber || order.poNumber || '',
+              extraFields: b2bOrder.extraFields || [],
+              extraInt1: b2bOrder.extraInt1,
+              extraInt2: b2bOrder.extraInt2,
+              extraInt3: b2bOrder.extraInt3,
+              extraInt4: b2bOrder.extraInt4,
+              extraInt5: b2bOrder.extraInt5,
+              extraStr1: b2bOrder.extraStr1,
+              extraStr2: b2bOrder.extraStr2,
+              extraStr3: b2bOrder.extraStr3,
+              extraStr4: b2bOrder.extraStr4,
+              extraStr5: b2bOrder.extraStr5,
+              extraText: b2bOrder.extraText,
+            };
+          }
+          return order;
+        });
+
+        console.log(`[Orders] Returning ${enrichedOrders.length} orders (${b2bOrderMap.size} enriched with B2B extra fields)`);
+        res.json(enrichedOrders);
       } catch (error) {
         console.error("Orders fetch error:", error);
         res.status(500).json({ message: "Failed to fetch orders" });
