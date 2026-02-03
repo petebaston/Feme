@@ -952,13 +952,19 @@ export class BigCommerceService {
         }
 
         const invoices = response?.data?.list || response?.data || [];
-        const totalCount = response?.meta?.pagination?.totalCount || 
-                          response?.data?.paginator?.totalCount || 
-                          invoices.length;
+        
+        // Log full pagination metadata for debugging
+        const paginationMeta = response?.meta?.pagination || response?.data?.paginator;
+        console.log(`[BigCommerce] Invoice API pagination metadata:`, JSON.stringify(paginationMeta));
+        
+        const totalCount = paginationMeta?.totalCount || invoices.length;
+        const apiLimit = paginationMeta?.limit;
+        const apiOffset = paginationMeta?.offset;
 
         allInvoices = allInvoices.concat(invoices);
         
-        console.log(`[BigCommerce] Fetched ${invoices.length} invoices (offset ${offset}, total so far: ${allInvoices.length}/${totalCount})`);
+        console.log(`[BigCommerce] Fetched ${invoices.length} invoices (offset ${offset}, API reports: limit=${apiLimit}, offset=${apiOffset}, totalCount=${totalCount})`);
+        console.log(`[BigCommerce] Running total: ${allInvoices.length}/${totalCount}`);
 
         // Check if we need to fetch more pages
         if (invoices.length < PAGE_SIZE || allInvoices.length >= totalCount) {
