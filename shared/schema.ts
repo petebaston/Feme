@@ -153,6 +153,17 @@ export const bigcommerceOrdersCache = pgTable("bigcommerce_orders_cache", {
   createdAt: timestamp("created_at").default(sql`now()`),
 });
 
+// BigCommerce Invoices Cache - stores invoice data for performance
+export const bigcommerceInvoicesCache = pgTable("bigcommerce_invoices_cache", {
+  invoiceId: text("invoice_id").primaryKey(), // BigCommerce invoice ID
+  companyCustomerId: varchar("company_customer_id").notNull(), // Customer ID from extraFields (e.g., "FEM01")
+  invoiceData: text("invoice_data").notNull(), // JSON string of full invoice with extraFields
+  invoiceNumber: varchar("invoice_number"), // For quick lookups
+  orderNumber: varchar("order_number"), // For order matching fallback
+  lastFetched: timestamp("last_fetched").default(sql`now()`),
+  createdAt: timestamp("created_at").default(sql`now()`),
+});
+
 export const rolePermissions = pgTable("role_permissions", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   roleName: text("role_name").notNull(), // admin, manager, buyer, etc.

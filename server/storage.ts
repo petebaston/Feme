@@ -3,6 +3,7 @@ import { eq, and, desc, asc, sql, or, like } from "drizzle-orm";
 import { 
   users, companies, orders, quotes, invoices, addresses, shoppingLists, shoppingListItems,
   bigcommerceOrdersCache,
+  bigcommerceInvoicesCache,
   bigcommerceTokens,
   type User, type InsertUser, 
   type Company, 
@@ -68,6 +69,13 @@ export interface IStorage {
   // BigCommerce Cache
   getCachedOrder(orderId: string, companyId: string): Promise<any | null>;
   setCachedOrders(orders: any[], companyId: string): Promise<void>;
+
+  // BigCommerce Invoice Cache
+  getCachedInvoices(companyCustomerId: string): Promise<any[]>;
+  setCachedInvoices(invoices: any[], companyCustomerId: string): Promise<void>;
+  getLatestCachedInvoiceId(companyCustomerId: string): Promise<string | null>;
+  isCacheStale(companyCustomerId: string, maxAgeMinutes: number): Promise<boolean>;
+  clearCachedInvoices(companyCustomerId: string): Promise<void>;
 
   // BigCommerce Token Storage (for two-token authentication system)
   storeUserToken(userId: string, bcToken: string, companyId?: string): Promise<void>;
@@ -747,6 +755,84 @@ export class DatabaseStorage implements IStorage {
           }
         });
     }
+  }
+
+  // BigCommerce Invoice Cache Methods
+  async getCachedInvoices(companyCustomerId: string): Promise<any[]> {
+    const results = await db.select()
+      .from(bigcommerceInvoicesCache)
+      .where(eq(bigcommerceInvoicesCache.companyCustomerId, companyCustomerId))
+      .orderBy(desc(bigcommerceInvoicesCache.invoiceId));
+    
+    return results.map(row => {
+      try {
+        return JSON.parse(row.invoiceData);
+      } catch (e) {
+        console.error('[Cache] Failed to parse cached invoice:', e);
+        return null;
+      }
+    }).filter(Boolean);
+  }
+
+  async setCachedInvoices(invoices: any[], companyCustomerId: string): Promise<void> {
+    for (const invoice of invoices) {
+      const invoiceId = String(invoice.id);
+      const invoiceData = JSON.stringify(invoice);
+      const invoiceNumber = invoice.invoiceNumber ? String(invoice.invoiceNumber) : null;
+      const orderNumber = invoice.orderNumber ? String(invoice.orderNumber) : null;
+
+      // Upsert: insert or update if exists
+      await db.insert(bigcommerceInvoicesCache)
+        .values({
+          invoiceId,
+          companyCustomerId,
+          invoiceData,
+          invoiceNumber,
+          orderNumber,
+          lastFetched: new Date(),
+        })
+        .onConflictDoUpdate({
+          target: bigcommerceInvoicesCache.invoiceId,
+          set: {
+            invoiceData,
+            lastFetched: new Date(),
+          }
+        });
+    }
+  }
+
+  async getLatestCachedInvoiceId(companyCustomerId: string): Promise<string | null> {
+    const results = await db.select({ invoiceId: bigcommerceInvoicesCache.invoiceId })
+      .from(bigcommerceInvoicesCache)
+      .where(eq(bigcommerceInvoicesCache.companyCustomerId, companyCustomerId))
+      .orderBy(desc(bigcommerceInvoicesCache.invoiceId))
+      .limit(1);
+    
+    return results.length > 0 ? results[0].invoiceId : null;
+  }
+
+  async isCacheStale(companyCustomerId: string, maxAgeMinutes: number): Promise<boolean> {
+    const results = await db.select({ lastFetched: bigcommerceInvoicesCache.lastFetched })
+      .from(bigcommerceInvoicesCache)
+      .where(eq(bigcommerceInvoicesCache.companyCustomerId, companyCustomerId))
+      .orderBy(desc(bigcommerceInvoicesCache.lastFetched))
+      .limit(1);
+    
+    if (results.length === 0) {
+      return true; // No cache = stale
+    }
+    
+    const lastFetched = results[0].lastFetched;
+    if (!lastFetched) return true;
+    
+    const ageMs = Date.now() - new Date(lastFetched).getTime();
+    const maxAgeMs = maxAgeMinutes * 60 * 1000;
+    return ageMs > maxAgeMs;
+  }
+
+  async clearCachedInvoices(companyCustomerId: string): Promise<void> {
+    await db.delete(bigcommerceInvoicesCache)
+      .where(eq(bigcommerceInvoicesCache.companyCustomerId, companyCustomerId));
   }
 
   // BigCommerce Token Storage Methods - persisted to database

@@ -1018,14 +1018,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const companyOrderIds = companyOrders.map((order: any) => order.id || order.bcOrderId);
         console.log(`[Invoices] Found ${companyOrderIds.length} company orders: ${JSON.stringify(companyOrderIds)}`);
 
-        // Fetch ALL invoices with pagination (loops through all pages)
-        const allInvoices = await bigcommerce.getAllInvoicesPaginated({
-          search: search as string,
-          status: status as string,
-          sortBy: sortBy as string,
-        });
-        console.log(`[Invoices] Retrieved ${allInvoices.length} total invoices from BigCommerce (paginated)`);
-
         // Get company's Customer ID from extraFields (e.g., "FEM01")
         let companyCustomerId: string | null = null;
         try {
@@ -1038,56 +1030,105 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.error(`[Invoices] Failed to get company Customer ID:`, error);
         }
 
-        // Enrich ALL invoices with full details FIRST (to get extraFields for filtering)
-        const enrichedAllInvoices = await Promise.all(
-          allInvoices.map(async (invoice: any) => {
-            try {
-              const detailResponse = await bigcommerce.getInvoice(undefined, invoice.id);
-              const fullInvoice = detailResponse?.data;
-              return {
-                ...invoice,
-                extraFields: fullInvoice?.extraFields || [],
-                details: fullInvoice?.details || invoice.details
-              };
-            } catch (error) {
-              console.error(`[Invoices] Failed to enrich invoice ${invoice.id}:`, error);
-              return { ...invoice, extraFields: [] };
-            }
-          })
-        );
-
-        // CRITICAL: Filter invoices by matching Customer ID in extraFields (Architect-approved method)
-        let customerIdMatches = 0;
-        let orderNumberMatches = 0;
-        let missingBothFields = 0;
+        // CACHE-FIRST STRATEGY with TTL: Use cache if fresh, only fetch from API if stale
+        const CACHE_TTL_MINUTES = 5; // Cache valid for 5 minutes
+        let companyInvoices: any[] = [];
         
-        const companyInvoices = enrichedAllInvoices.filter((invoice: any) => {
-          // Check if invoice has Customer field in extraFields
-          const invoiceCustomer = invoice.extraFields?.find((f: any) => f.fieldName === 'Customer');
-          const invoiceCustomerId = invoiceCustomer?.fieldValue || null;
+        if (companyCustomerId) {
+          const cacheStale = await storage.isCacheStale(companyCustomerId, CACHE_TTL_MINUTES);
           
-          // Primary: If company has Customer ID AND invoice has Customer field, match by Customer ID
-          if (companyCustomerId && invoiceCustomerId) {
-            const matches = invoiceCustomerId === companyCustomerId;
-            if (matches) customerIdMatches++;
-            return matches;
-          }
-          
-          // Fallback: If invoice missing Customer field OR company missing Customer ID, filter by order numbers
-          const orderNumber = invoice.orderNumber ? String(invoice.orderNumber) : null;
-          const matchesOrder = orderNumber && companyOrderIds.some((orderId: any) => String(orderId) === orderNumber);
-          
-          if (matchesOrder) {
-            orderNumberMatches++;
-          } else if (!invoiceCustomerId && !orderNumber) {
-            missingBothFields++;
-          }
-          
-          return matchesOrder;
-        });
+          if (!cacheStale) {
+            // Cache is fresh - return cached invoices immediately (FAST PATH)
+            companyInvoices = await storage.getCachedInvoices(companyCustomerId);
+            console.log(`[Invoices Cache] Using ${companyInvoices.length} fresh cached invoices for ${companyCustomerId} (TTL: ${CACHE_TTL_MINUTES}min)`);
+          } else {
+            // Cache is stale or empty - fetch from API and rebuild cache
+            console.log(`[Invoices Cache] Cache stale for ${companyCustomerId}, fetching from API...`);
+            
+            // Fetch ALL invoices from API with pagination
+            const allInvoicesFromApi = await bigcommerce.getAllInvoicesPaginated({
+              search: search as string,
+              status: status as string,
+              sortBy: sortBy as string,
+            });
+            console.log(`[Invoices] Retrieved ${allInvoicesFromApi.length} total invoices from BigCommerce API`);
 
-        console.log(`[Invoices] Filtered ${allInvoices.length} total → ${companyInvoices.length} for company ${req.user?.companyId}`);
-        console.log(`[Invoices] Filtering stats: ${customerIdMatches} by Customer ID (${companyCustomerId}), ${orderNumberMatches} by order number, ${missingBothFields} missing both fields (excluded)`);
+            // Enrich ALL invoices with extraFields (needed for filtering)
+            const enrichedAllInvoices = await Promise.all(
+              allInvoicesFromApi.map(async (invoice: any) => {
+                try {
+                  const detailResponse = await bigcommerce.getInvoice(undefined, invoice.id);
+                  const fullInvoice = detailResponse?.data;
+                  return {
+                    ...invoice,
+                    extraFields: fullInvoice?.extraFields || [],
+                    details: fullInvoice?.details || invoice.details
+                  };
+                } catch (error) {
+                  console.error(`[Invoices] Failed to enrich invoice ${invoice.id}:`, error);
+                  return { ...invoice, extraFields: [] };
+                }
+              })
+            );
+
+            // Filter invoices for this company using Customer ID and order number matching
+            companyInvoices = enrichedAllInvoices.filter((invoice: any) => {
+              const invoiceCustomer = invoice.extraFields?.find((f: any) => f.fieldName === 'Customer');
+              const invoiceCustomerId = invoiceCustomer?.fieldValue || null;
+              
+              // Primary: Match by Customer ID
+              if (companyCustomerId && invoiceCustomerId === companyCustomerId) {
+                return true;
+              }
+              
+              // Fallback: Match by order number
+              const orderNumber = invoice.orderNumber ? String(invoice.orderNumber) : null;
+              return orderNumber && companyOrderIds.some((orderId: any) => String(orderId) === orderNumber);
+            });
+
+            // Clear old cache and store fresh filtered invoices
+            await storage.clearCachedInvoices(companyCustomerId);
+            if (companyInvoices.length > 0) {
+              await storage.setCachedInvoices(companyInvoices, companyCustomerId);
+            }
+            console.log(`[Invoices Cache] Refreshed cache with ${companyInvoices.length} invoices for ${companyCustomerId}`);
+          }
+        } else {
+          // No Customer ID - fall back to full fetch without caching
+          console.log(`[Invoices] No Customer ID found, fetching from API without caching...`);
+          const allInvoicesFromApi = await bigcommerce.getAllInvoicesPaginated({
+            search: search as string,
+            status: status as string,
+            sortBy: sortBy as string,
+          });
+          
+          // Enrich and filter by order numbers only
+          const enrichedAllInvoices = await Promise.all(
+            allInvoicesFromApi.map(async (invoice: any) => {
+              try {
+                const detailResponse = await bigcommerce.getInvoice(undefined, invoice.id);
+                const fullInvoice = detailResponse?.data;
+                return {
+                  ...invoice,
+                  extraFields: fullInvoice?.extraFields || [],
+                  details: fullInvoice?.details || invoice.details
+                };
+              } catch (error) {
+                return { ...invoice, extraFields: [] };
+              }
+            })
+          );
+          
+          companyInvoices = enrichedAllInvoices.filter((invoice: any) => {
+            const orderNumber = invoice.orderNumber ? String(invoice.orderNumber) : null;
+            return orderNumber && companyOrderIds.some((orderId: any) => String(orderId) === orderNumber);
+          });
+        }
+
+        // Sort by invoice ID descending (newest first)
+        companyInvoices.sort((a: any, b: any) => Number(b.id) - Number(a.id));
+
+        console.log(`[Invoices] Returning ${companyInvoices.length} invoices`);
 
         res.json(companyInvoices);
       } catch (error) {
