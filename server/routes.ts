@@ -44,45 +44,70 @@ async function getBigCommerceToken(req: AuthRequest): Promise<string> {
   return bcToken;
 }
 
+import { B2BOrder, FrontendOrder } from './types';
+
 // Transform BigCommerce order to frontend format
-function transformOrder(bcOrder: any): any {
+function transformOrder(bcOrder: B2BOrder | any): FrontendOrder {
   // Map products to items array for frontend consumption
   const items = (bcOrder.products || bcOrder.productsList || bcOrder.items || []).map((product: any) => ({
     name: product.name || product.productName,
     sku: product.sku,
     quantity: product.quantity || 1,
     price: product.base_price || product.price || product.price_ex_tax || 0,
-    productId: product.product_id,
-    variantId: product.variant_id,
+    productId: product.productId || product.product_id, // Normalize to camelCase
+    variantId: product.variantId || product.variant_id,
   }));
 
-  const totalAmount = bcOrder.totalIncTax || bcOrder.total_inc_tax || 0;
-  const currencyCode = bcOrder.currency_code || bcOrder.currencyCode || 'GBP';
+  // Ensure total values are numbers
+  const totalAmount = typeof bcOrder.totalIncTax === 'string' ? parseFloat(bcOrder.totalIncTax) : (bcOrder.totalIncTax || 0);
+  const subtotalAmount = typeof bcOrder.totalExTax === 'string' ? parseFloat(bcOrder.totalExTax) : (bcOrder.totalExTax || bcOrder.subtotalIncTax || 0);
   
+  const currencyCode = bcOrder.currencyCode || bcOrder.currency_code || 'GBP';
+  
+  // Handle different status fields from B2B vs Standard
+  const status = bcOrder.status || bcOrder.orderStatus || bcOrder.customOrderStatus || 'Incomplete';
+
+  // Reliable date handling
+  let createdAt = new Date().toISOString();
+  if (bcOrder.createdAt) {
+      // If number (timestamp in seconds), convert. If string, use as is.
+      createdAt = typeof bcOrder.createdAt === 'number' 
+        ? new Date(bcOrder.createdAt * 1000).toISOString()
+        : new Date(bcOrder.createdAt).toISOString();
+  } else if (bcOrder.date_created) {
+      createdAt = new Date(bcOrder.date_created).toISOString();
+  }
+
+  let updatedAt = new Date().toISOString();
+  if (bcOrder.updatedAt) {
+      updatedAt = typeof bcOrder.updatedAt === 'number'
+        ? new Date(bcOrder.updatedAt * 1000).toISOString()
+        : new Date(bcOrder.updatedAt).toISOString();
+  } else if (bcOrder.date_modified) {
+      updatedAt = new Date(bcOrder.date_modified).toISOString();
+  }
+
   return {
     id: bcOrder.orderId || bcOrder.id,
     bcOrderId: bcOrder.orderId || bcOrder.id,
-    customerName: bcOrder.companyName || bcOrder.customerName || 
-      `${bcOrder.billing_address?.first_name || ''} ${bcOrder.billing_address?.last_name || ''}`.trim(),
-    status: bcOrder.orderStatus || bcOrder.customOrderStatus || bcOrder.status,
+    customerName: bcOrder.companyName || (bcOrder.billingAddress ? `${bcOrder.billingAddress.first_name} ${bcOrder.billingAddress.last_name}`.trim() : 'Guest'),
+    status: status,
     total: totalAmount,
     totalIncTax: totalAmount,  // Frontend expects this field
-    subtotal: bcOrder.totalExTax || bcOrder.total_ex_tax || bcOrder.subtotalIncTax || bcOrder.totalIncTax || 0,
-    createdAt: bcOrder.createdAt ? new Date(parseInt(bcOrder.createdAt) * 1000).toISOString() : 
-      (bcOrder.date_created || new Date().toISOString()),
-    updatedAt: bcOrder.updatedAt ? new Date(parseInt(bcOrder.updatedAt) * 1000).toISOString() : 
-      (bcOrder.date_modified || new Date().toISOString()),
+    subtotal: subtotalAmount,
+    createdAt: createdAt,
+    updatedAt: updatedAt,
     itemCount: items.length,
     items: items,
     poNumber: bcOrder.poNumber || bcOrder.customer_message || '',
     referenceNumber: bcOrder.referenceNumber || '',
-    customerId: bcOrder.customer_id || bcOrder.customerId,
+    customerId: bcOrder.customer_id || bcOrder.customerId, // Use both snake and camel
     companyId: bcOrder.companyId,
-    companyName: bcOrder.companyName || bcOrder.billing_address?.company,
-    firstName: bcOrder.firstName || bcOrder.billing_address?.first_name,
-    lastName: bcOrder.lastName || bcOrder.billing_address?.last_name,
+    companyName: bcOrder.companyName || bcOrder.billingAddress?.company,
+    firstName: bcOrder.firstName || bcOrder.billingAddress?.first_name,
+    lastName: bcOrder.lastName || bcOrder.billingAddress?.last_name,
     currencyCode: currencyCode,
-    money: bcOrder.money?.value ? bcOrder.money : {
+    money: bcOrder.money ? bcOrder.money : {
       currency: {
         code: currencyCode
       },
@@ -91,7 +116,7 @@ function transformOrder(bcOrder: any): any {
     shippingAddress: bcOrder.shippingAddress || (Array.isArray(bcOrder.shipping_addresses) && bcOrder.shipping_addresses.length > 0 
       ? bcOrder.shipping_addresses[0] 
       : null),
-    billingAddress: bcOrder.billingAddress || bcOrder.billing_address,
+    billingAddress: bcOrder.billingAddress || bcOrder.billing_address || null,
     // Custom fields from ERP integrations
     extraFields: bcOrder.extraFields || [],
     extraInt1: bcOrder.extraInt1,
@@ -512,7 +537,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         let userCustomerId = req.user?.customerId;
         if (!userCustomerId) {
           console.warn('[My Orders] No customerId in JWT token, fetching from database...');
-          const user = await storage.getUserById(req.user!.userId);
+          const user = await storage.getUser(req.user!.userId);
           userCustomerId = user?.customerId;
           if (!userCustomerId) {
             console.warn('[My Orders] No customer ID found for user');
@@ -532,8 +557,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           recent: recent === 'true',
         }, req.user?.companyId);
 
-        if (response?.errMsg || response?.error) {
-          console.warn("[My Orders] BigCommerce returned error:", response.errMsg || response.error);
+        if ((response as any)?.errMsg || (response as any)?.error) {
+          console.warn("[My Orders] BigCommerce returned error:", (response as any).errMsg || (response as any).error);
           return res.json([]);
         }
 
@@ -591,8 +616,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           recent: recent === 'true',
         }, companyId);
 
-        if (response?.errMsg || response?.error) {
-          console.warn("[Orders] BigCommerce returned error:", response.errMsg || response.error);
+        if ((response as any)?.errMsg || (response as any)?.error) {
+          console.warn("[Orders] BigCommerce returned error:", (response as any).errMsg || (response as any).error);
           return res.json([]);
         }
 
@@ -686,7 +711,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           // Get company's customer IDs
           const customerIds = await bigcommerce.getCompanyCustomerIds(bcToken, req.user.companyId);
-          const orderCustomerId = order.customerId || order.customer_id;
+          const orderCustomerId = order.customerId;
           
           // Check if order belongs to one of the company's customer accounts
           if (!customerIds.includes(orderCustomerId)) {
@@ -969,8 +994,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // If B2B API returns no orders, fall back to standard API and filter by customer IDs
         if (b2bOrders.length === 0) {
           try {
-            const standardOrders = await bigcommerce.getStandardOrders({ limit: 250 });
-            companyOrders = standardOrders.filter((order: any) => {
+            const standardOrdersResponse = await bigcommerce.getStandardBigCommerceOrders({ limit: 250 });
+            const standardOrders = standardOrdersResponse.data.list;
+            companyOrders = standardOrders.filter((order: B2BOrder) => {
               const orderCustomerId = order.customer_id || order.customerId;
               return customerIds.includes(orderCustomerId);
             });
@@ -1964,7 +1990,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             return res.status(403).json({ message: 'Company ID not found' });
           }
           const customerIds = await bigcommerce.getCompanyCustomerIds(bcToken, req.user.companyId);
-          const orderCustomerId = order.customerId || order.customer_id;
+          const orderCustomerId = order.customerId;
           if (!customerIds.includes(orderCustomerId)) {
             return res.status(403).json({ message: 'Access denied to this order' });
           }

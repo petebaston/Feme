@@ -1,4 +1,5 @@
 import { storage } from './storage';
+import { StandardOrder, B2BOrder, BigCommerceAddress } from './types';
 
 interface BigCommerceConfig {
   storeHash: string;
@@ -228,7 +229,7 @@ export class BigCommerceService {
   }
 
   // Fetch orders from standard BigCommerce API (fallback)
-  private async getStandardBigCommerceOrders(params?: any) {
+  public async getStandardBigCommerceOrders(params?: any): Promise<{ code: number, message: string, data: { list: B2BOrder[], paginator: any } }> {
     const url = `${this.config.standardApiUrl}/v2/orders`;
     const queryParams = new URLSearchParams();
     
@@ -263,15 +264,16 @@ export class BigCommerceService {
       code: 200,
       message: 'SUCCESS',
       data: {
-        list: orders.map((order: any) => ({
+        list: orders.map((order: any): B2BOrder => ({
           orderId: order.id,
           id: order.id,
-          bcOrderId: order.id,
+          // bcOrderId is not part of B2BOrder but useful for debugging
+          // B2BOrder has orderId
           customer_id: order.customer_id,  // CRITICAL: Preserve customer_id for company filtering
           createdAt: new Date(order.date_created).getTime() / 1000,
           updatedAt: new Date(order.date_modified).getTime() / 1000,
           status: this.mapStandardStatus(order.status_id),
-          statusId: order.status_id,
+          // statusId: order.status_id, // Not in B2BOrder strictly but maybe useful
           money: {
             currency: {
               code: order.currency_code || 'USD',
@@ -280,14 +282,13 @@ export class BigCommerceService {
           },
           totalIncTax: order.total_inc_tax,
           totalExTax: order.total_ex_tax,
-          customerName: `${order.billing_address?.first_name || ''} ${order.billing_address?.last_name || ''}`.trim(),
-          companyName: order.billing_address?.company || '',
+          companyId: undefined, // Standard orders don't have companyId natively
           billingAddress: order.billing_address,
           shippingAddress: Array.isArray(order.shipping_addresses) && order.shipping_addresses.length > 0 
             ? order.shipping_addresses[0] 
             : order.shipping_address || {},
           poNumber: order.staff_notes || '',
-          source: 'standard_api', // Mark as from standard API
+          extraFields: [], // Mark as from standard API
         })),
         paginator: {
           totalCount: orders.length,
@@ -337,7 +338,7 @@ export class BigCommerceService {
     const response = await this.request(`/api/v2/orders${query ? `?${query}` : ''}`, { userToken });
     
     // Log detailed response for debugging
-    let b2bOrders: any[] = [];
+    let b2bOrders: B2BOrder[] = [];
     if (response?.data) {
       const list = response.data.list || response.data || [];
       const total = response.data.paginator?.totalCount || list.length;
@@ -346,7 +347,7 @@ export class BigCommerceService {
     }
     
     // ALWAYS fetch from standard API too, because B2B Edition may not have all historical orders
-    let standardOrders: any[] = [];
+    let standardOrders: B2BOrder[] = [];
     if (this.config.accessToken) {
       console.log('[BigCommerce] Also fetching from standard BigCommerce API...');
       try {
@@ -364,12 +365,14 @@ export class BigCommerceService {
             if (companyCustomerIds.length > 0) {
               const customerIdSet = new Set(companyCustomerIds);
               const beforeFilter = standardOrders.length;
-              standardOrders = standardOrders.filter((order: any) => {
+              standardOrders = standardOrders.filter((order) => {
                 return order.customer_id && customerIdSet.has(order.customer_id);
               });
               console.log(`[BigCommerce] Filtered standard orders: ${beforeFilter} total → ${standardOrders.length} for company ${companyId}`);
             } else {
               console.warn(`[BigCommerce] No customer IDs found for company ${companyId}, excluding all standard orders`);
+              // If we have a companyId but no customers found, it's safer to not return any standard orders
+              // rather than potentially leaking others.
               standardOrders = [];
             }
           }
@@ -380,12 +383,12 @@ export class BigCommerceService {
     }
     
     // Merge orders from both APIs, removing duplicates by order ID
-    const allOrders = [...b2bOrders];
-    const b2bOrderIds = new Set(b2bOrders.map((o: any) => o.orderId || o.id));
+    const allOrders: B2BOrder[] = [...b2bOrders];
+    const b2bOrderIds = new Set(b2bOrders.map((o) => o.orderId || o.id));
     
     for (const stdOrder of standardOrders) {
       const stdOrderId = stdOrder.orderId || stdOrder.id;
-      if (!b2bOrderIds.has(stdOrderId)) {
+      if (stdOrderId && !b2bOrderIds.has(stdOrderId)) {
         allOrders.push(stdOrder);
       }
     }
@@ -415,7 +418,7 @@ export class BigCommerceService {
           });
           
           // Enrich B2B orders (match by email OR name)
-          allOrders.forEach((order: any) => {
+          allOrders.forEach((order) => {
             if (!order.customer_id && !order.customerId) {
               let customerId: number | undefined;
               
@@ -443,11 +446,18 @@ export class BigCommerceService {
     }
     
     // Update response with combined orders
-    if (response?.data) {
-      response.data.list = allOrders;
-      if (response.data.paginator) {
-        response.data.paginator.totalCount = allOrders.length;
-      }
+    // Construct new response object to ensure it has correct structure
+    const result = {
+        meta: response?.meta || {},
+        data: {
+            list: allOrders,
+            paginator: {
+                totalCount: allOrders.length,
+                offset: 0,
+                // If the original B2B response had paginator, use it, otherwise fake it
+                limit: allOrders.length 
+            }
+        }
     }
     
     // Cache orders if we have companyId
@@ -456,7 +466,7 @@ export class BigCommerceService {
       console.log(`[Cache] Stored ${allOrders.length} combined orders for company ${companyId}`);
     }
     
-    return response;
+    return result;
   }
 
   async getOrder(userToken: string, orderId: string, companyId?: string) {
