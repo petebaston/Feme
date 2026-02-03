@@ -20,6 +20,7 @@ The backend is an Express.js server providing API endpoints and static file serv
 - Company hierarchy is supported with `parentCompanyId` in the schema.
 - A shared schema between frontend and backend ensures type consistency.
 - Server-side caching for BigCommerce orders in `bigcommerce_orders_cache` table addresses BigCommerce API limitations to ensure reliability and enable direct order detail access.
+- **Invoice Caching:** TTL-based caching (5-minute validity) in `bigcommerce_invoices_cache` table. Cache-first strategy returns cached invoices immediately when fresh, only fetching from API when cache is stale or empty. Significantly reduces API calls and improves response times.
 
 **BigCommerce API Integration:**
 - Utilizes BigCommerce GraphQL API for Quotes, Invoices, Shopping Lists, and Company data.
