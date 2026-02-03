@@ -917,6 +917,65 @@ export class BigCommerceService {
     }
   }
 
+  // Fetch ALL invoices with pagination (loops through all pages)
+  async getAllInvoicesPaginated(params?: any): Promise<any[]> {
+    const PAGE_SIZE = 250;
+    let allInvoices: any[] = [];
+    let offset = 0;
+    let hasMore = true;
+
+    console.log('[BigCommerce] Fetching ALL invoices with pagination...');
+
+    while (hasMore) {
+      const queryParams = new URLSearchParams();
+      queryParams.append('limit', PAGE_SIZE.toString());
+      queryParams.append('offset', offset.toString());
+      
+      if (params?.search) queryParams.append('q', params.search);
+      if (params?.status !== undefined && params.status !== 'all') {
+        queryParams.append('status', params.status.toString());
+      }
+      if (params?.sortBy) queryParams.append('sortBy', params.sortBy);
+
+      const query = queryParams.toString();
+      
+      try {
+        let response;
+        try {
+          response = await this.request(`/api/v3/io/invoice-management/invoice?${query}`);
+        } catch (err: any) {
+          if (String(err?.message || '').includes('404')) {
+            response = await this.request(`/api/v3/io/ip/invoices?${query}`);
+          } else {
+            throw err;
+          }
+        }
+
+        const invoices = response?.data?.list || response?.data || [];
+        const totalCount = response?.meta?.pagination?.totalCount || 
+                          response?.data?.paginator?.totalCount || 
+                          invoices.length;
+
+        allInvoices = allInvoices.concat(invoices);
+        
+        console.log(`[BigCommerce] Fetched ${invoices.length} invoices (offset ${offset}, total so far: ${allInvoices.length}/${totalCount})`);
+
+        // Check if we need to fetch more pages
+        if (invoices.length < PAGE_SIZE || allInvoices.length >= totalCount) {
+          hasMore = false;
+        } else {
+          offset += PAGE_SIZE;
+        }
+      } catch (error) {
+        console.error(`[BigCommerce] Error fetching invoices at offset ${offset}:`, error);
+        hasMore = false;
+      }
+    }
+
+    console.log(`[BigCommerce] Completed pagination: ${allInvoices.length} total invoices fetched`);
+    return allInvoices;
+  }
+
   async getInvoice(userToken: string | undefined, invoiceId: string) {
     // Individual invoice - uses management token
     console.log('[BigCommerce] Fetching invoice with management token');

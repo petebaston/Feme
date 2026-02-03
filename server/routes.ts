@@ -1018,17 +1018,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const companyOrderIds = companyOrders.map((order: any) => order.id || order.bcOrderId);
         console.log(`[Invoices] Found ${companyOrderIds.length} company orders: ${JSON.stringify(companyOrderIds)}`);
 
-        // Fetch all invoices
-        const response = await bigcommerce.getInvoices(undefined, {
+        // Fetch ALL invoices with pagination (loops through all pages)
+        const allInvoices = await bigcommerce.getAllInvoicesPaginated({
           search: search as string,
           status: status as string,
           sortBy: sortBy as string,
-          limit: limit ? parseInt(limit as string) : undefined,
-          recent: recent === 'true',
         });
-
-        const allInvoices = response?.data?.list || response?.data || [];
-        console.log(`[Invoices] Retrieved ${allInvoices.length} total invoices from BigCommerce`);
+        console.log(`[Invoices] Retrieved ${allInvoices.length} total invoices from BigCommerce (paginated)`);
 
         // Get company's Customer ID from extraFields (e.g., "FEM01")
         let companyCustomerId: string | null = null;
