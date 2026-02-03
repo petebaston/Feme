@@ -1072,19 +1072,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
             );
 
             // Filter invoices for this company using Customer ID and order number matching
+            console.log(`[Invoices] Filtering ${enrichedAllInvoices.length} invoices for company ${companyCustomerId}...`);
+            console.log(`[Invoices] Company order IDs: [${companyOrderIds.join(',')}]`);
+            
+            let matchedByCustomer = 0;
+            let matchedByOrder = 0;
+            let notMatched = 0;
+            
             companyInvoices = enrichedAllInvoices.filter((invoice: any) => {
               const invoiceCustomer = invoice.extraFields?.find((f: any) => f.fieldName === 'Customer');
               const invoiceCustomerId = invoiceCustomer?.fieldValue || null;
+              const orderNumber = invoice.orderNumber ? String(invoice.orderNumber) : null;
               
               // Primary: Match by Customer ID
               if (companyCustomerId && invoiceCustomerId === companyCustomerId) {
+                matchedByCustomer++;
+                console.log(`[Invoices] Invoice ${invoice.id} (order: ${orderNumber}): MATCHED by Customer ID "${invoiceCustomerId}"`);
                 return true;
               }
               
               // Fallback: Match by order number
-              const orderNumber = invoice.orderNumber ? String(invoice.orderNumber) : null;
-              return orderNumber && companyOrderIds.some((orderId: any) => String(orderId) === orderNumber);
+              if (orderNumber && companyOrderIds.some((orderId: any) => String(orderId) === orderNumber)) {
+                matchedByOrder++;
+                console.log(`[Invoices] Invoice ${invoice.id} (order: ${orderNumber}): MATCHED by order number`);
+                return true;
+              }
+              
+              notMatched++;
+              console.log(`[Invoices] Invoice ${invoice.id} (order: ${orderNumber}, customer: "${invoiceCustomerId || 'empty'}"): NOT MATCHED`);
+              return false;
             });
+            
+            console.log(`[Invoices] Filtering results: ${matchedByCustomer} by Customer ID, ${matchedByOrder} by order number, ${notMatched} not matched`);
 
             // Clear old cache and store fresh filtered invoices
             await storage.clearCachedInvoices(companyCustomerId);
