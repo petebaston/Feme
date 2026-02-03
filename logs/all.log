@@ -28309,3 +28309,6 @@
 2026-02-03 08:01:12:112 [32mhttp[39m: [32mGET /api/company/credit 200 - 258ms[39m
 2026-02-03 08:01:12:112 [32mhttp[39m: [32mGET /api/company 304 - 378ms[39m
 2026-02-03 08:01:13:113 [32mhttp[39m: [32mGET /api/invoices 200 - 1749ms[39m
+2026-02-03 08:03:07:37 [32mhttp[39m: [32mGET /api/orders/120 200 - 1673ms[39m
+2026-02-03 08:03:07:37 [32mhttp[39m: [32mGET /api/orders/120/invoice 200 - 1817ms[39m
+2026-02-03 08:03:07:37 [32mhttp[39m: [32mGET /api/orders/120/extra-fields 200 - 142ms[39m
