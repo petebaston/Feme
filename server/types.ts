@@ -147,3 +147,24 @@ export interface FrontendOrder {
   extraStr5?: string;
   extraText?: string;
 }
+
+export interface BigCommerceResponse<T> {
+  data: T;
+  meta: any;
+}
+
+export interface BigCommerceListResponse<T> {
+  data: T[]; // or { list: T[], ... } depending on endpoint
+  meta: any;
+}
+
+export interface B2BUser {
+    id: number | string;
+    email: string;
+    firstName: string;
+    lastName: string;
+    role: string;
+    companyId: string;
+    customerId?: number;
+}
+

@@ -1,5 +1,5 @@
 import { storage } from './storage';
-import { StandardOrder, B2BOrder, BigCommerceAddress } from './types';
+import { StandardOrder, B2BOrder, BigCommerceAddress, B2BUser, BigCommerceResponse, BigCommerceListResponse } from './types';
 
 interface BigCommerceConfig {
   storeHash: string;
@@ -62,7 +62,7 @@ export class BigCommerceService {
     throw new Error('Authentication token not configured');
   }
 
-  private async request(endpoint: string, options: any = {}) {
+  private async request<T = any>(endpoint: string, options: any = {}): Promise<T> {
     const url = `${this.config.b2bApiUrl}${endpoint}`;
 
     const channelId = process.env.VITE_CHANNEL_ID || '1';
@@ -194,7 +194,7 @@ export class BigCommerceService {
       ]);
 
       // Ensure we have arrays (handle error responses from BigCommerce)
-      const ordersRaw = ordersResponse?.data?.list || ordersResponse?.data || [];
+      const ordersRaw = ordersResponse?.data || [];
       const quotesRaw = quotesResponse?.data?.list || quotesResponse?.data || [];
       
       const orders = Array.isArray(ordersRaw) ? ordersRaw : [];
@@ -321,7 +321,7 @@ export class BigCommerceService {
   }
 
   // Orders
-  async getOrders(userToken: string, params?: any, companyId?: string) {
+  async getOrders(userToken: string, params?: any, companyId?: string): Promise<BigCommerceListResponse<B2BOrder>> {
     const queryParams = new URLSearchParams();
     if (params?.search) queryParams.append('search', params.search);
     if (params?.status && params.status !== 'all') queryParams.append('status', params.status);
@@ -335,7 +335,7 @@ export class BigCommerceService {
 
     const query = queryParams.toString();
     console.log('[BigCommerce] Fetching orders with query:', query);
-    const response = await this.request(`/api/v2/orders${query ? `?${query}` : ''}`, { userToken });
+    const response = await this.request<any>(`/api/v2/orders${query ? `?${query}` : ''}`, { userToken });
     
     // Log detailed response for debugging
     let b2bOrders: B2BOrder[] = [];
@@ -407,7 +407,7 @@ export class BigCommerceService {
           const emailToCustomerId = new Map<string, number>();
           const nameToCustomerId = new Map<string, number>();
           
-          usersResponse.data.forEach((user: any) => {
+          usersResponse.data.forEach((user: B2BUser) => {
             if (user.email && user.customerId) {
               emailToCustomerId.set(user.email.toLowerCase(), user.customerId);
             }
@@ -429,7 +429,7 @@ export class BigCommerceService {
               
               // Fall back to matching by firstName + lastName
               if (!customerId && order.firstName && order.lastName) {
-                const nameKey = `${order.firstName.toLowerCase()}|${order.lastName.toLowerCase()}`;
+                const nameKey = `${order.firstName?.toLowerCase()}|${order.lastName?.toLowerCase()}`;
                 customerId = nameToCustomerId.get(nameKey);
               }
               
@@ -447,17 +447,10 @@ export class BigCommerceService {
     
     // Update response with combined orders
     // Construct new response object to ensure it has correct structure
-    const result = {
+    const result: BigCommerceListResponse<B2BOrder> = {
         meta: response?.meta || {},
-        data: {
-            list: allOrders,
-            paginator: {
-                totalCount: allOrders.length,
-                offset: 0,
-                // If the original B2B response had paginator, use it, otherwise fake it
-                limit: allOrders.length 
-            }
-        }
+        data: allOrders
+        // removed custom paginator structure to match interface or update interface
     }
     
     // Cache orders if we have companyId
@@ -469,7 +462,7 @@ export class BigCommerceService {
     return result;
   }
 
-  async getOrder(userToken: string, orderId: string, companyId?: string) {
+  async getOrder(userToken: string, orderId: string, companyId?: string): Promise<{ code: number, data: B2BOrder }> {
     // Note: B2B Edition GraphQL doesn't support orders - using REST API only
     // GraphQL supports: quotes, invoices, company, shopping lists (not orders)
     
@@ -488,13 +481,17 @@ export class BigCommerceService {
     // Try direct order endpoint first
     try {
       console.log('[BigCommerce] Fetching order directly:', orderId);
-      const response = await this.request(`/api/v2/orders/${orderId}`, { userToken });
+      const response = await this.request<any>(`/api/v2/orders/${orderId}`, { userToken });
       
       if (response?.data) {
         console.log('[BigCommerce] Direct order fetch successful:', orderId);
         // Fetch line items from standard API
         const products = await this.getOrderProducts(orderId);
-        const orderWithProducts = { ...response.data, products };
+        // Cast to B2BOrder because we don't have a specific SingleOrder response type yet and api/v2/orders/:id returns object directly in standard, but here we assume normalized if from requesting
+        // Actually request<T> returns data. So response.data is the order.
+        const orderData = response.data as B2BOrder;
+        
+        const orderWithProducts: B2BOrder = { ...orderData, products };
         
         // Cache the order
         if (companyId) {
@@ -509,9 +506,9 @@ export class BigCommerceService {
     // Fallback: search in orders list (for API compatibility)
     console.log('[BigCommerce] Searching for order in list:', orderId);
     const ordersResponse = await this.getOrders(userToken, { limit: 100 }, companyId);
-    const ordersList = ordersResponse?.data?.list || ordersResponse?.data || [];
+    const ordersList = ordersResponse.data || [];
     
-    const foundOrder = ordersList.find((o: any) => 
+    const foundOrder = ordersList.find((o) => 
       String(o.orderId) === String(orderId) || 
       String(o.id) === String(orderId)
     );
@@ -698,6 +695,8 @@ export class BigCommerceService {
           companyId: actualCompanyId,
           email: currentUser?.email,
           name: currentUser?.companyInfo?.companyName || `${currentUser?.firstName || ''} ${currentUser?.lastName || ''}`.trim(),
+          extraFields: [] as any[],
+          extraFieldsError: false as boolean | undefined,
         }
       };
     } catch (error: any) {
@@ -710,17 +709,19 @@ export class BigCommerceService {
           companyId: 'unknown',
           email: '',
           name: 'Company',
+          extraFields: [] as any[],
+          extraFieldsError: false as boolean | undefined,
         }
       };
     }
   }
 
-  async getCompanyUsers(userToken: string, companyId?: string) {
+  async getCompanyUsers(userToken: string, companyId?: string): Promise<{ data: B2BUser[] }> {
     // Management API v3 endpoint - per official B2B Edition documentation
     // GET /api/v3/io/users - Get All Users (with full pagination support)
     // Uses OAuth X-Auth-Token (same authentication as invoices)
     
-    let allUsers: any[] = [];
+    let allUsers: B2BUser[] = [];
     let offset = 0;
     const limit = 100; // Fetch 100 users per request
     let totalCount = 0;
@@ -734,9 +735,9 @@ export class BigCommerceService {
       queryParams.append('offset', offset.toString());
       
       const query = queryParams.toString();
-      const response = await this.request(`/api/v3/io/users?${query}`);
+      const response = await this.request<any>(`/api/v3/io/users?${query}`);
       
-      const users = response?.data || [];
+      const users: B2BUser[] = response?.data || [];
       allUsers = allUsers.concat(users);
       
       totalCount = response?.meta?.pagination?.totalCount || users.length;

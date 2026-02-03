@@ -10,6 +10,7 @@ export const users = pgTable("users", {
   password: text("password").notNull(),
   role: text("role").default("user"),
   companyId: varchar("company_id"),
+  customerId: integer("customer_id"),
   status: text("status").default("active"), // active, inactive, pending
   phoneNumber: text("phone_number"),
   jobTitle: text("job_title"),

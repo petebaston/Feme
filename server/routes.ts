@@ -538,7 +538,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (!userCustomerId) {
           console.warn('[My Orders] No customerId in JWT token, fetching from database...');
           const user = await storage.getUser(req.user!.userId);
-          userCustomerId = user?.customerId;
+          userCustomerId = user?.customerId || undefined;
           if (!userCustomerId) {
             console.warn('[My Orders] No customer ID found for user');
             return res.json([]);
@@ -562,7 +562,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.json([]);
         }
 
-        const bcOrders = response?.data?.list || response?.data || [];
+        const bcOrders = response.data || [];
         const allOrders = Array.isArray(bcOrders) ? bcOrders.map(transformOrder) : [];
 
         // Filter orders by this user's customer ID only
@@ -621,13 +621,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.json([]);
         }
 
-        const bcOrders = response?.data?.list || response?.data || [];
+        const bcOrders = response.data || [];
         const allOrders = Array.isArray(bcOrders) ? bcOrders.map(transformOrder) : [];
 
         // Filter orders by customer IDs only - all orders for the company's customer account(s)
         const companyOrders = allOrders.filter((order: any) => {
           const orderCustomerId = order.customer_id || order.customerId;
-          return customerIds.includes(orderCustomerId);
+          return orderCustomerId && customerIds.includes(orderCustomerId);
         });
 
         // Fetch B2B orders with extra fields and merge them
@@ -714,7 +714,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const orderCustomerId = order.customerId;
           
           // Check if order belongs to one of the company's customer accounts
-          if (!customerIds.includes(orderCustomerId)) {
+          if (!orderCustomerId || !customerIds.includes(orderCustomerId)) {
             return res.status(403).json({ message: 'Access denied to this order' });
           }
         }
@@ -976,8 +976,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         console.log(`[Invoices] Fetching invoices for user: ${req.user?.email} (Company: ${req.user?.companyId})`);
 
+        if (!req.user || !req.user.companyId) {
+             return res.status(400).json({ message: "Company ID required" });
+        }
+
         // Get company's customer IDs to fetch orders
-        const customerIds = await bigcommerce.getCompanyCustomerIds(bcToken, req.user.companyId!);
+        const customerIds = await bigcommerce.getCompanyCustomerIds(bcToken, req.user.companyId);
         console.log(`[Invoices] Company ${req.user.companyId} has ${customerIds.length} customer IDs`);
 
         if (customerIds.length === 0) {
@@ -987,7 +991,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // Get company orders (to match invoice.orderNumber to order.id)
         const ordersResponse = await bigcommerce.getOrders(bcToken, { limit: 1000, offset: 0 });
-        const b2bOrders = ordersResponse?.data?.list || [];
+        const b2bOrders = ordersResponse?.data || [];
         
         let companyOrders = [...b2bOrders];
         
@@ -998,7 +1002,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const standardOrders = standardOrdersResponse.data.list;
             companyOrders = standardOrders.filter((order: B2BOrder) => {
               const orderCustomerId = order.customer_id || order.customerId;
-              return customerIds.includes(orderCustomerId);
+              return orderCustomerId && customerIds.includes(orderCustomerId);
             });
           } catch (error) {
             console.error('[Invoices] Failed to fetch from standard API:', error);
@@ -1007,7 +1011,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Filter B2B orders by customer IDs
           companyOrders = b2bOrders.filter((order: any) => {
             const orderCustomerId = order.customer_id || order.customerId;
-            return customerIds.includes(orderCustomerId);
+            return orderCustomerId && customerIds.includes(orderCustomerId);
           });
         }
 
@@ -1370,7 +1374,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           : req.user?.companyId;
         
         const response = await bigcommerce.getCompanyUsers(bcToken, companyIdForQuery);
-        const users = response?.data?.list || response?.data || [];
+        const users = response?.data || [];
 
         console.log(`[Users] Total users fetched from API: ${users.length}`);
         console.log(`[Users] User companyId: ${req.user?.companyId}, role: ${req.user?.role}`);
@@ -1945,16 +1949,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
           recent: String(recent) === 'true',
         }, companyId);
 
-        if (response?.errMsg || response?.error) {
-          console.warn("[Orders v3] BigCommerce returned error:", response.errMsg || response.error);
+        if ((response as any)?.errMsg || (response as any)?.error) {
+          console.warn("[Orders v3] BigCommerce returned error:", (response as any).errMsg || (response as any).error);
           return res.json([]);
         }
 
-        const bcOrders = response?.data?.list || response?.data || [];
+        const bcOrders = response?.data || [];
         const allOrders = Array.isArray(bcOrders) ? bcOrders.map(transformOrder) : [];
         const companyOrders = allOrders.filter((order: any) => {
           const orderCustomerId = order.customer_id || order.customerId;
-          return customerIds.includes(orderCustomerId);
+          return orderCustomerId && customerIds.includes(orderCustomerId);
         });
         res.json(companyOrders);
       } catch (error) {
@@ -1991,7 +1995,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
           const customerIds = await bigcommerce.getCompanyCustomerIds(bcToken, req.user.companyId);
           const orderCustomerId = order.customerId;
-          if (!customerIds.includes(orderCustomerId)) {
+          if (!orderCustomerId || !customerIds.includes(orderCustomerId)) {
             return res.status(403).json({ message: 'Access denied to this order' });
           }
         }
@@ -2088,7 +2092,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ? undefined
           : req.user?.companyId;
         const response = await bigcommerce.getCompanyUsers(bcToken, companyIdForQuery);
-        const users = response?.data?.list || response?.data || [];
+        const users = response?.data || [];
         const filteredUsers = filterByCompany(users, req.user?.companyId, req.user?.role);
         res.json(filteredUsers);
       } catch (error) {
@@ -2952,12 +2956,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Fetch orders
         const customerIds = await bigcommerce.getCompanyCustomerIds(bcToken, companyId);
         const response = await bigcommerce.getOrders(bcToken, { limit: 1000 }, companyId);
-        const allOrders = response?.data?.list || response?.data || [];
+        const allOrders = response?.data || [];
 
         // Filter to company orders
         const companyOrders = allOrders.filter((order: any) => {
           const orderCustomerId = order.customer_id || order.customerId;
-          return customerIds.includes(orderCustomerId);
+          return orderCustomerId && customerIds.includes(orderCustomerId);
         });
 
         // Build CSV
