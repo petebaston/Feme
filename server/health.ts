@@ -1,5 +1,5 @@
 import type { Request, Response } from 'express';
-import { db } from '../db';
+import { db } from './db';
 
 // Best Practice: Health check endpoints (Item 107)
 

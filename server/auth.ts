@@ -21,13 +21,13 @@ export interface AuthRequest extends Request {
 // Generate access token
 export function generateAccessToken(payload: JWTPayload, rememberMe?: boolean): string {
   const expiresIn = rememberMe ? '30d' : JWT_EXPIRES_IN;
-  return jwt.sign(payload, JWT_SECRET, { expiresIn });
+  return jwt.sign(payload, JWT_SECRET, { expiresIn } as any);
 }
 
 // Generate refresh token
 export function generateRefreshToken(payload: JWTPayload, rememberMe?: boolean): string {
   const expiresIn = rememberMe ? '30d' : JWT_REFRESH_EXPIRES_IN;
-  return jwt.sign(payload, JWT_REFRESH_SECRET, { expiresIn });
+  return jwt.sign(payload, JWT_REFRESH_SECRET, { expiresIn } as any);
 }
 
 // Verify access token
