@@ -565,10 +565,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const bcOrders = response.data || [];
         const allOrders = Array.isArray(bcOrders) ? bcOrders.map(transformOrder) : [];
 
-        // Filter orders by this user's customer ID only
+        // Filter orders by this user's customer ID only (convert to number for safe comparison)
+        const numericUserCustomerId = typeof userCustomerId === 'string' ? parseInt(userCustomerId) : userCustomerId;
         const myOrders = allOrders.filter((order: any) => {
           const orderCustomerId = order.customer_id || order.customerId;
-          return orderCustomerId === userCustomerId;
+          const numericOrderCustomerId = typeof orderCustomerId === 'string' ? parseInt(orderCustomerId) : orderCustomerId;
+          return numericOrderCustomerId === numericUserCustomerId;
         });
 
         console.log(`[My Orders] Found ${myOrders.length} orders for customer ${userCustomerId}`);
@@ -625,10 +627,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const allOrders = Array.isArray(bcOrders) ? bcOrders.map(transformOrder) : [];
 
         // Filter orders by customer IDs only - all orders for the company's customer account(s)
+        console.log(`[Orders] Filtering ${allOrders.length} orders by customerIds:`, customerIds, `(types: ${customerIds.map(id => typeof id)})`);
         const companyOrders = allOrders.filter((order: any) => {
           const orderCustomerId = order.customer_id || order.customerId;
-          return orderCustomerId && customerIds.includes(orderCustomerId);
+          const numericCustomerId = typeof orderCustomerId === 'string' ? parseInt(orderCustomerId) : orderCustomerId;
+          const matched = numericCustomerId && customerIds.includes(numericCustomerId);
+          if (!matched && orderCustomerId) {
+            console.log(`[Orders] Order ${order.id} (cust: ${orderCustomerId}, type: ${typeof orderCustomerId}) - NOT matched`);
+          }
+          return matched;
         });
+        console.log(`[Orders] Matched ${companyOrders.length} of ${allOrders.length} orders for company ${companyId}`);
 
         // Fetch B2B orders with extra fields and merge them
         const b2bOrdersResponse = await bigcommerce.getB2BOrdersWithExtraFields(companyId);

@@ -366,7 +366,8 @@ export class BigCommerceService {
               const customerIdSet = new Set(companyCustomerIds);
               const beforeFilter = standardOrders.length;
               standardOrders = standardOrders.filter((order) => {
-                return order.customer_id && customerIdSet.has(order.customer_id);
+                const custId = typeof order.customer_id === 'string' ? parseInt(order.customer_id) : order.customer_id;
+                return custId && customerIdSet.has(custId);
               });
               console.log(`[BigCommerce] Filtered standard orders: ${beforeFilter} total → ${standardOrders.length} for company ${companyId}`);
             } else {
