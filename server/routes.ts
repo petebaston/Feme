@@ -592,24 +592,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const bcToken = await getBigCommerceToken(req);
         const { search, status, sortBy, limit, recent } = req.query;
 
-        // Get user's company ID
         const companyId = req.user?.companyId;
         if (!companyId) {
           console.warn('[Orders] No company ID found for user');
           return res.json([]);
         }
 
-        // Fetch all customer IDs for this company (like we do for invoices)
-        const customerIds = await bigcommerce.getCompanyCustomerIds(bcToken, companyId);
-        
-        if (customerIds.length === 0) {
-          console.warn('[Orders] No customer IDs found for company', companyId);
-          return res.json([]);
-        }
-
-        console.log(`[Orders] Filtering orders for company ${companyId} with ${customerIds.length} customer IDs`);
-
-        // Fetch all orders from standard BigCommerce API
         const response = await bigcommerce.getOrders(bcToken, {
           search: search as string,
           status: status as string,
@@ -624,20 +612,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
 
         const bcOrders = response.data || [];
-        const allOrders = Array.isArray(bcOrders) ? bcOrders.map(transformOrder) : [];
-
-        // Filter orders by customer IDs only - all orders for the company's customer account(s)
-        console.log(`[Orders] Filtering ${allOrders.length} orders by customerIds:`, customerIds, `(types: ${customerIds.map(id => typeof id)})`);
-        const companyOrders = allOrders.filter((order: any) => {
-          const orderCustomerId = order.customer_id || order.customerId;
-          const numericCustomerId = typeof orderCustomerId === 'string' ? parseInt(orderCustomerId) : orderCustomerId;
-          const matched = numericCustomerId && customerIds.includes(numericCustomerId);
-          if (!matched && orderCustomerId) {
-            console.log(`[Orders] Order ${order.id} (cust: ${orderCustomerId}, type: ${typeof orderCustomerId}) - NOT matched`);
-          }
-          return matched;
-        });
-        console.log(`[Orders] Matched ${companyOrders.length} of ${allOrders.length} orders for company ${companyId}`);
+        const companyOrders = Array.isArray(bcOrders) ? bcOrders.map(transformOrder) : [];
+        console.log(`[Orders] Got ${companyOrders.length} orders for company ${companyId}`);
 
         // Fetch B2B orders with extra fields and merge them
         const b2bOrdersResponse = await bigcommerce.getB2BOrdersWithExtraFields(companyId);

@@ -348,6 +348,7 @@ export class BigCommerceService {
     
     // ALWAYS fetch from standard API too, because B2B Edition may not have all historical orders
     let standardOrders: B2BOrder[] = [];
+    let companyCustomerIds: number[] | null = null;
     if (this.config.accessToken) {
       console.log('[BigCommerce] Also fetching from standard BigCommerce API...');
       try {
@@ -359,9 +360,10 @@ export class BigCommerceService {
           standardOrders = standardResponse.data.list;
           console.log(`[BigCommerce] ✅ Retrieved ${standardOrders.length} orders from standard API`);
           
-          // CRITICAL: Filter standard orders to only the current company's customer IDs
           if (companyId) {
-            const companyCustomerIds = await this.getCompanyCustomerIds(userToken, companyId);
+            if (!companyCustomerIds) {
+              companyCustomerIds = await this.getCompanyCustomerIds(userToken, companyId);
+            }
             if (companyCustomerIds.length > 0) {
               const customerIdSet = new Set(companyCustomerIds);
               const beforeFilter = standardOrders.length;
@@ -372,8 +374,6 @@ export class BigCommerceService {
               console.log(`[BigCommerce] Filtered standard orders: ${beforeFilter} total → ${standardOrders.length} for company ${companyId}`);
             } else {
               console.warn(`[BigCommerce] No customer IDs found for company ${companyId}, excluding all standard orders`);
-              // If we have a companyId but no customers found, it's safer to not return any standard orders
-              // rather than potentially leaking others.
               standardOrders = [];
             }
           }
@@ -396,8 +396,6 @@ export class BigCommerceService {
     
     console.log(`[BigCommerce] Combined total: ${allOrders.length} orders (${b2bOrders.length} B2B + ${allOrders.length - b2bOrders.length} standard)`);
     
-    // CRITICAL: Enrich B2B orders with customerId by matching against company users
-    // B2B API orders don't include customer_id, so we need to add it for filtering
     if (companyId && b2bOrders.length > 0) {
       try {
         const usersResponse = await this.getCompanyUsers(userToken, companyId);

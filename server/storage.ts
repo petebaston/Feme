@@ -736,7 +736,11 @@ export class DatabaseStorage implements IStorage {
 
   async setCachedOrders(orders: any[], companyId: string): Promise<void> {
     for (const order of orders) {
-      const orderId = String(order.id);
+      const orderId = String(order.orderId || order.id || order.bcOrderId);
+      if (!orderId || orderId === 'undefined' || orderId === 'null') {
+        console.warn('[Cache] Skipping order with no valid ID:', JSON.stringify(order).substring(0, 100));
+        continue;
+      }
       const orderData = JSON.stringify(order);
 
       // Upsert: insert or update if exists
