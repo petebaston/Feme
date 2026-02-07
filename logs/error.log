@@ -94,3 +94,6 @@
 2025-11-19 13:39:12:3912 [31merror[39m: [31mGET /api/my-orders 500 - 55ms[39m
 2026-02-07 10:42:21:4221 [31merror[39m: [31mUNCAUGHT EXCEPTION! Shutting down...[39m
 2026-02-07 10:43:56:4356 [31merror[39m: [31mUNCAUGHT EXCEPTION! Shutting down...[39m
+2026-02-07 10:45:16:4516 [31merror[39m: [31mUNCAUGHT EXCEPTION! Shutting down...[39m
+2026-02-07 10:46:50:4650 [31merror[39m: [31mUNCAUGHT EXCEPTION! Shutting down...[39m
+2026-02-07 10:47:37:4737 [31merror[39m: [31mUNCAUGHT EXCEPTION! Shutting down...[39m
