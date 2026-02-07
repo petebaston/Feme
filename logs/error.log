@@ -101,3 +101,8 @@
 2026-02-07 15:11:12:1112 [31merror[39m: [31mUNCAUGHT EXCEPTION! Shutting down...[39m
 2026-02-07 15:12:02:122 [31merror[39m: [31mUNCAUGHT EXCEPTION! Shutting down...[39m
 2026-02-07 15:15:21:1521 [31merror[39m: [31mUNCAUGHT EXCEPTION! Shutting down...[39m
+2026-02-07 15:19:19:1919 [31merror[39m: [31mUNCAUGHT EXCEPTION! Shutting down...[39m
+2026-02-07 15:19:36:1936 [31merror[39m: [31mUNCAUGHT EXCEPTION! Shutting down...[39m
+2026-02-07 15:20:24:2024 [31merror[39m: [31mGET /api/orders 500 - 1319ms[39m
+2026-02-07 15:20:51:2051 [31merror[39m: [31mGET /api/orders 500 - 1323ms[39m
+2026-02-07 15:20:51:2051 [31merror[39m: [31mGET /api/orders/123 500 - 480ms[39m

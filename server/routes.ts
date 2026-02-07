@@ -67,25 +67,21 @@ function transformOrder(bcOrder: B2BOrder | any): FrontendOrder {
   // Handle different status fields from B2B vs Standard
   const status = bcOrder.status || bcOrder.orderStatus || bcOrder.customOrderStatus || 'Incomplete';
 
-  // Reliable date handling
-  let createdAt = new Date().toISOString();
-  if (bcOrder.createdAt) {
-      // If number (timestamp in seconds), convert. If string, use as is.
-      createdAt = typeof bcOrder.createdAt === 'number' 
-        ? new Date(bcOrder.createdAt * 1000).toISOString()
-        : new Date(bcOrder.createdAt).toISOString();
-  } else if (bcOrder.date_created) {
-      createdAt = new Date(bcOrder.date_created).toISOString();
+  function parseDate(value: any, fallback?: any): string {
+    if (!value && !fallback) return new Date().toISOString();
+    const raw = value || fallback;
+    if (!raw) return new Date().toISOString();
+    if (typeof raw === 'number') return new Date(raw * 1000).toISOString();
+    if (typeof raw === 'string' && /^\d+$/.test(raw)) return new Date(parseInt(raw, 10) * 1000).toISOString();
+    try {
+      const d = new Date(raw);
+      if (!isNaN(d.getTime())) return d.toISOString();
+    } catch {}
+    return new Date().toISOString();
   }
 
-  let updatedAt = new Date().toISOString();
-  if (bcOrder.updatedAt) {
-      updatedAt = typeof bcOrder.updatedAt === 'number'
-        ? new Date(bcOrder.updatedAt * 1000).toISOString()
-        : new Date(bcOrder.updatedAt).toISOString();
-  } else if (bcOrder.date_modified) {
-      updatedAt = new Date(bcOrder.date_modified).toISOString();
-  }
+  const createdAt = parseDate(bcOrder.createdAt, bcOrder.date_created);
+  const updatedAt = parseDate(bcOrder.updatedAt, bcOrder.date_modified);
 
   return {
     id: bcOrder.orderId || bcOrder.id,
