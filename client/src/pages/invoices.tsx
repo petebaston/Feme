@@ -53,43 +53,18 @@ export default function Invoices() {
     return 'GBP'; // Default fallback
   };
 
-  // Calculate actual status based on openBalance and dueDate
-  // This matches the logic used in the BigCommerce API and provides consistent status across the app
   const calculateInvoiceStatus = (invoice: any): 'Paid' | 'Overdue' | 'Unpaid' => {
-    // First check if there's an explicit status field (numeric or string)
-    if (invoice.status !== undefined) {
-      // Handle numeric status codes from BigCommerce
-      if (typeof invoice.status === 'number') {
-        const statusMap: Record<number, 'Paid' | 'Overdue' | 'Unpaid'> = {
-          0: 'Unpaid',
-          1: 'Paid',
-          2: 'Overdue',
-        };
-        if (invoice.status in statusMap) {
-          return statusMap[invoice.status];
-        }
-      }
-      // Handle string status
-      if (typeof invoice.status === 'string') {
-        const normalized = invoice.status.toLowerCase();
-        if (normalized === 'paid') return 'Paid';
-        if (normalized === 'overdue') return 'Overdue';
-        if (normalized === 'unpaid') return 'Unpaid';
-      }
-    }
+    const openBalance = parseFloat(invoice.openBalance?.value || '0');
 
-    // Fallback: Calculate from openBalance and dueDate
-    const openBalance = parseFloat(invoice.openBalance?.value || 0);
-
-    // If balance is 0, it's paid
-    if (openBalance === 0) {
+    if (openBalance <= 0) {
       return 'Paid';
     }
 
-    // If there's a balance, check if it's overdue
-    const dueDate = invoice.dueDate ? new Date(invoice.dueDate * 1000) : null;
+    const dueDate = invoice.dueDate ? new Date(
+      typeof invoice.dueDate === 'number' ? invoice.dueDate * 1000 : invoice.dueDate
+    ) : null;
     const today = new Date();
-    today.setHours(0, 0, 0, 0); // Reset to start of day for accurate comparison
+    today.setHours(0, 0, 0, 0);
 
     if (dueDate) {
       dueDate.setHours(0, 0, 0, 0);
@@ -150,8 +125,7 @@ export default function Invoices() {
     filteredInvoices.forEach((invoice: any) => {
       const openBalance = parseFloat(invoice.openBalance?.value || 0);
       
-      // Skip paid invoices (openBalance = 0)
-      if (openBalance === 0) return;
+      if (openBalance <= 0) return;
 
       // Add to total open
       totalOpen += openBalance;

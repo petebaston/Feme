@@ -41,22 +41,25 @@ export default function InvoiceDetail() {
     staleTime: 60000,
   });
 
-  // Convert numeric status to string label
-  const getStatusLabel = (status: number | string): string => {
-    if (typeof status === 'number') {
-      const statusMap: Record<number, string> = {
-        0: 'unpaid',
-        1: 'paid',
-        2: 'overdue',
-        3: 'refunded',
-      };
-      return statusMap[status] || 'unpaid';
+  const getStatusLabel = (invoice: any): string => {
+    const openBalance = parseFloat(invoice?.openBalance?.value || '0');
+    if (openBalance <= 0) return 'paid';
+
+    const dueDate = invoice?.dueDate ? new Date(
+      typeof invoice.dueDate === 'number' ? invoice.dueDate * 1000 : invoice.dueDate
+    ) : null;
+    if (dueDate) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      dueDate.setHours(0, 0, 0, 0);
+      if (dueDate < today) return 'overdue';
     }
-    return status?.toLowerCase() || 'unpaid';
+
+    return 'unpaid';
   };
 
-  const getStatusColor = (status: number | string) => {
-    const statusLabel = getStatusLabel(status);
+  const getStatusColor = (invoice: any) => {
+    const statusLabel = getStatusLabel(invoice);
     const colors: Record<string, string> = {
       paid: 'bg-green-100 text-green-800',
       unpaid: 'bg-yellow-100 text-yellow-800',
@@ -194,9 +197,7 @@ export default function InvoiceDetail() {
           <p className="text-sm md:text-base text-gray-600 mt-1">Invoice Details</p>
         </div>
         <div className="flex gap-2">
-          {/* Only show record payment for unpaid/overdue invoices */}
-          {(invoice.status === 0 || invoice.status === 2 ||
-            invoice.status === 'unpaid' || invoice.status === 'overdue') && (
+          {getStatusLabel(invoice) !== 'paid' && (
             <RecordPaymentDialog
               invoiceId={id!}
               invoiceNumber={invoice.invoiceNumber}
@@ -231,8 +232,8 @@ export default function InvoiceDetail() {
             </div>
             <div>
               <p className="text-sm text-gray-500">Status</p>
-              <span className={`inline-block text-xs px-2 py-1 rounded-full font-medium ${getStatusColor(invoice.status)}`} data-testid="status">
-                {getStatusLabel(invoice.status)}
+              <span className={`inline-block text-xs px-2 py-1 rounded-full font-medium ${getStatusColor(invoice)}`} data-testid="status">
+                {getStatusLabel(invoice)}
               </span>
             </div>
             {invoice.paymentTerms && (
