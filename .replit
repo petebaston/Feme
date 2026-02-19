@@ -40,3 +40,8 @@ waitForPort = 5000
 
 [agent]
 expertMode = true
+
+[userenv]
+
+[userenv.shared]
+BIGCOMMERCE_STORE_DOMAIN = "feme-limited-sandbox.mybigcommerce.com"

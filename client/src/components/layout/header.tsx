@@ -9,8 +9,38 @@ import femeLogo from "@assets/feme-logo.png";
 export default function Header() {
   const [, setLocation] = useLocation();
   const [loading, setLoading] = useState(false);
+  const [ssoLoading, setSsoLoading] = useState(false);
   const { toast } = useToast();
   const user = JSON.parse(localStorage.getItem('user') || localStorage.getItem('b2b_user') || '{}');
+
+  const handleHomeClick = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    setSsoLoading(true);
+    try {
+      const token = localStorage.getItem('b2b_token');
+      const response = await fetch('/api/auth/sso-url?redirect_to=/', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data?.url) {
+          window.open(data.url, '_blank');
+        } else {
+          window.open('https://feme-limited-sandbox.mybigcommerce.com/', '_blank');
+        }
+      } else {
+        window.open('https://feme-limited-sandbox.mybigcommerce.com/', '_blank');
+      }
+    } catch (err) {
+      console.error('SSO redirect error:', err);
+      window.open('https://feme-limited-sandbox.mybigcommerce.com/', '_blank');
+    } finally {
+      setSsoLoading(false);
+    }
+  };
 
   const handleLogout = async () => {
     setLoading(true);
@@ -34,14 +64,12 @@ export default function Header() {
         description: "You have been signed out.",
       });
 
-      // Force full page reload to reset auth state
       window.location.href = '/login';
     } catch (err) {
       console.error('Logout error:', err);
       localStorage.removeItem('b2b_token');
       localStorage.removeItem('user');
       localStorage.removeItem('b2b_user');
-      // Force full page reload to reset auth state
       window.location.href = '/login';
     }
   };
@@ -54,8 +82,13 @@ export default function Header() {
         </Link>
 
         <div className="flex items-center gap-6">
-          <a href="https://feme-limited-sandbox.mybigcommerce.com/" className="text-sm font-medium text-gray-700 hover:text-black" data-testid="link-home">
-            HOME
+          <a
+            href="https://feme-limited-sandbox.mybigcommerce.com/"
+            onClick={handleHomeClick}
+            className="text-sm font-medium text-gray-700 hover:text-black"
+            data-testid="link-home"
+          >
+            {ssoLoading ? 'Loading...' : 'HOME'}
           </a>
           <Link href="/cart" className="text-sm font-medium text-gray-700 hover:text-black">
             CART

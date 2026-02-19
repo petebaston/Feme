@@ -454,6 +454,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // BigCommerce SSO - Generate Customer Login token for storefront SSO
+  app.get("/api/auth/sso-url", authenticateToken, async (req: AuthRequest, res) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      const customerId = req.user.customerId;
+      if (!customerId) {
+        return res.status(400).json({ message: "No BigCommerce customer ID found" });
+      }
+
+      const clientId = process.env.BIGCOMMERCE_CLIENT_ID;
+      const clientSecret = process.env.BIGCOMMERCE_CLIENT_SECRET;
+      const storeHash = process.env.BIGCOMMERCE_STORE_HASH || process.env.VITE_STORE_HASH;
+      const storeDomain = process.env.BIGCOMMERCE_STORE_DOMAIN || `store-${storeHash}.mybigcommerce.com`;
+
+      if (!clientId || !clientSecret || !storeHash) {
+        console.error('[SSO] Missing required credentials for Customer Login API');
+        return res.status(500).json({ message: "SSO not configured" });
+      }
+
+      let redirectTo = (req.query.redirect_to as string) || '/';
+      if (!redirectTo.startsWith('/') || redirectTo.startsWith('//')) {
+        redirectTo = '/';
+      }
+
+      const now = Math.floor(Date.now() / 1000);
+      const payload = {
+        iss: clientId,
+        iat: now,
+        exp: now + 300,
+        jti: crypto.randomUUID(),
+        operation: "customer_login",
+        store_hash: storeHash,
+        customer_id: customerId,
+        channel_id: parseInt(process.env.VITE_CHANNEL_ID || '1'),
+        redirect_to: redirectTo,
+      };
+
+      const token = jwt.sign(payload, clientSecret, { algorithm: 'HS256' });
+      const loginUrl = `https://${storeDomain}/login/token/${token}`;
+
+      console.log(`[SSO] Generated login URL for customer ${customerId} -> ${storeDomain}`);
+      res.json({ url: loginUrl });
+    } catch (error) {
+      console.error("[SSO] Error generating login URL:", error);
+      res.status(500).json({ message: "Failed to generate SSO URL" });
+    }
+  });
+
   // GraphQL Proxy - Securely proxy GraphQL requests to BigCommerce
   app.post("/api/graphql", authenticateToken, sessionTimeout, async (req: AuthRequest, res) => {
     try {
