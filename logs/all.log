@@ -32773,3 +32773,7 @@
 2026-02-19 17:00:18:018 [33mwarn[39m: [33mGET /api/auth/me 403 - 2ms[39m
 2026-02-19 17:00:19:019 [32mhttp[39m: [32mGET /favicon.ico 200 - 8ms[39m
 2026-02-19 17:00:19:019 [32mhttp[39m: [32mGET /@fs/home/runner/workspace/attached_assets/feme-logo.png 304 - 2ms[39m
+2026-02-19 17:09:01:91 [32mhttp[39m: [32mGET /src/index.css?t=1771520940519&v=s8Ms5DMMXPMZ5lGKsxYHs 200 - 163ms[39m
+2026-02-19 17:09:01:91 [32mhttp[39m: [32mGET /src/index.css?t=1771520940519&v=s8Ms5DMMXPMZ5lGKsxYHs 200 - 299ms[39m
+2026-02-19 17:09:01:91 [32mhttp[39m: [32mGET /src/pages/login.tsx?t=1771520940519 200 - 268ms[39m
+2026-02-19 17:09:01:91 [32mhttp[39m: [32mGET /src/pages/login.tsx?t=1771520940519 200 - 408ms[39m

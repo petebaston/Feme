@@ -183,7 +183,7 @@ export default function Login() {
               <Button
                 variant="outline"
                 className="w-full h-11 border-gray-300 hover:bg-gray-50"
-                onClick={() => window.open('https://example.com/register', '_blank')}
+                onClick={() => window.open('https://feme-limited-sandbox.mybigcommerce.com/contact-us/', '_blank')}
                 data-testid="button-register"
               >
                 Register for an Account
