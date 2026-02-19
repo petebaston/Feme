@@ -54,9 +54,9 @@ export default function Header() {
         </Link>
 
         <div className="flex items-center gap-6">
-          <Link href="/" className="text-sm font-medium text-gray-700 hover:text-black">
+          <a href="https://feme-limited-sandbox.mybigcommerce.com/" className="text-sm font-medium text-gray-700 hover:text-black" data-testid="link-home">
             HOME
-          </Link>
+          </a>
           <Link href="/cart" className="text-sm font-medium text-gray-700 hover:text-black">
             CART
           </Link>
