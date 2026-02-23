@@ -276,7 +276,7 @@ export class BigCommerceService {
           // statusId: order.status_id, // Not in B2BOrder strictly but maybe useful
           money: {
             currency: {
-              code: order.currency_code || 'USD',
+              code: order.currency_code || 'GBP',
             },
             value: order.total_inc_tax?.toString() || '0',
           },
