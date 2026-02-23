@@ -27,16 +27,16 @@ export default function Header() {
       if (response.ok) {
         const data = await response.json();
         if (data?.url) {
-          window.open(data.url, '_blank');
+          window.location.href = data.url;
         } else {
-          window.open('https://feme-limited-sandbox.mybigcommerce.com/', '_blank');
+          window.location.href = 'https://feme-limited-sandbox.mybigcommerce.com/';
         }
       } else {
-        window.open('https://feme-limited-sandbox.mybigcommerce.com/', '_blank');
+        window.location.href = 'https://feme-limited-sandbox.mybigcommerce.com/';
       }
     } catch (err) {
       console.error('SSO redirect error:', err);
-      window.open('https://feme-limited-sandbox.mybigcommerce.com/', '_blank');
+      window.location.href = 'https://feme-limited-sandbox.mybigcommerce.com/';
     } finally {
       setSsoLoading(false);
     }
