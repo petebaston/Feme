@@ -88,7 +88,7 @@ export default function Header() {
             className="text-sm font-medium text-gray-700 hover:text-black"
             data-testid="link-home"
           >
-            {ssoLoading ? 'Loading...' : 'HOME'}
+            {ssoLoading ? 'Loading...' : 'SHOP'}
           </a>
           <Link href="/cart" className="text-sm font-medium text-gray-700 hover:text-black">
             CART
