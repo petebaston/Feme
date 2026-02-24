@@ -27,16 +27,16 @@ export default function Header() {
       if (response.ok) {
         const data = await response.json();
         if (data?.url) {
-          window.location.href = data.url;
+          window.top ? window.top.location.href = data.url : window.location.href = data.url;
         } else {
-          window.location.href = 'https://feme-limited-sandbox.mybigcommerce.com/';
+          window.top ? window.top.location.href = 'https://feme-limited-sandbox.mybigcommerce.com/' : window.location.href = 'https://feme-limited-sandbox.mybigcommerce.com/';
         }
       } else {
-        window.location.href = 'https://feme-limited-sandbox.mybigcommerce.com/';
+        window.top ? window.top.location.href = 'https://feme-limited-sandbox.mybigcommerce.com/' : window.location.href = 'https://feme-limited-sandbox.mybigcommerce.com/';
       }
     } catch (err) {
       console.error('SSO redirect error:', err);
-      window.location.href = 'https://feme-limited-sandbox.mybigcommerce.com/';
+      window.top ? window.top.location.href = 'https://feme-limited-sandbox.mybigcommerce.com/' : window.location.href = 'https://feme-limited-sandbox.mybigcommerce.com/';
     } finally {
       setSsoLoading(false);
     }
@@ -59,9 +59,14 @@ export default function Header() {
       localStorage.removeItem('user');
       localStorage.removeItem('b2b_user');
 
+      const logoutImg = new Image();
+      logoutImg.src = 'https://feme-limited-sandbox.mybigcommerce.com/login.php?action=logout&t=' + Date.now();
+
+      await new Promise(resolve => setTimeout(resolve, 500));
+
       toast({
         title: "Logged out",
-        description: "You have been signed out.",
+        description: "You have been signed out of the portal and the storefront.",
       });
 
       window.location.href = '/login';
