@@ -33631,3 +33631,11 @@
 2026-02-24 08:30:01:301 [32mhttp[39m: [32mGET /@fs/home/runner/workspace/attached_assets/feme-logo.png 304 - 1ms[39m
 2026-02-24 08:31:20:3120 [32mhttp[39m: [32mGET /src/index.css?t=1771921880502&v=o8BqyjThzoaTJ3TIT7n86 200 - 94ms[39m
 2026-02-24 08:31:20:3120 [32mhttp[39m: [32mGET /src/pages/my-orders.tsx?t=1771921880502 200 - 156ms[39m
+2026-02-24 08:31:53:3153 [32mhttp[39m: [32mGET /src/pages/invoice-detail.tsx?t=1771921913356 200 - 141ms[39m
+2026-02-24 08:31:53:3153 [32mhttp[39m: [32mGET /src/index.css?t=1771921913356&v=o8BqyjThzoaTJ3TIT7n86 200 - 204ms[39m
+2026-02-24 08:31:54:3154 [32mhttp[39m: [32mGET /src/index.css?t=1771921914299&v=o8BqyjThzoaTJ3TIT7n86 200 - 152ms[39m
+2026-02-24 08:31:54:3154 [32mhttp[39m: [32mGET /src/pages/invoice-detail.tsx?t=1771921914299 200 - 163ms[39m
+2026-02-24 08:31:55:3155 [32mhttp[39m: [32mGET /src/index.css?t=1771921915357&v=o8BqyjThzoaTJ3TIT7n86 200 - 101ms[39m
+2026-02-24 08:31:55:3155 [32mhttp[39m: [32mGET /src/pages/invoice-detail.tsx?t=1771921915357 200 - 107ms[39m
+2026-02-24 08:31:57:3157 [32mhttp[39m: [32mGET /src/index.css?t=1771921916788&v=o8BqyjThzoaTJ3TIT7n86 200 - 88ms[39m
+2026-02-24 08:31:57:3157 [32mhttp[39m: [32mGET /src/pages/invoice-detail.tsx?t=1771921916788 200 - 106ms[39m

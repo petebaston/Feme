@@ -202,7 +202,7 @@ export default function InvoiceDetail() {
               invoiceId={id!}
               invoiceNumber={invoice.invoiceNumber}
               outstandingAmount={calculateTotal(invoice.details?.header?.costLines || [])}
-              currencySymbol={invoice.details?.header?.costLines?.[0]?.amount?.code === 'USD' ? '$' : '£'}
+              currencySymbol={(() => { const c = invoice.details?.header?.costLines?.[0]?.amount?.code; return c === 'USD' ? '$' : c === 'EUR' ? '€' : '£'; })()}
               onPaymentRecorded={() => {
                 queryClient.invalidateQueries({ queryKey: [`/api/invoices/${id}`] });
               }}
@@ -282,7 +282,7 @@ export default function InvoiceDetail() {
               const freight = getCostValue(costLines, 'freight');
               const total = calculateTotal(costLines);
               const currencyCode = costLines[0]?.amount?.code || 'GBP';
-              const currencySymbol = currencyCode === 'USD' ? '$' : '£';
+              const currencySymbol = currencyCode === 'USD' ? '$' : currencyCode === 'EUR' ? '€' : '£';
 
               return (
                 <>
@@ -348,7 +348,7 @@ export default function InvoiceDetail() {
                       const quantity = item.quantity || item.qty || 1;
                       const price = parseFloat(item.price || item.unitPrice || item.amount?.value || 0);
                       const total = price * quantity;
-                      const symbol = currencyCode === 'USD' ? '$' : '£';
+                      const symbol = currencyCode === 'USD' ? '$' : currencyCode === 'EUR' ? '€' : '£';
 
                       return (
                         <tr key={index} className="border-b border-gray-100" data-testid={`item-${index}`}>
@@ -409,7 +409,7 @@ export default function InvoiceDetail() {
                 <tbody>
                   {payments.map((payment: any, index: number) => {
                     const currencyCode = invoice.details?.header?.costLines?.[0]?.amount?.code || 'GBP';
-                    const symbol = currencyCode === 'USD' ? '$' : '£';
+                    const symbol = currencyCode === 'USD' ? '$' : currencyCode === 'EUR' ? '€' : '£';
 
                     return (
                       <tr key={index} className="border-b border-gray-100">
