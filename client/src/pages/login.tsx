@@ -193,8 +193,14 @@ export default function Login() {
           </CardContent>
         </Card>
 
-        <div className="text-center mt-6 text-sm text-gray-500">
-          <p>Powered by BigCommerce B2B Edition GraphQL API</p>
+        <div className="text-center mt-6">
+          <a
+            href="https://feme-limited-sandbox.mybigcommerce.com/"
+            className="text-sm font-medium text-gray-600 hover:text-black underline"
+            data-testid="link-back-to-store"
+          >
+            ← Back to Store
+          </a>
         </div>
       </div>
     </div>

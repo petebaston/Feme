@@ -33639,3 +33639,5 @@
 2026-02-24 08:31:55:3155 [32mhttp[39m: [32mGET /src/pages/invoice-detail.tsx?t=1771921915357 200 - 107ms[39m
 2026-02-24 08:31:57:3157 [32mhttp[39m: [32mGET /src/index.css?t=1771921916788&v=o8BqyjThzoaTJ3TIT7n86 200 - 88ms[39m
 2026-02-24 08:31:57:3157 [32mhttp[39m: [32mGET /src/pages/invoice-detail.tsx?t=1771921916788 200 - 106ms[39m
+2026-02-24 08:34:53:3453 [32mhttp[39m: [32mGET /src/index.css?t=1771922093283&v=o8BqyjThzoaTJ3TIT7n86 200 - 89ms[39m
+2026-02-24 08:34:53:3453 [32mhttp[39m: [32mGET /src/pages/login.tsx?t=1771922093283 200 - 158ms[39m
