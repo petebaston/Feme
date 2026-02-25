@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Search, SlidersHorizontal, ChevronDown } from "lucide-react";
+import { Search, SlidersHorizontal, ChevronDown, X } from "lucide-react";
 import { formatCurrency } from "@/lib/currency";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ExportButton } from "@/components/b2b/export-button";
@@ -12,6 +12,10 @@ export default function Orders() {
   const [searchTerm, setSearchTerm] = useState("");
   const [showFilters, setShowFilters] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const [amountMin, setAmountMin] = useState("");
+  const [amountMax, setAmountMax] = useState("");
   const [, setLocation] = useLocation();
 
   const { data: orders, isLoading, error} = useQuery<any[]>({
@@ -19,26 +23,52 @@ export default function Orders() {
     staleTime: 300000,
     retry: false,
   });
-  
-  // If we get an auth error, clear token and force re-login
+
   if (error && (error as any)?.message?.includes('token')) {
     localStorage.removeItem('b2b_token');
     localStorage.removeItem('b2b_user');
     window.location.href = '/login';
   }
 
+  const hasActiveFilters = statusFilter !== "all" || dateFrom || dateTo || amountMin || amountMax;
+
+  const clearAllFilters = () => {
+    setStatusFilter("all");
+    setDateFrom("");
+    setDateTo("");
+    setAmountMin("");
+    setAmountMax("");
+  };
+
   const filteredOrders = orders?.filter((order: any) => {
+    const orderDate = order.createdAt ? new Date(order.createdAt) : null;
+    const orderDateStr = orderDate
+      ? orderDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+      : '';
+    const amount = parseFloat(order.money?.value || order.totalIncTax || '0');
+
     const matchesSearch = !searchTerm ||
       order.id?.toString().includes(searchTerm) ||
-      order.customerName?.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesStatus = statusFilter === "all" || 
+      order.customerName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (order.billingAddress?.first_name + ' ' + order.billingAddress?.last_name)
+        .toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (order.billingAddress?.company || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (order.poNumber || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      orderDateStr.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      amount.toFixed(2).includes(searchTerm);
+
+    const matchesStatus = statusFilter === "all" ||
       order.status?.toLowerCase() === statusFilter.toLowerCase();
-    
-    return matchesSearch && matchesStatus;
+
+    const matchesDateFrom = !dateFrom || (orderDate && orderDate >= new Date(dateFrom));
+    const matchesDateTo = !dateTo || (orderDate && orderDate <= new Date(dateTo + 'T23:59:59'));
+
+    const matchesAmountMin = !amountMin || amount >= parseFloat(amountMin);
+    const matchesAmountMax = !amountMax || amount <= parseFloat(amountMax);
+
+    return matchesSearch && matchesStatus && matchesDateFrom && matchesDateTo && matchesAmountMin && matchesAmountMax;
   }) || [];
 
-  // Get unique statuses for filter
   const uniqueStatuses = Array.from(
     new Set(orders?.map((o: any) => o.status).filter(Boolean) || [])
   ) as string[];
@@ -61,7 +91,6 @@ export default function Orders() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-normal text-black">Company Orders</h1>
         <ExportButton
@@ -71,36 +100,46 @@ export default function Orders() {
         />
       </div>
 
-      {/* Search and Filter */}
       <div className="space-y-3">
-        <div className="flex gap-3 w-1/2">
+        <div className="flex gap-3 w-full md:w-1/2">
           <div className="flex-1 relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
             <Input
-              placeholder="Search"
+              placeholder="Search by order #, date, amount, name…"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10 h-10 bg-gray-100 border-0 focus-visible:ring-0 rounded-none"
               data-testid="input-search-orders"
             />
+            {searchTerm && (
+              <button
+                onClick={() => setSearchTerm("")}
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                data-testid="button-clear-search"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
           </div>
-          <button 
+          <button
             onClick={() => setShowFilters(!showFilters)}
-            className={`flex items-center justify-center w-10 h-10 border border-gray-300 hover:bg-gray-50 ${showFilters ? 'bg-gray-100' : ''}`}
+            className={`flex items-center justify-center w-10 h-10 border hover:bg-gray-50 relative ${
+              showFilters ? 'bg-gray-100 border-gray-400' : 'border-gray-300'
+            }`}
             data-testid="button-toggle-filters"
           >
             <SlidersHorizontal className="w-4 h-4" />
+            {hasActiveFilters && (
+              <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-black rounded-full" />
+            )}
           </button>
         </div>
 
-        {/* Filter Panel */}
         {showFilters && (
           <div className="bg-gray-50 border border-gray-200 p-4" data-testid="panel-filters">
-            <div className="space-y-3">
+            <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Order Status
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Order Status</label>
                 <div className="flex flex-wrap gap-2">
                   <button
                     onClick={() => setStatusFilter("all")}
@@ -129,14 +168,62 @@ export default function Orders() {
                   ))}
                 </div>
               </div>
-              
-              {statusFilter !== "all" && (
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Date From</label>
+                  <Input
+                    type="date"
+                    value={dateFrom}
+                    onChange={(e) => setDateFrom(e.target.value)}
+                    className="h-9 rounded-none border-gray-300"
+                    data-testid="input-date-from"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Date To</label>
+                  <Input
+                    type="date"
+                    value={dateTo}
+                    onChange={(e) => setDateTo(e.target.value)}
+                    className="h-9 rounded-none border-gray-300"
+                    data-testid="input-date-to"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Min Amount (£)</label>
+                  <Input
+                    type="number"
+                    placeholder="0.00"
+                    value={amountMin}
+                    onChange={(e) => setAmountMin(e.target.value)}
+                    className="h-9 rounded-none border-gray-300"
+                    data-testid="input-amount-min"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Max Amount (£)</label>
+                  <Input
+                    type="number"
+                    placeholder="Any"
+                    value={amountMax}
+                    onChange={(e) => setAmountMax(e.target.value)}
+                    className="h-9 rounded-none border-gray-300"
+                    data-testid="input-amount-max"
+                  />
+                </div>
+              </div>
+
+              {hasActiveFilters && (
                 <button
-                  onClick={() => setStatusFilter("all")}
+                  onClick={clearAllFilters}
                   className="text-sm text-gray-600 hover:text-black underline"
                   data-testid="button-clear-filters"
                 >
-                  Clear filters
+                  Clear all filters
                 </button>
               )}
             </div>
@@ -144,7 +231,6 @@ export default function Orders() {
         )}
       </div>
 
-      {/* Table */}
       <div className="border border-gray-200 bg-white overflow-x-auto relative">
         <Table>
           <TableHeader>
@@ -174,8 +260,8 @@ export default function Orders() {
               ))
             ) : filteredOrders.length > 0 ? (
               filteredOrders.map((order: any) => (
-                <TableRow 
-                  key={order.id} 
+                <TableRow
+                  key={order.id}
                   className="hover:bg-gray-50 cursor-pointer"
                   onClick={() => setLocation(`/orders/${order.id}`)}
                   data-testid={`row-order-${order.id}`}
@@ -183,7 +269,7 @@ export default function Orders() {
                   <TableCell className="font-normal">{order.id}</TableCell>
                   <TableCell className="text-gray-700">
                     <div className="max-w-xs">
-                      {order.billingAddress?.first_name && order.billingAddress?.last_name 
+                      {order.billingAddress?.first_name && order.billingAddress?.last_name
                         ? `${order.billingAddress.first_name} ${order.billingAddress.last_name}`.trim()
                         : order.customerName || '–'}
                     </div>
@@ -205,7 +291,7 @@ export default function Orders() {
                     </span>
                   </TableCell>
                   <TableCell className="text-gray-700">
-                    {new Date(order.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }).replace(/ /g, ' ')}
+                    {new Date(order.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
                   </TableCell>
                 </TableRow>
               ))
@@ -220,17 +306,10 @@ export default function Orders() {
         </Table>
       </div>
 
-      {/* Pagination */}
-      <div className="flex items-center justify-end gap-4 text-sm text-gray-600">
-        <span>Rows per page: <span className="font-medium">10</span></span>
-        <span>1–8 of 8</span>
-        <div className="flex gap-2">
-          <button className="w-8 h-8 flex items-center justify-center border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50" disabled>
-            ‹
-          </button>
-          <button className="w-8 h-8 flex items-center justify-center border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50" disabled>
-            ›
-          </button>
+      <div className="flex items-center justify-between text-sm text-gray-600">
+        <span>{filteredOrders.length} order{filteredOrders.length !== 1 ? 's' : ''} found</span>
+        <div className="flex items-center gap-4">
+          <span>Showing {filteredOrders.length} of {orders?.length || 0}</span>
         </div>
       </div>
     </div>

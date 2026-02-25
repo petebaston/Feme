@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Search, SlidersHorizontal, ChevronRight, ChevronDown, MoreVertical, FileDown } from "lucide-react";
+import { Search, SlidersHorizontal, ChevronRight, ChevronDown, MoreVertical, FileDown, X } from "lucide-react";
 import { formatCurrency } from "@/lib/currency";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
@@ -21,6 +21,10 @@ export default function Invoices() {
   const [searchTerm, setSearchTerm] = useState("");
   const [showFilters, setShowFilters] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const [amountMin, setAmountMin] = useState("");
+  const [amountMax, setAmountMax] = useState("");
   const [selectedInvoices, setSelectedInvoices] = useState<string[]>([]);
   const [expandedInvoiceId, setExpandedInvoiceId] = useState<string | null>(null);
   const [pdfBlobUrls, setPdfBlobUrls] = useState<Record<string, string>>({});
@@ -76,15 +80,50 @@ export default function Invoices() {
     return 'Unpaid';
   };
 
+  const hasActiveFilters = statusFilter !== "all" || dateFrom || dateTo || amountMin || amountMax;
+
+  const clearAllFilters = () => {
+    setStatusFilter("all");
+    setDateFrom("");
+    setDateTo("");
+    setAmountMin("");
+    setAmountMax("");
+  };
+
   const filteredInvoices = invoices?.filter((invoice: any) => {
+    const costLines = invoice.details?.header?.costLines || [];
+    const subtotalLine = costLines.find((line: any) => line.description === 'Subtotal');
+    const taxLine = costLines.find((line: any) => line.description === 'Sales Tax');
+    const invoiceTotal = parseFloat(subtotalLine?.amount?.value || 0) + parseFloat(taxLine?.amount?.value || 0);
+    const openBalance = parseFloat(invoice.openBalance?.value || '0');
+
+    const orderDate = invoice.details?.header?.orderDate
+      ? new Date(invoice.details.header.orderDate * 1000) : null;
+    const dueDateObj = invoice.dueDate ? new Date(invoice.dueDate * 1000) : null;
+    const orderDateStr = orderDate
+      ? orderDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '';
+    const dueDateStr = dueDateObj
+      ? dueDateObj.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '';
+
     const matchesSearch = !searchTerm ||
       invoice.invoiceNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      invoice.customerName?.toLowerCase().includes(searchTerm.toLowerCase());
+      invoice.customerName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (invoice.orderNumber || '').toString().includes(searchTerm) ||
+      orderDateStr.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      dueDateStr.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      invoiceTotal.toFixed(2).includes(searchTerm) ||
+      openBalance.toFixed(2).includes(searchTerm);
 
     const invoiceStatus = calculateInvoiceStatus(invoice);
     const matchesStatus = statusFilter === "all" || invoiceStatus.toLowerCase() === statusFilter.toLowerCase();
 
-    return matchesSearch && matchesStatus;
+    const matchesDateFrom = !dateFrom || (orderDate && orderDate >= new Date(dateFrom));
+    const matchesDateTo = !dateTo || (orderDate && orderDate <= new Date(dateTo + 'T23:59:59'));
+
+    const matchesAmountMin = !amountMin || invoiceTotal >= parseFloat(amountMin);
+    const matchesAmountMax = !amountMax || invoiceTotal <= parseFloat(amountMax);
+
+    return matchesSearch && matchesStatus && matchesDateFrom && matchesDateTo && matchesAmountMin && matchesAmountMax;
   }) || [];
 
   // Pagination calculations
@@ -97,7 +136,7 @@ export default function Invoices() {
   // Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, statusFilter]);
+  }, [searchTerm, statusFilter, dateFrom, dateTo, amountMin, amountMax]);
 
   // Get aged invoice totals from company extraFields (custom fields)
   // These are authoritative values from the ERP system, not calculated client-side
@@ -314,34 +353,46 @@ export default function Invoices() {
 
       {/* Search and Filter */}
       <div className="space-y-3">
-        <div className="flex gap-3 w-1/2">
+        <div className="flex gap-3 w-full md:w-1/2">
           <div className="flex-1 relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
             <Input
-              placeholder="Search"
+              placeholder="Search by invoice #, order #, date, amount…"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10 h-10 bg-gray-100 border-0 focus-visible:ring-0 rounded-none"
               data-testid="input-search-invoices"
             />
+            {searchTerm && (
+              <button
+                onClick={() => setSearchTerm("")}
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                data-testid="button-clear-search"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
           </div>
-          <button 
+          <button
             onClick={() => setShowFilters(!showFilters)}
-            className={`flex items-center justify-center w-10 h-10 border border-gray-300 hover:bg-gray-50 ${showFilters ? 'bg-gray-100' : ''}`}
+            className={`flex items-center justify-center w-10 h-10 border hover:bg-gray-50 relative ${
+              showFilters ? 'bg-gray-100 border-gray-400' : 'border-gray-300'
+            }`}
             data-testid="button-toggle-filters"
           >
             <SlidersHorizontal className="w-4 h-4" />
+            {hasActiveFilters && (
+              <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-black rounded-full" />
+            )}
           </button>
         </div>
 
         {/* Filter Panel */}
         {showFilters && (
           <div className="bg-gray-50 border border-gray-200 p-4" data-testid="panel-filters">
-            <div className="space-y-3">
+            <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Invoice Status
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Invoice Status</label>
                 <div className="flex flex-wrap gap-2">
                   <button
                     onClick={() => setStatusFilter("all")}
@@ -389,14 +440,62 @@ export default function Invoices() {
                   </button>
                 </div>
               </div>
-              
-              {statusFilter !== "all" && (
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Invoice Date From</label>
+                  <Input
+                    type="date"
+                    value={dateFrom}
+                    onChange={(e) => setDateFrom(e.target.value)}
+                    className="h-9 rounded-none border-gray-300"
+                    data-testid="input-date-from"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Invoice Date To</label>
+                  <Input
+                    type="date"
+                    value={dateTo}
+                    onChange={(e) => setDateTo(e.target.value)}
+                    className="h-9 rounded-none border-gray-300"
+                    data-testid="input-date-to"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Min Amount (£)</label>
+                  <Input
+                    type="number"
+                    placeholder="0.00"
+                    value={amountMin}
+                    onChange={(e) => setAmountMin(e.target.value)}
+                    className="h-9 rounded-none border-gray-300"
+                    data-testid="input-amount-min"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Max Amount (£)</label>
+                  <Input
+                    type="number"
+                    placeholder="Any"
+                    value={amountMax}
+                    onChange={(e) => setAmountMax(e.target.value)}
+                    className="h-9 rounded-none border-gray-300"
+                    data-testid="input-amount-max"
+                  />
+                </div>
+              </div>
+
+              {hasActiveFilters && (
                 <button
-                  onClick={() => setStatusFilter("all")}
+                  onClick={clearAllFilters}
                   className="text-sm text-gray-600 hover:text-black underline"
                   data-testid="button-clear-filters"
                 >
-                  Clear filters
+                  Clear all filters
                 </button>
               )}
             </div>
