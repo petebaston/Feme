@@ -37,14 +37,14 @@ export default function Invoices() {
     retry: 2,
   });
 
-  const { data: companyCredit, isLoading: isCreditLoading, error: creditError } = useQuery<any>({
+  const { data: companyCredit, isLoading: isCreditLoading } = useQuery<any>({
     queryKey: ['/api/company/credit'],
     staleTime: 300000,
-    retry: 2,
+    retry: 0,
   });
 
   // Fetch company details to get aged invoice data from extraFields
-  const { data: companyData, isLoading: isCompanyLoading, error: companyError } = useQuery<any>({
+  const { data: companyData, isLoading: isCompanyLoading } = useQuery<any>({
     queryKey: ['/api/company'],
     staleTime: 300000,
     retry: 2,
@@ -342,12 +342,6 @@ export default function Invoices() {
           <p className="text-red-600 text-sm mt-1">
             {invoicesError instanceof Error ? invoicesError.message : 'Please try refreshing the page'}
           </p>
-        </div>
-      )}
-      {creditError && (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4">
-          <p className="text-yellow-800 text-sm font-medium">Failed to load company credit information</p>
-          <p className="text-yellow-600 text-sm mt-1">Some features may be limited</p>
         </div>
       )}
 
