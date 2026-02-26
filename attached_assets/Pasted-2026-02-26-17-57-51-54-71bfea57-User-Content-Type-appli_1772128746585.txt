@@ -1,0 +1,148 @@
+2026-02-26 17:57:51.54
+71bfea57
+User
+"Content-Type": "application/json",
+2026-02-26 17:57:51.54
+71bfea57
+User
+Credit Result: null
+2026-02-26 17:57:51.54
+71bfea57
+User
+[BigCommerce] ❌ Error 400: {"code":400,"data":{"errMsg":"Store company credit is not enabled"},"meta":{"message":"API logic error"}}
+2026-02-26 17:57:51.54
+71bfea57
+User
+[BigCommerce] Company credit fetch failed: BigCommerce API Error: 400 Bad Request
+2026-02-26 17:57:51.54
+71bfea57
+User
+[BigCommerce] Request failed: BigCommerce API Error: 400 Bad Request
+2026-02-26 17:57:51.54
+71bfea57
+User
+"Accept": "application/json",
+2026-02-26 17:57:51.54
+71bfea57
+User
+"X-Channel-Id": "1",
+2026-02-26 17:57:51.54
+71bfea57
+User
+[BigCommerce] Response Body: {"code":400,"data":{"errMsg":"Store company credit is not enabled"},"meta":{"message":"API logic error"}}
+2026-02-26 17:57:51.54
+71bfea57
+User
+[BigCommerce] Headers: {
+2026-02-26 17:57:51.54
+71bfea57
+User
+[BigCommerce] Using management token (store-wide access)
+2026-02-26 17:57:51.57
+71bfea57
+User
+[BigCommerce] GET https://api-b2b.bigcommerce.com/api/v3/io/companies/9685502
+2026-02-26 17:57:51.57
+71bfea57
+User
+[BigCommerce] Fetching full company details for 9685502
+2026-02-26 17:57:51.57
+71bfea57
+User
+[BigCommerce] Headers: {
+2026-02-26 17:57:51.57
+71bfea57
+User
+"Content-Type": "application/json",
+2026-02-26 17:57:51.57
+71bfea57
+User
+[BigCommerce] Using management token (store-wide access)
+2026-02-26 17:57:51.66
+71bfea57
+User
+"isRequired": "0",
+2026-02-26 17:57:53.02
+71bfea57
+User
+[BigCommerce] Response Body: {"code":200,"data":{"id":10287764,"extraFields":[{"fieldName":"Terms","fieldValue":"PREPMT"},{"fieldName":"Customer","fieldValue":"HOBS02"},{"fieldName":"Our Ref","fieldValue":"SO177917"},{"fieldName":"Sales Rep","fieldValue":""},{"fieldName":"Shipping Method","fieldValue":"COURIER"},{"fieldName":"Tax Code","fieldValue":"VAT:"},{"fieldName":"VAT Registration Number","fieldValue":""},{"fieldName":"VAT Reg","fieldValue":"672 1377 33"},{"fieldName":"S","fieldValue":"20% VAT"},{"fieldName":"1-30 day...
+2026-02-26 17:58:19.75
+71bfea57
+User
+5:58:19 PM [express] GET /api/auth/me 304 in 100ms :: {"user":{"userId":"e34fcbe4-4a04-4dc6-b650-743…
+2026-02-26 17:58:19.93
+71bfea57
+User
+[Payments] Fetching payments for invoice 10188937
+2026-02-26 17:58:19.93
+71bfea57
+User
+[BigCommerce] Fetching payments for invoice 10188937...
+2026-02-26 17:58:19.94
+71bfea57
+User
+"X-Channel-Id": "1",
+2026-02-26 17:58:19.94
+71bfea57
+User
+[BigCommerce] GET https://api-b2b.bigcommerce.com/api/v3/io/invoices/10188937/payments
+2026-02-26 17:58:19.94
+71bfea57
+User
+"X-Auth-Token": "***"
+2026-02-26 17:58:19.94
+71bfea57
+User
+"X-Store-Hash": "pyrenapwe2",
+2026-02-26 17:58:19.94
+71bfea57
+User
+}
+2026-02-26 17:58:19.96
+71bfea57
+User
+"X-Store-Hash": "pyrenapwe2",
+2026-02-26 17:58:19.96
+71bfea57
+User
+[BigCommerce] GET https://api-b2b.bigcommerce.com/api/v3/io/companies/9685502
+2026-02-26 17:58:19.96
+71bfea57
+User
+"X-Channel-Id": "1",
+2026-02-26 17:58:19.96
+71bfea57
+User
+"Accept": "application/json",
+2026-02-26 17:58:19.96
+71bfea57
+User
+"Content-Type": "application/json",
+2026-02-26 17:58:19.96
+71bfea57
+User
+[BigCommerce] Headers: {
+2026-02-26 17:58:19.96
+71bfea57
+User
+[BigCommerce] Using management token (store-wide access)
+2026-02-26 17:58:19.96
+71bfea57
+User
+}
+2026-02-26 17:58:19.96
+71bfea57
+User
+[BigCommerce] Fetching full company details for 9685502
+2026-02-26 17:58:19.96
+71bfea57
+User
+"X-Auth-Token": "***"
+2026-02-26 17:58:19.96
+71bfea57
+User
+[BigCommerce] Response Body: {"code": 404, "message": "Not Found"}
+2026-02-26 17:58:19.96
+71bfea57
+User
+[BigCommerce] Response Status: 404 Not Found
