@@ -742,6 +742,16 @@ export class BigCommerceService {
     return { data: allUsers };
   }
 
+  async getB2BUserById(userId: string | number): Promise<any> {
+    try {
+      const response = await this.request<any>(`/api/v3/io/users/${userId}`);
+      return response?.data || response;
+    } catch (error) {
+      console.warn(`[BigCommerce] Could not fetch user ${userId} by ID:`, error);
+      return null;
+    }
+  }
+
   async updateB2BUser(userId: string | number, data: {
     firstName?: string;
     lastName?: string;

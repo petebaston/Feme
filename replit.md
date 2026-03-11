@@ -31,7 +31,8 @@ The backend is an Express.js server providing API endpoints and static file serv
 - **Invoice Management:** Uses BigCommerce Management Token for fetching invoices, with server-side filtering by `extraFields.Customer ID` to prevent cross-company data leakage. Implements paginated fetching for all invoices.
 - **Order Extra Fields:** Fetched using the B2B REST API endpoint `GET /api/v3/io/orders?bcOrderId={orderId}&showExtra=true` for comprehensive details.
 - **Users & Addresses:** Managed via B2B Edition Management API v3 (`/api/v3/io/users`, `/api/v3/io/addresses`), filtered by actual company ID, with cache-busting headers.
-- **Authentication & Session Management:** Backend `api/auth/me` validates both JWT and BigCommerce tokens. Automatic logout occurs if the BigCommerce token is missing, with clear user messaging. "Remember me" functionality uses `sameSite: 'lax'` for refresh token cookies to work within iframe environments.
+- **Authentication & Session Management:** Backend `api/auth/me` validates both JWT and BigCommerce tokens, and enriches the response with the user's B2B profile (firstName, lastName, phone) via `GET /api/v3/io/users/{userId}`. Returns a flat structure rather than a nested `user` object. Automatic logout occurs if the BigCommerce token is missing, with clear user messaging. "Remember me" functionality uses `sameSite: 'lax'` for refresh token cookies to work within iframe environments.
+- **Account Settings Pre-population:** `/api/auth/me` now fetches the full B2B user profile and returns firstName/lastName/phone alongside JWT claims, so the Account Settings form correctly pre-populates on load. Role field capitalised for display.
 
 ### Enterprise Features
 - **Advanced Permission System:** Features 12 granular permissions across various modules (orders, quotes, invoices, shopping lists, users, addresses), with role-based access control (Admin, Buyer, User roles).

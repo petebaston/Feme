@@ -9,14 +9,13 @@ import { formatCurrency } from "@/lib/currency";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 
 interface UserData {
-  id: string;
+  userId: string;
   email: string;
   firstName?: string;
   lastName?: string;
   phone?: string;
   role?: string;
   companyId?: string;
-  companyName?: string;
 }
 
 interface CompanyData {
@@ -55,7 +54,7 @@ export default function AccountSettings() {
     creditLimit: number;
     availableCredit: number;
     balance: number;
-  }>({ queryKey: ['/api/company/credit'] });
+  }>({ queryKey: ['/api/company/credit'], retry: false });
 
   useEffect(() => {
     if (userData) {
@@ -218,7 +217,7 @@ export default function AccountSettings() {
             <Skeleton className="h-11 w-full" />
           ) : (
             <div className="h-11 px-3 py-2 bg-gray-100 border border-gray-300 text-gray-500 flex items-center" data-testid="text-role">
-              {userData?.role || 'User'}
+              {userData?.role ? userData.role.charAt(0).toUpperCase() + userData.role.slice(1) : 'User'}
             </div>
           )}
         </div>

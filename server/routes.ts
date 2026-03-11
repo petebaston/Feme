@@ -342,14 +342,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Return user info (token is valid)
+      // Fetch full B2B profile (firstName, lastName, phone) to return in one call
+      let b2bProfile: any = null;
+      try {
+        b2bProfile = await bigcommerce.getB2BUserById(req.user.userId);
+      } catch (_) { /* non-fatal */ }
+
       res.json({
-        user: {
-          userId: req.user.userId,
-          email: req.user.email,
-          role: req.user.role,
-          companyId: req.user.companyId,
-        }
+        userId: req.user.userId,
+        email: req.user.email,
+        role: req.user.role,
+        companyId: req.user.companyId,
+        firstName: b2bProfile?.firstName || '',
+        lastName: b2bProfile?.lastName || '',
+        phone: b2bProfile?.phone || b2bProfile?.phoneNumber || '',
       });
     } catch (error) {
       console.error("[Me] Error:", error);
