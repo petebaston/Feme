@@ -55,28 +55,28 @@ export default function Dashboard() {
   const currencyCode = invoices?.[0]?.openBalance?.code || 'GBP';
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6 md:space-y-8">
       {/* Welcome */}
       <div>
-        <h1 className="text-3xl font-normal text-black">Welcome back, {user.name || user.firstName || 'User'}</h1>
+        <h1 className="text-2xl md:text-3xl font-normal text-black">Welcome back, {user.name || user.firstName || 'User'}</h1>
         <p className="text-sm text-gray-500 mt-1">{user.companyName || ''}</p>
       </div>
 
       {/* Navigation Tiles */}
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
         {navTiles.map((tile) => {
           const Icon = tile.icon;
           return (
             <Link
               key={tile.href}
               href={tile.href}
-              className="flex flex-col items-start gap-3 p-6 bg-white border border-gray-200 hover:border-black hover:shadow-sm transition-all group"
+              className="flex flex-col items-start gap-2 md:gap-3 p-4 md:p-6 bg-white border border-gray-200 hover:border-black hover:shadow-sm transition-all group"
               data-testid={`tile-${tile.name.toLowerCase().replace(/\s+/g, '-')}`}
             >
-              <Icon className="w-6 h-6 text-gray-400 group-hover:text-black transition-colors" />
+              <Icon className="w-5 h-5 md:w-6 md:h-6 text-gray-400 group-hover:text-black transition-colors" />
               <div>
                 <p className="text-sm font-medium text-black">{tile.name}</p>
-                <p className="text-xs text-gray-500 mt-0.5 leading-snug">{tile.description}</p>
+                <p className="text-xs text-gray-500 mt-0.5 leading-snug hidden md:block">{tile.description}</p>
               </div>
             </Link>
           );
@@ -85,24 +85,24 @@ export default function Dashboard() {
 
       {/* Financial Summary */}
       <div>
-        <h2 className="text-lg font-normal text-black mb-4">Financial Summary</h2>
-        <div className="grid grid-cols-2 gap-4">
-          <div className="bg-white border border-gray-200 p-6" data-testid="card-outstanding">
+        <h2 className="text-base md:text-lg font-normal text-black mb-3 md:mb-4">Financial Summary</h2>
+        <div className="grid grid-cols-2 gap-3 md:gap-4">
+          <div className="bg-white border border-gray-200 p-4 md:p-6" data-testid="card-outstanding">
             <p className="text-xs text-gray-500 uppercase tracking-wide mb-2">Outstanding Balance</p>
             {invoicesLoading ? (
-              <Skeleton className="h-8 w-24" />
+              <Skeleton className="h-7 md:h-8 w-20 md:w-24" />
             ) : (
-              <p className="text-3xl font-normal text-black" data-testid="text-outstanding">
+              <p className="text-xl md:text-3xl font-normal text-black" data-testid="text-outstanding">
                 {formatCurrency(totalOutstanding, currencyCode)}
               </p>
             )}
           </div>
-          <div className="bg-white border border-gray-200 p-6" data-testid="card-overdue">
+          <div className="bg-white border border-gray-200 p-4 md:p-6" data-testid="card-overdue">
             <p className="text-xs text-gray-500 uppercase tracking-wide mb-2">Overdue</p>
             {invoicesLoading ? (
-              <Skeleton className="h-8 w-24" />
+              <Skeleton className="h-7 md:h-8 w-20 md:w-24" />
             ) : (
-              <p className={`text-3xl font-normal ${totalOverdue > 0 ? 'text-red-600' : 'text-black'}`} data-testid="text-overdue">
+              <p className={`text-xl md:text-3xl font-normal ${totalOverdue > 0 ? 'text-red-600' : 'text-black'}`} data-testid="text-overdue">
                 {formatCurrency(totalOverdue, currencyCode)}
               </p>
             )}

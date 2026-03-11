@@ -6,7 +6,7 @@ import { graphqlClient } from "./lib/graphql-client";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ErrorBoundary } from "@/components/error-boundary";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 
 import NotFound from "@/pages/not-found";
 import Login from "@/pages/login";
@@ -27,18 +27,16 @@ function Router() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Check authentication status and refresh token if needed
     const checkAuth = async () => {
       try {
         const token = localStorage.getItem('b2b_token');
 
-        // If no token, try refresh (for "remember me" functionality)
         if (!token) {
           console.log('[Auth] No access token, attempting refresh with cookie...');
           try {
             const refreshResponse = await fetch('/api/auth/refresh', {
               method: 'POST',
-              credentials: 'include', // Include refresh cookie
+              credentials: 'include',
             });
 
             if (refreshResponse.ok) {
@@ -50,7 +48,6 @@ function Router() {
               return;
             }
           } catch (e) {
-            // Refresh failed, continue to unauthenticated state
             console.log('[Auth] Refresh from cookie failed');
           }
           setIsAuthenticated(false);
@@ -58,25 +55,18 @@ function Router() {
           return;
         }
 
-        // Token exists - verify it's still valid
         if (token) {
-          // Try to verify token is still valid by making a lightweight API call
           try {
             const response = await fetch('/api/auth/me', {
-              headers: {
-                'Authorization': `Bearer ${token}`
-              }
+              headers: { 'Authorization': `Bearer ${token}` }
             });
 
             if (response.ok) {
-              // Token is still valid
               setIsAuthenticated(true);
             } else if (response.status === 401) {
-              // Check if BigCommerce token is missing
               try {
                 const errorData = await response.json();
                 if (errorData.reason === 'bigcommerce_token_missing') {
-                  // BigCommerce token expired/missing - cannot refresh, must re-login
                   console.log('[Auth] BigCommerce token missing, redirecting to login');
                   localStorage.removeItem('b2b_token');
                   localStorage.removeItem('b2b_user');
@@ -84,25 +74,20 @@ function Router() {
                   window.location.href = '/login?expired=true';
                   return;
                 }
-              } catch (e) {
-                // Response not JSON, continue with normal flow
-              }
+              } catch (e) {}
 
-              // Token expired - try to refresh using remember me cookie
               console.log('[Auth] Token expired, attempting refresh...');
               const refreshResponse = await fetch('/api/auth/refresh', {
                 method: 'POST',
-                credentials: 'include', // Include cookies (refreshToken cookie)
+                credentials: 'include',
               });
 
               if (refreshResponse.ok) {
                 const data = await refreshResponse.json();
-                // Update token
                 localStorage.setItem('b2b_token', data.accessToken);
                 setIsAuthenticated(true);
                 console.log('[Auth] Token refreshed successfully');
               } else {
-                // Refresh failed - clear token and redirect to login
                 console.log('[Auth] Refresh failed, redirecting to login');
                 localStorage.removeItem('b2b_token');
                 localStorage.removeItem('b2b_user');
@@ -112,7 +97,6 @@ function Router() {
             }
           } catch (error) {
             console.error('[Auth] Token validation failed:', error);
-            // SECURITY: Never assume authenticated on error - force re-login
             localStorage.removeItem('b2b_token');
             localStorage.removeItem('b2b_user');
             setIsAuthenticated(false);
@@ -126,6 +110,25 @@ function Router() {
     };
 
     checkAuth();
+  }, []);
+
+  const handleLogout = useCallback(async () => {
+    try {
+      const token = localStorage.getItem('b2b_token');
+      await fetch('/api/auth/logout', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+      });
+    } catch (_) {}
+    localStorage.removeItem('b2b_token');
+    localStorage.removeItem('user');
+    localStorage.removeItem('b2b_user');
+    const logoutImg = new Image();
+    logoutImg.src = 'https://feme-limited-sandbox.mybigcommerce.com/login.php?action=logout&t=' + Date.now();
+    await new Promise(resolve => setTimeout(resolve, 500));
+    window.top
+      ? (window.top.location.href = 'https://feme-limited-sandbox.mybigcommerce.com/')
+      : (window.location.href = 'https://feme-limited-sandbox.mybigcommerce.com/');
   }, []);
 
   if (isLoading) {
@@ -149,10 +152,10 @@ function Router() {
 
   return (
     <div className="min-h-screen bg-white">
-      <Header />
+      <Header onLogout={handleLogout} />
       <div className="flex">
-        <Sidebar />
-        <main className="flex-1 md:ml-44 px-8 py-6 bg-white min-h-[calc(100vh-4rem)]">
+        <Sidebar onLogout={handleLogout} />
+        <main className="flex-1 md:ml-44 px-4 py-4 md:px-8 md:py-6 pb-20 md:pb-6 bg-white min-h-[calc(100vh-3.5rem)] md:min-h-[calc(100vh-4rem)]">
           <Switch>
             <Route path="/" component={Dashboard} />
             <Route path="/my-orders" component={MyOrders} />

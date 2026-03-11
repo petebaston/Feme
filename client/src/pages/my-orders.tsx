@@ -3,9 +3,20 @@ import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Search, SlidersHorizontal, ChevronDown, X } from "lucide-react";
+import { Search, SlidersHorizontal, ChevronDown, ChevronRight, X } from "lucide-react";
 import { formatCurrency } from "@/lib/currency";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+
+const getStatusBadgeClass = (status: string) => {
+  const s = status?.toLowerCase();
+  switch (s) {
+    case 'completed': return 'bg-[#C4D600] text-black';
+    case 'awaiting payment': return 'bg-orange-500 text-white';
+    case 'awaiting fulfillment': return 'bg-blue-400 text-white';
+    case 'partially shipped': return 'bg-blue-600 text-white';
+    default: return 'bg-gray-200 text-gray-800';
+  }
+};
 
 export default function MyOrders() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -72,43 +83,27 @@ export default function MyOrders() {
     new Set(orders?.map((o: any) => o.status).filter(Boolean) || [])
   ) as string[];
 
-  const getStatusBadgeClass = (status: string) => {
-    const statusLower = status?.toLowerCase();
-    switch (statusLower) {
-      case 'completed':
-        return 'bg-[#C4D600] text-black';
-      case 'awaiting payment':
-        return 'bg-orange-500 text-white';
-      case 'awaiting fulfillment':
-        return 'bg-blue-400 text-white';
-      case 'partially shipped':
-        return 'bg-blue-600 text-white';
-      default:
-        return 'bg-gray-200 text-gray-800';
-    }
-  };
-
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6">
       <div>
-        <h1 className="text-2xl font-normal text-black">My Orders</h1>
+        <h1 className="text-xl md:text-2xl font-normal text-black">My Orders</h1>
       </div>
 
       <div className="space-y-3">
-        <div className="flex gap-3 w-full md:w-1/2">
+        <div className="flex gap-2 md:gap-3 w-full md:w-1/2">
           <div className="flex-1 relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
             <Input
-              placeholder="Search by order #, date, amount, name…"
+              placeholder="Search orders…"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 h-10 bg-gray-100 border-0 focus-visible:ring-0 rounded-none"
+              className="pl-10 h-11 md:h-10 bg-gray-100 border-0 focus-visible:ring-0 rounded-none text-base md:text-sm"
               data-testid="input-search-my-orders"
             />
             {searchTerm && (
               <button
                 onClick={() => setSearchTerm("")}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1"
                 data-testid="button-clear-search"
               >
                 <X className="w-4 h-4" />
@@ -117,7 +112,7 @@ export default function MyOrders() {
           </div>
           <button
             onClick={() => setShowFilters(!showFilters)}
-            className={`flex items-center justify-center w-10 h-10 border hover:bg-gray-50 relative ${
+            className={`flex items-center justify-center w-11 h-11 md:w-10 md:h-10 border hover:bg-gray-50 relative ${
               showFilters ? 'bg-gray-100 border-gray-400' : 'border-gray-300'
             }`}
             data-testid="button-toggle-filters"
@@ -137,7 +132,7 @@ export default function MyOrders() {
                 <div className="flex flex-wrap gap-2">
                   <button
                     onClick={() => setStatusFilter("all")}
-                    className={`px-3 py-1.5 text-sm border ${
+                    className={`px-3 py-2 md:py-1.5 text-sm border ${
                       statusFilter === "all"
                         ? 'bg-black text-white border-black'
                         : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
@@ -150,7 +145,7 @@ export default function MyOrders() {
                     <button
                       key={status}
                       onClick={() => setStatusFilter(status)}
-                      className={`px-3 py-1.5 text-sm border ${
+                      className={`px-3 py-2 md:py-1.5 text-sm border ${
                         statusFilter === status
                           ? 'bg-black text-white border-black'
                           : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
@@ -166,57 +161,27 @@ export default function MyOrders() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Date From</label>
-                  <Input
-                    type="date"
-                    value={dateFrom}
-                    onChange={(e) => setDateFrom(e.target.value)}
-                    className="h-9 rounded-none border-gray-300"
-                    data-testid="input-date-from"
-                  />
+                  <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="h-11 md:h-9 rounded-none border-gray-300" data-testid="input-date-from" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Date To</label>
-                  <Input
-                    type="date"
-                    value={dateTo}
-                    onChange={(e) => setDateTo(e.target.value)}
-                    className="h-9 rounded-none border-gray-300"
-                    data-testid="input-date-to"
-                  />
+                  <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="h-11 md:h-9 rounded-none border-gray-300" data-testid="input-date-to" />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Min Amount (£)</label>
-                  <Input
-                    type="number"
-                    placeholder="0.00"
-                    value={amountMin}
-                    onChange={(e) => setAmountMin(e.target.value)}
-                    className="h-9 rounded-none border-gray-300"
-                    data-testid="input-amount-min"
-                  />
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Min Amount</label>
+                  <Input type="number" placeholder="0.00" value={amountMin} onChange={(e) => setAmountMin(e.target.value)} className="h-11 md:h-9 rounded-none border-gray-300" data-testid="input-amount-min" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Max Amount (£)</label>
-                  <Input
-                    type="number"
-                    placeholder="Any"
-                    value={amountMax}
-                    onChange={(e) => setAmountMax(e.target.value)}
-                    className="h-9 rounded-none border-gray-300"
-                    data-testid="input-amount-max"
-                  />
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Max Amount</label>
+                  <Input type="number" placeholder="Any" value={amountMax} onChange={(e) => setAmountMax(e.target.value)} className="h-11 md:h-9 rounded-none border-gray-300" data-testid="input-amount-max" />
                 </div>
               </div>
 
               {hasActiveFilters && (
-                <button
-                  onClick={clearAllFilters}
-                  className="text-sm text-gray-600 hover:text-black underline"
-                  data-testid="button-clear-filters"
-                >
+                <button onClick={clearAllFilters} className="text-sm text-gray-600 hover:text-black underline" data-testid="button-clear-filters">
                   Clear all filters
                 </button>
               )}
@@ -225,7 +190,54 @@ export default function MyOrders() {
         )}
       </div>
 
-      <div className="border border-gray-200 bg-white overflow-x-auto relative">
+      {/* Mobile Card View */}
+      <div className="md:hidden space-y-3">
+        {isLoading ? (
+          Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="border border-gray-200 p-4">
+              <Skeleton className="h-5 w-24 mb-3" />
+              <Skeleton className="h-4 w-full mb-2" />
+              <Skeleton className="h-4 w-2/3" />
+            </div>
+          ))
+        ) : filteredOrders.length > 0 ? (
+          filteredOrders.map((order: any) => (
+            <button
+              key={order.id}
+              onClick={() => setLocation(`/orders/${order.id}`)}
+              className="w-full text-left border border-gray-200 p-4 active:bg-gray-50 transition-colors"
+              data-testid={`card-order-${order.id}`}
+            >
+              <div className="flex items-start justify-between mb-2">
+                <span className="font-medium text-black">#{order.id}</span>
+                <span className={`inline-flex items-center px-2.5 py-0.5 text-xs font-medium ${getStatusBadgeClass(order.status)}`}>
+                  {order.status || 'Completed'}
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-gray-500">
+                  {new Date(order.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                </span>
+                <span className="font-medium text-black">
+                  {formatCurrency(order.money?.value || order.totalIncTax || '0', order.money)}
+                </span>
+              </div>
+              {(order.billingAddress?.first_name || order.customerName) && (
+                <p className="text-xs text-gray-400 mt-1.5 truncate">
+                  {order.billingAddress?.first_name
+                    ? `${order.billingAddress.first_name} ${order.billingAddress.last_name}`.trim()
+                    : order.customerName}
+                </p>
+              )}
+            </button>
+          ))
+        ) : (
+          <div className="text-center py-12 text-gray-500 text-sm">No orders found</div>
+        )}
+      </div>
+
+      {/* Desktop Table View */}
+      <div className="hidden md:block border border-gray-200 bg-white overflow-x-auto relative">
         <Table>
           <TableHeader>
             <TableRow className="hover:bg-transparent">
@@ -273,9 +285,7 @@ export default function MyOrders() {
                       {order.billingAddress?.company || order.companyName || '–'}
                     </div>
                   </TableCell>
-                  <TableCell className="text-gray-700">
-                    {order.poNumber || '–'}
-                  </TableCell>
+                  <TableCell className="text-gray-700">{order.poNumber || '–'}</TableCell>
                   <TableCell className="font-normal">
                     {formatCurrency(order.money?.value || order.totalIncTax || '0', order.money)}
                   </TableCell>
@@ -302,9 +312,7 @@ export default function MyOrders() {
 
       <div className="flex items-center justify-between text-sm text-gray-600">
         <span>{filteredOrders.length} order{filteredOrders.length !== 1 ? 's' : ''} found</span>
-        <div className="flex items-center gap-4">
-          <span>Showing {filteredOrders.length} of {orders?.length || 0}</span>
-        </div>
+        <span>Showing {filteredOrders.length} of {orders?.length || 0}</span>
       </div>
     </div>
   );

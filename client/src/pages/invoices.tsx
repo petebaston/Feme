@@ -347,20 +347,20 @@ export default function Invoices() {
 
       {/* Search and Filter */}
       <div className="space-y-3">
-        <div className="flex gap-3 w-full md:w-1/2">
+        <div className="flex gap-2 md:gap-3 w-full md:w-1/2">
           <div className="flex-1 relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
             <Input
-              placeholder="Search by invoice #, order #, date, amount…"
+              placeholder="Search invoices…"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 h-10 bg-gray-100 border-0 focus-visible:ring-0 rounded-none"
+              className="pl-10 h-11 md:h-10 bg-gray-100 border-0 focus-visible:ring-0 rounded-none text-base md:text-sm"
               data-testid="input-search-invoices"
             />
             {searchTerm && (
               <button
                 onClick={() => setSearchTerm("")}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1"
                 data-testid="button-clear-search"
               >
                 <X className="w-4 h-4" />
@@ -369,7 +369,7 @@ export default function Invoices() {
           </div>
           <button
             onClick={() => setShowFilters(!showFilters)}
-            className={`flex items-center justify-center w-10 h-10 border hover:bg-gray-50 relative ${
+            className={`flex items-center justify-center w-11 h-11 md:w-10 md:h-10 border hover:bg-gray-50 relative ${
               showFilters ? 'bg-gray-100 border-gray-400' : 'border-gray-300'
             }`}
             data-testid="button-toggle-filters"
@@ -498,123 +498,163 @@ export default function Invoices() {
       </div>
 
       {/* Credit Summary */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        {/* Credit Limit */}
-        <div className="bg-white border border-gray-200 p-6">
-          <div className="flex items-baseline justify-between">
-            <div>
-              <div className="text-sm font-medium text-gray-500 mb-1">CREDIT LIMIT</div>
-              {isCreditLoading ? (
-                <Skeleton className="h-9 w-32" />
-              ) : (
-                <div className="text-3xl font-normal text-black">
-                  {formatCurrency(companyCredit?.creditLimit || 0, getCurrencyCode())}
-                </div>
-              )}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+        <div className="bg-white border border-gray-200 p-4 md:p-6">
+          <div className="text-xs md:text-sm font-medium text-gray-500 mb-1">CREDIT LIMIT</div>
+          {isCreditLoading ? (
+            <Skeleton className="h-7 md:h-9 w-24 md:w-32" />
+          ) : (
+            <div className="text-xl md:text-3xl font-normal text-black">
+              {formatCurrency(companyCredit?.creditLimit || 0, getCurrencyCode())}
             </div>
-          </div>
+          )}
         </div>
 
-        {/* Available Credit */}
-        <div className="bg-white border border-gray-200 p-6">
+        <div className="bg-white border border-gray-200 p-4 md:p-6">
           <div className="flex items-baseline justify-between">
             <div>
-              <div className="text-sm font-medium text-gray-500 mb-1">AVAILABLE</div>
+              <div className="text-xs md:text-sm font-medium text-gray-500 mb-1">AVAILABLE</div>
               {isCreditLoading ? (
-                <Skeleton className="h-9 w-32" />
+                <Skeleton className="h-7 md:h-9 w-24 md:w-32" />
               ) : (
-                <div className="text-3xl font-normal text-green-600">
+                <div className="text-xl md:text-3xl font-normal text-green-600">
                   {formatCurrency(Math.max(0, (companyCredit?.creditLimit || 0) - totalOpen), getCurrencyCode())}
                 </div>
               )}
             </div>
-            <div className="w-3 h-3 bg-green-500"></div>
+            <div className="w-2 h-2 md:w-3 md:h-3 bg-green-500"></div>
           </div>
         </div>
 
-        {/* Open Balance */}
-        <div className="bg-white border border-gray-200 p-6">
-          <div className="flex items-baseline justify-between">
-            <div>
-              <div className="text-sm font-medium text-gray-500 mb-1">OPEN</div>
-              {isLoading ? (
-                <Skeleton className="h-9 w-32" />
-              ) : (
-                <div className="text-3xl font-normal text-black">
-                  {formatCurrency(totalOpen, getCurrencyCode())}
-                </div>
-              )}
+        <div className="bg-white border border-gray-200 p-4 md:p-6">
+          <div className="text-xs md:text-sm font-medium text-gray-500 mb-1">OPEN</div>
+          {isLoading ? (
+            <Skeleton className="h-7 md:h-9 w-24 md:w-32" />
+          ) : (
+            <div className="text-xl md:text-3xl font-normal text-black">
+              {formatCurrency(totalOpen, getCurrencyCode())}
             </div>
-          </div>
+          )}
         </div>
 
-        {/* Overdue */}
-        <div className="bg-white border border-gray-200 p-6">
+        <div className="bg-white border border-gray-200 p-4 md:p-6">
           <div className="flex items-baseline justify-between">
             <div>
-              <div className="text-sm font-medium text-gray-500 mb-1">OVERDUE</div>
+              <div className="text-xs md:text-sm font-medium text-gray-500 mb-1">OVERDUE</div>
               {isLoading ? (
-                <Skeleton className="h-9 w-32" />
+                <Skeleton className="h-7 md:h-9 w-24 md:w-32" />
               ) : (
-                <div className="text-3xl font-normal text-red-600">
+                <div className="text-xl md:text-3xl font-normal text-red-600">
                   {formatCurrency(totalOverdue, getCurrencyCode())}
                 </div>
               )}
             </div>
-            <div className="w-3 h-3 bg-red-500"></div>
+            <div className="w-2 h-2 md:w-3 md:h-3 bg-red-500"></div>
           </div>
         </div>
       </div>
 
       {/* Aged Invoices */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        {/* 1-30 Days */}
-        <div className="bg-white border border-gray-200 p-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+        <div className="bg-white border border-gray-200 p-4 md:p-6">
           <div className="flex items-baseline justify-between">
             <div>
-              <div className="text-sm font-medium text-gray-500 mb-1">1-30 DAYS</div>
-              <div className="text-3xl font-normal text-black">{formatCurrency(aged1to30, getCurrencyCode())}</div>
+              <div className="text-xs md:text-sm font-medium text-gray-500 mb-1">1-30 DAYS</div>
+              <div className="text-xl md:text-3xl font-normal text-black">{formatCurrency(aged1to30, getCurrencyCode())}</div>
             </div>
-            <div className="w-3 h-3 bg-green-500"></div>
+            <div className="w-2 h-2 md:w-3 md:h-3 bg-green-500"></div>
           </div>
         </div>
 
-        {/* 31-60 Days */}
-        <div className="bg-white border border-gray-200 p-6">
+        <div className="bg-white border border-gray-200 p-4 md:p-6">
           <div className="flex items-baseline justify-between">
             <div>
-              <div className="text-sm font-medium text-gray-500 mb-1">31-60 DAYS</div>
-              <div className="text-3xl font-normal text-orange-600">{formatCurrency(aged31to60, getCurrencyCode())}</div>
+              <div className="text-xs md:text-sm font-medium text-gray-500 mb-1">31-60 DAYS</div>
+              <div className="text-xl md:text-3xl font-normal text-orange-600">{formatCurrency(aged31to60, getCurrencyCode())}</div>
             </div>
-            <div className="w-3 h-3 bg-orange-500"></div>
+            <div className="w-2 h-2 md:w-3 md:h-3 bg-orange-500"></div>
           </div>
         </div>
 
-        {/* 61-90 Days */}
-        <div className="bg-white border border-gray-200 p-6">
+        <div className="bg-white border border-gray-200 p-4 md:p-6">
           <div className="flex items-baseline justify-between">
             <div>
-              <div className="text-sm font-medium text-gray-500 mb-1">61-90 DAYS</div>
-              <div className="text-3xl font-normal text-red-600">{formatCurrency(aged61to90, getCurrencyCode())}</div>
+              <div className="text-xs md:text-sm font-medium text-gray-500 mb-1">61-90 DAYS</div>
+              <div className="text-xl md:text-3xl font-normal text-red-600">{formatCurrency(aged61to90, getCurrencyCode())}</div>
             </div>
-            <div className="w-3 h-3 bg-red-500"></div>
+            <div className="w-2 h-2 md:w-3 md:h-3 bg-red-500"></div>
           </div>
         </div>
 
-        {/* 90+ Days */}
-        <div className="bg-white border border-gray-200 p-6">
+        <div className="bg-white border border-gray-200 p-4 md:p-6">
           <div className="flex items-baseline justify-between">
             <div>
-              <div className="text-sm font-medium text-gray-500 mb-1">90+ DAYS</div>
-              <div className="text-3xl font-normal text-red-700">{formatCurrency(aged90plus, getCurrencyCode())}</div>
+              <div className="text-xs md:text-sm font-medium text-gray-500 mb-1">90+ DAYS</div>
+              <div className="text-xl md:text-3xl font-normal text-red-700">{formatCurrency(aged90plus, getCurrencyCode())}</div>
             </div>
-            <div className="w-3 h-3 bg-red-700"></div>
+            <div className="w-2 h-2 md:w-3 md:h-3 bg-red-700"></div>
           </div>
         </div>
       </div>
 
-      {/* Table */}
-      <div className="border border-gray-200 bg-white overflow-hidden">
+      {/* Mobile Card View */}
+      <div className="md:hidden space-y-3">
+        {isLoading ? (
+          Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="border border-gray-200 p-4">
+              <Skeleton className="h-5 w-32 mb-3" />
+              <Skeleton className="h-4 w-full mb-2" />
+              <Skeleton className="h-4 w-2/3" />
+            </div>
+          ))
+        ) : paginatedInvoices.length > 0 ? (
+          paginatedInvoices.map((invoice: any) => {
+            const costLines = invoice.details?.header?.costLines || [];
+            const subtotalLine = costLines.find((line: any) => line.description === 'Subtotal');
+            const taxLine = costLines.find((line: any) => line.description === 'Sales Tax');
+            const total = parseFloat(subtotalLine?.amount?.value || 0) + parseFloat(taxLine?.amount?.value || 0);
+            const openBalance = parseFloat(invoice.openBalance?.value || 0);
+            const actualStatus = calculateInvoiceStatus(invoice);
+            const dueDate = invoice.dueDate ? new Date(invoice.dueDate * 1000) : null;
+
+            return (
+              <button
+                key={invoice.id}
+                onClick={() => setLocation(`/invoices/${invoice.id}`)}
+                className="w-full text-left border border-gray-200 p-4 active:bg-gray-50 transition-colors"
+                data-testid={`card-invoice-${invoice.id}`}
+              >
+                <div className="flex items-start justify-between mb-2">
+                  <span className="font-medium text-black text-sm">{invoice.invoiceNumber || invoice.id}</span>
+                  <span className={`inline-flex items-center px-2.5 py-0.5 text-xs font-medium ${getStatusBadgeClass(actualStatus)}`}>
+                    {actualStatus}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-sm mb-1">
+                  <span className="text-gray-500">Total</span>
+                  <span className="font-medium text-black">{formatCurrency(total, getCurrencyCode())}</span>
+                </div>
+                {openBalance > 0 && (
+                  <div className="flex items-center justify-between text-sm mb-1">
+                    <span className="text-gray-500">Amount due</span>
+                    <span className="font-medium text-red-600">{formatCurrency(openBalance, getCurrencyCode())}</span>
+                  </div>
+                )}
+                {dueDate && (
+                  <div className="text-xs text-gray-400 mt-1.5">
+                    Due: {dueDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                  </div>
+                )}
+              </button>
+            );
+          })
+        ) : (
+          <div className="text-center py-12 text-gray-500 text-sm">No invoices found</div>
+        )}
+      </div>
+
+      {/* Desktop Table */}
+      <div className="hidden md:block border border-gray-200 bg-white overflow-hidden">
         <div className="overflow-x-auto">
           <Table>
           <TableHeader>
@@ -839,18 +879,18 @@ export default function Invoices() {
       </div>
 
       {/* Footer */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
         <Button
           variant="outline"
           onClick={handleExport}
-          className="border-gray-300"
+          className="border-gray-300 hidden md:flex"
           disabled={filteredInvoices.length === 0}
         >
           <FileDown className="w-4 h-4 mr-2" />
           EXPORT FILTERED AS CSV
         </Button>
-        <div className="flex items-center gap-4 text-sm text-gray-600">
-          <div className="flex items-center gap-2">
+        <div className="flex items-center justify-between md:justify-end gap-4 text-sm text-gray-600">
+          <div className="hidden md:flex items-center gap-2">
             <span>Rows per page:</span>
             <select
               value={rowsPerPage}
@@ -871,14 +911,14 @@ export default function Invoices() {
           </span>
           <div className="flex gap-2">
             <button
-              className="w-8 h-8 flex items-center justify-center border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-10 h-10 md:w-8 md:h-8 flex items-center justify-center border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
               disabled={currentPage === 1}
               onClick={() => setCurrentPage(currentPage - 1)}
             >
               ‹
             </button>
             <button
-              className="w-8 h-8 flex items-center justify-center border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-10 h-10 md:w-8 md:h-8 flex items-center justify-center border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
               disabled={currentPage === totalPages || totalInvoices === 0}
               onClick={() => setCurrentPage(currentPage + 1)}
             >

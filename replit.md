@@ -11,6 +11,15 @@ Preferred communication style: Simple, everyday language.
 ### Frontend Architecture
 The frontend is built with React 18, TypeScript, Vite, and Wouter for client-side routing. UI is designed with Tailwind CSS and shadcn/ui components for a mobile-first, responsive, and accessible experience. State management uses TanStack Query for server state and caching, and local storage for authentication tokens.
 
+**Mobile UX:**
+- Sticky bottom tab bar replaces hamburger sidebar on mobile (Home, Orders, Invoices, More).
+- "More" tab opens a bottom Sheet with additional nav items (My Orders, Addresses, User Management, Account Settings, Shop, Log out).
+- Desktop sidebar remains unchanged (`hidden md:flex`).
+- Orders and Invoices pages show card views on mobile (`md:hidden`), desktop table hidden on mobile (`hidden md:block`).
+- Header is compact on mobile: SHOP link hidden, user avatar shows initials circle.
+- Dashboard tiles, credit summary, and aged invoice cards use 2-column grids on mobile.
+- Safe-area padding for iOS notch devices via `.safe-area-bottom` CSS class.
+
 ### Backend Architecture
 The backend is an Express.js server providing API endpoints and static file serving. It uses a PostgreSQL database with the Neon serverless driver and Drizzle ORM for type-safe data persistence. Security is enforced through bearer token authentication and role-based authorization middleware across 32 protected API routes. The API follows a RESTful structure covering authentication, resource management (dashboard stats, orders, quotes, invoices, shopping lists), and company/user/address management.
 

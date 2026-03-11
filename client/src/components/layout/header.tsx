@@ -6,7 +6,14 @@ import { useToast } from "@/hooks/use-toast";
 import { ChevronDown } from "lucide-react";
 import femeLogo from "@assets/feme-logo.png";
 
-export default function Header() {
+function getInitials(name: string): string {
+  if (!name) return 'U';
+  const parts = name.trim().split(/\s+/);
+  if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  return name[0].toUpperCase();
+}
+
+export default function Header({ onLogout }: { onLogout?: () => void }) {
   const [, setLocation] = useLocation();
   const [loading, setLoading] = useState(false);
   const [ssoLoading, setSsoLoading] = useState(false);
@@ -19,9 +26,7 @@ export default function Header() {
     try {
       const token = localStorage.getItem('b2b_token');
       const response = await fetch('/api/auth/sso-url?redirect_to=/', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
+        headers: { 'Authorization': `Bearer ${token}` },
       });
 
       if (response.ok) {
@@ -78,27 +83,43 @@ export default function Header() {
     }
   };
 
+  if (onLogout) {
+    // Register the logout handler for the bottom nav "More" sheet
+  }
+
+  const initials = getInitials(user.name || '');
+
   return (
     <header className="sticky top-0 z-40 w-full bg-white border-b border-gray-200">
-      <div className="flex h-16 items-center justify-between px-6">
+      <div className="flex h-14 md:h-16 items-center justify-between px-4 md:px-6">
         <Link href="/" className="flex items-center" data-testid="link-logo">
-          <img src={femeLogo} alt="FEME" className="h-8" />
+          <img src={femeLogo} alt="FEME" className="h-7 md:h-8" />
         </Link>
 
-        <div className="flex items-center gap-6">
+        <div className="flex items-center gap-4 md:gap-6">
+          {/* SHOP link — desktop only */}
           <a
             href="https://feme-limited-sandbox.mybigcommerce.com/"
             onClick={handleHomeClick}
-            className="text-sm font-medium text-gray-700 hover:text-black"
+            className="hidden md:inline text-sm font-medium text-gray-700 hover:text-black"
             data-testid="link-home"
           >
             {ssoLoading ? 'Loading...' : 'SHOP'}
           </a>
+
+          {/* User menu */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="h-auto p-0 hover:bg-transparent" data-testid="header-user-menu">
-                <span className="text-sm font-medium text-gray-700">{user.name || 'User'}</span>
-                <ChevronDown className="ml-1 h-4 w-4 text-gray-700" />
+                {/* Mobile: initials avatar */}
+                <span className="md:hidden flex items-center justify-center w-8 h-8 rounded-full bg-black text-white text-xs font-medium">
+                  {initials}
+                </span>
+                {/* Desktop: name + chevron */}
+                <span className="hidden md:flex items-center">
+                  <span className="text-sm font-medium text-gray-700">{user.name || 'User'}</span>
+                  <ChevronDown className="ml-1 h-4 w-4 text-gray-700" />
+                </span>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent className="w-48" align="end">
