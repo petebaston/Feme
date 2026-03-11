@@ -121,6 +121,5 @@ export const cacheKeys = {
   orders: (userId: string) => `orders:user:${userId}`,
   order: (id: string) => `order:${id}`,
   addresses: (companyId: string) => `addresses:company:${companyId}`,
-  cart: (userId: string) => `cart:user:${userId}`,
   products: (params: string) => `products:${params}`,
 };

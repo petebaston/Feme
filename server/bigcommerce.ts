@@ -1079,49 +1079,6 @@ export class BigCommerceService {
     });
   }
 
-  // Cart - Use BigCommerce standard cart API
-  async getCart(userToken: string) {
-    // B2B Edition uses standard BigCommerce cart
-    // For now, return empty cart structure
-    // Full implementation would need BigCommerce store URL and cart session management
-    return {
-      code: 200,
-      data: {
-        id: null,
-        items: [],
-        subtotal: 0,
-        tax: 0,
-        shipping: 0,
-        total: 0,
-      }
-    };
-  }
-
-  async addCartItem(userToken: string, item: any) {
-    // Would integrate with BigCommerce cart API
-    // Placeholder for now
-    return {
-      code: 200,
-      data: { success: true }
-    };
-  }
-
-  async updateCartItem(userToken: string, itemId: string, quantity: number) {
-    // Would integrate with BigCommerce cart API
-    return {
-      code: 200,
-      data: { success: true }
-    };
-  }
-
-  async removeCartItem(userToken: string, itemId: string) {
-    // Would integrate with BigCommerce cart API
-    return {
-      code: 200,
-      data: { success: true }
-    };
-  }
-
   // Company Credit - Multiple endpoint investigation
   // 1. Check if company credit feature is enabled
   async getCompanyCreditConfiguration() {
