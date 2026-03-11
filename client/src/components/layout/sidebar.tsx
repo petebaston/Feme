@@ -1,7 +1,7 @@
 import { Link, useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
-import { Home, Package, FileText, MoreHorizontal, MapPin, Users, Settings, ShoppingBag, LogOut, X } from "lucide-react";
+import { Home, Package, FileText, MoreHorizontal, MapPin, Users, Settings, ShoppingBag, LogOut } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 
 const navigation = [
