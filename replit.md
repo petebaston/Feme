@@ -57,6 +57,7 @@ The backend is an Express.js server providing API endpoints and static file serv
 - **VITE_STORE_URL:** Configurable storefront URL used in logout redirect, SHOP links, login page links. Defaults to `https://feme-limited-sandbox.mybigcommerce.com`.
 - **VITE_PORTAL_URL:** Configurable portal URL used in `client/index.html` for B2B Edition SSO redirect. Falls back to `window.location.origin`.
 - **Cart Removal:** mini-cart.tsx, checkout.tsx, quick-order.tsx, products.tsx deleted; all cart API routes removed; no cart icon in header.
+- **PRODUCTION_DEPLOY.md:** Comprehensive production go-live guide covering Azure Database for PostgreSQL provisioning, BigCommerce Dinsour theme activation with B2B portal script tag, Account→B2B Portal navigation rename, full environment variable reference, go-live checklist, and post-deployment verification steps.
 
 ## External Dependencies
 
