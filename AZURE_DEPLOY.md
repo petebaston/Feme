@@ -34,7 +34,11 @@ These are injected as environment variables when the container starts.
 |----------|----------|-------------|
 | `DATABASE_URL` | Yes | PostgreSQL connection string |
 | `JWT_SECRET` | Yes | Strong random string for signing JWT tokens |
+| `JWT_REFRESH_SECRET` | Yes | Strong random string for signing refresh tokens (must be set in production) |
+| `JWT_EXPIRES_IN` | No | Access token lifetime (default: `15m`) |
+| `JWT_REFRESH_EXPIRES_IN` | No | Refresh token lifetime (default: `7d`) |
 | `SESSION_SECRET` | Yes | Strong random string for session encryption |
+| `SESSION_TIMEOUT` | No | Session inactivity timeout in ms (default: `3600000` = 1 hour) |
 | `BIGCOMMERCE_STORE_HASH` | Yes | BigCommerce store hash |
 | `BIGCOMMERCE_CLIENT_ID` | Yes | BigCommerce API client ID |
 | `BIGCOMMERCE_CLIENT_SECRET` | Yes | BigCommerce API client secret |
@@ -144,6 +148,7 @@ az containerapp create \
     PORT=5000 \
     DATABASE_URL="<your-neon-database-url>" \
     JWT_SECRET="<generate-a-strong-random-string>" \
+    JWT_REFRESH_SECRET="<generate-a-strong-random-string>" \
     SESSION_SECRET="<generate-a-strong-random-string>" \
     BIGCOMMERCE_STORE_HASH="pyrenapwe2" \
     BIGCOMMERCE_CLIENT_ID="<your-client-id>" \

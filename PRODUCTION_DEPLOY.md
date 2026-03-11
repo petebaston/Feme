@@ -290,7 +290,11 @@ These can be updated without rebuilding the Docker image.
 | `PORT` | No | `5000` (default) | Port the server listens on |
 | `DATABASE_URL` | Yes | Azure PostgreSQL connection string | Full connection string with `?sslmode=require` |
 | `JWT_SECRET` | Yes | 64+ character random string | Signs JWT authentication tokens |
+| `JWT_REFRESH_SECRET` | Yes | 64+ character random string | Signs JWT refresh tokens. **Must be set in production** — the default is insecure |
+| `JWT_EXPIRES_IN` | No | `15m` (default) | JWT access token lifetime (e.g. `15m`, `1h`). "Remember me" overrides to `30d` |
+| `JWT_REFRESH_EXPIRES_IN` | No | `7d` (default) | JWT refresh token lifetime (e.g. `7d`, `30d`). "Remember me" overrides to `30d` |
 | `SESSION_SECRET` | Yes | 64+ character random string | Encrypts session cookies |
+| `SESSION_TIMEOUT` | No | `3600000` (default, 1 hour in ms) | Session inactivity timeout in milliseconds |
 | `BIGCOMMERCE_STORE_HASH` | Yes | Your production store hash | Used by the backend for API calls |
 | `BIGCOMMERCE_CLIENT_ID` | Yes | Production API client ID | BigCommerce Store API client ID |
 | `BIGCOMMERCE_CLIENT_SECRET` | Yes | Production API client secret | BigCommerce Store API client secret |
@@ -303,7 +307,7 @@ These can be updated without rebuilding the Docker image.
 openssl rand -hex 32
 ```
 
-Run this twice to generate separate values for `JWT_SECRET` and `SESSION_SECRET`.
+Run this three times to generate separate values for `JWT_SECRET`, `JWT_REFRESH_SECRET`, and `SESSION_SECRET`. Each must be unique.
 
 ---
 
@@ -363,7 +367,7 @@ Follow the full step-by-step instructions in [AZURE_DEPLOY.md](./AZURE_DEPLOY.md
 - [ ] `VITE_STORE_URL` points to the production BigCommerce storefront (no trailing slash)
 - [ ] `VITE_PORTAL_URL` points to the production portal URL (no trailing slash)
 - [ ] `DATABASE_URL` points to Azure PostgreSQL with `?sslmode=require`
-- [ ] `JWT_SECRET` and `SESSION_SECRET` are unique, strong, 64+ character random strings
+- [ ] `JWT_SECRET`, `JWT_REFRESH_SECRET`, and `SESSION_SECRET` are unique, strong, 64+ character random strings
 - [ ] All BigCommerce API credentials are production values (not sandbox)
 - [ ] `NODE_ENV` is set to `production`
 
