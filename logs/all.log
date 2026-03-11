@@ -35290,3 +35290,4 @@
 2026-03-11 16:53:01:531 [33mwarn[39m: [33mPOST /api/auth/refresh 401 - 2ms[39m
 2026-03-11 16:53:01:531 [32mhttp[39m: [32mGET /favicon.ico 200 - 7ms[39m
 2026-03-11 16:53:01:531 [32mhttp[39m: [32mGET /@fs/home/runner/workspace/attached_assets/feme-logo.png 200 - 3ms[39m
+2026-03-11 16:57:09:579 [31merror[39m: [31mUNCAUGHT EXCEPTION! Shutting down...[39m
