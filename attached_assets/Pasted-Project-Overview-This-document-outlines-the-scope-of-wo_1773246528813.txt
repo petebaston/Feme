@@ -1,0 +1,60 @@
+Project Overview
+This document outlines the scope of works required to update, enhance, and deploy the B2B Portal functionality across the SandBox and Production environments.
+
+2. SandBox Environment – Scope of Works
+2.1 Dashboard Implementation
+Implement a new dashboard page within the B2B Portal.
+
+• The dashboard must include:
+1. Navigation buttons for:
+• My Orders
+• Company Orders
+• Invoices
+• Addresses
+• User Management
+• Account Settings
+• Financial Summary Display showing Balance and Due Now figures.
+2.2 Remove Cart from Portal
+Remove all cart functionality from the B2B portal interface.
+
+• Scope includes:
+• Remove cart icon
+• Remove cart page access
+• Remove cart references in navigation/header
+• Remove related API calls
+2.3 Logout Redirect
+When a user logs out of the B2B portal, they must be redirected to the main website homepage.
+
+2.4 Redirect Issue – Old Portal
+Investigate and resolve the intermittent issue where users are redirected from the new portal to the legacy portal.
+
+3. Production Environment – Scope of Works
+3.1 Azure Database Implementation
+Implement a dedicated Azure SQL database for the B2B portal and configure the B2B feature to operate directly from this database.
+
+3.2 Production Theme Implementation
+Deploy the Production Dinsour theme and ensure all approved SandBox functionality is fully replicated for the B2B features.
+
+3.3 Rename Account Button
+Change the navigation label from 'Account' to 'B2B Portal'.
+
+3.4 Currency Display
+Ensure currency is displayed correctly in either Pounds (£) or Euros (€), with consistent formatting throughout the portal as customers will have different currencies.
+
+3.5 User Management Disabled Message
+Where the User Management functionality is disabled, display the message: 'This feature has not been enabled.'
+
+4. Testing & Validation
+• The developer must complete:
+• Functional testing
+• Cross-browser testing
+• Session and authentication testing
+• Database connectivity testing
+• Currency display validation
+• Production deployment verification
+5. Deliverables
+• Fully functional SandBox implementation
+• Production deployment aligned with SandBox
+• Azure database configured and operational
+• Redirect issue resolved
+• Confirmation of completed testing

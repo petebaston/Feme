@@ -51,6 +51,12 @@ export async function apiRequest(
     credentials: "include",
   });
 
+  // Any 401 mid-session means the token has expired
+  if (res.status === 401) {
+    handleSessionExpired();
+    return res;
+  }
+
   await throwIfResNotOk(res);
   
   // Check for session expired in response body
@@ -98,7 +104,12 @@ export const getQueryFn: <T>(options: {
       credentials: "include",
     });
 
-    if (unauthorizedBehavior === "returnNull" && res.status === 401) {
+    if (res.status === 401) {
+      if (unauthorizedBehavior === "returnNull") {
+        return null;
+      }
+      // Any 401 on a protected route means the session has expired — redirect to login
+      handleSessionExpired();
       return null;
     }
 

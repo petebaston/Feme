@@ -107,6 +107,7 @@ function Router() {
                 localStorage.removeItem('b2b_token');
                 localStorage.removeItem('b2b_user');
                 setIsAuthenticated(false);
+                window.location.href = '/login?expired=true';
               }
             }
           } catch (error) {

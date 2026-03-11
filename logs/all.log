@@ -34345,3 +34345,5 @@
 2026-02-26 18:03:45:345 [32mhttp[39m: [32mGET /src/components/ui/select.tsx 304 - 0ms[39m
 2026-02-26 18:03:45:345 [33mwarn[39m: [33mPOST /api/auth/refresh 401 - 1ms[39m
 2026-02-26 18:03:46:346 [32mhttp[39m: [32mGET /@fs/home/runner/workspace/attached_assets/feme-logo.png 304 - 1ms[39m
+2026-03-11 16:27:32:2732 [32minfo[39m: [32m🚀 Server running on port 5000[39m
+2026-03-11 16:27:32:2732 [32minfo[39m: [32m📝 Environment: development[39m
