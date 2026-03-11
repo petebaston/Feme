@@ -23,6 +23,8 @@ These are passed as `--build-arg` during `docker build`. They cannot be changed 
 | `VITE_IS_LOCAL_ENVIRONMENT` | No | Set to `FALSE` for production (default) |
 | `VITE_ASSETS_ABSOLUTE_PATH` | No | CDN URL for static assets |
 | `VITE_DISABLE_BUILD_HASH` | No | Disable build hashes in filenames |
+| `VITE_STORE_URL` | Yes | BigCommerce storefront URL for logout/SHOP links (e.g. `https://feme-limited-sandbox.mybigcommerce.com`) |
+| `VITE_PORTAL_URL` | Yes | Portal URL for B2B Edition redirect after login (e.g. `https://your-portal.azurecontainerapps.io`) |
 
 ### Runtime variables (set in Azure Container Apps)
 
@@ -100,6 +102,8 @@ docker build \
   --build-arg VITE_STORE_HASH=pyrenapwe2 \
   --build-arg VITE_CHANNEL_ID=1 \
   --build-arg VITE_IS_LOCAL_ENVIRONMENT=FALSE \
+  --build-arg VITE_STORE_URL=https://your-store.mybigcommerce.com \
+  --build-arg VITE_PORTAL_URL=https://your-portal-domain.com \
   -t $ACR_LOGIN_SERVER/b2b-portal:latest .
 ```
 
@@ -169,6 +173,8 @@ docker build \
   --build-arg VITE_STORE_HASH=pyrenapwe2 \
   --build-arg VITE_CHANNEL_ID=1 \
   --build-arg VITE_IS_LOCAL_ENVIRONMENT=FALSE \
+  --build-arg VITE_STORE_URL=https://your-store.mybigcommerce.com \
+  --build-arg VITE_PORTAL_URL=https://your-portal-domain.com \
   -t $ACR_LOGIN_SERVER/b2b-portal:latest .
 
 docker push $ACR_LOGIN_SERVER/b2b-portal:latest

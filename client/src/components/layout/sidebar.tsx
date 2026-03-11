@@ -142,7 +142,7 @@ export default function Sidebar({ onLogout }: { onLogout?: () => void }) {
             <div className="border-t border-gray-200 my-2" />
 
             <a
-              href="https://feme-limited-sandbox.mybigcommerce.com/"
+              href={(import.meta.env.VITE_STORE_URL || 'https://feme-limited-sandbox.mybigcommerce.com') + '/'}
               className="flex items-center gap-3 px-3 py-3.5 rounded-lg text-sm text-gray-700 hover:bg-gray-50"
               data-testid="nav-more-shop"
             >

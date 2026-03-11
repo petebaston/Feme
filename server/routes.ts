@@ -1750,68 +1750,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Cart endpoints (Items 31, 32)
-  app.get("/api/cart", authenticateToken, sessionTimeout, async (req: AuthRequest, res) => {
-    try {
-      const bcToken = await getBigCommerceToken(req);
-      // In production, use BigCommerce cart API
-      // For now, return mock cart data
-      res.json({
-        id: 'cart-1',
-        items: [],
-        subtotal: 0,
-        tax: 0,
-        shipping: 0,
-        total: 0,
-      });
-    } catch (error) {
-      console.error("Cart fetch error:", error);
-      res.status(500).json({ message: "Failed to fetch cart" });
-    }
-  });
-
-  app.post("/api/cart/items", authenticateToken, sessionTimeout, async (req: AuthRequest, res) => {
-    try {
-      const bcToken = await getBigCommerceToken(req);
-      const { items } = req.body;
-
-      // In production, add items to BigCommerce cart
-      console.log('[Cart] Adding items:', items);
-
-      res.json({ message: "Items added to cart", items });
-    } catch (error) {
-      console.error("Cart add error:", error);
-      res.status(500).json({ message: "Failed to add items to cart" });
-    }
-  });
-
-  app.patch("/api/cart/items/:id", authenticateToken, sessionTimeout, async (req: AuthRequest, res) => {
-    try {
-      const bcToken = await getBigCommerceToken(req);
-      const { quantity } = req.body;
-
-      console.log(`[Cart] Updating item ${req.params.id} to quantity ${quantity}`);
-
-      res.json({ message: "Cart item updated" });
-    } catch (error) {
-      console.error("Cart update error:", error);
-      res.status(500).json({ message: "Failed to update cart item" });
-    }
-  });
-
-  app.delete("/api/cart/items/:id", authenticateToken, sessionTimeout, async (req: AuthRequest, res) => {
-    try {
-      const bcToken = await getBigCommerceToken(req);
-
-      console.log(`[Cart] Removing item ${req.params.id}`);
-
-      res.json({ message: "Cart item removed" });
-    } catch (error) {
-      console.error("Cart delete error:", error);
-      res.status(500).json({ message: "Failed to remove cart item" });
-    }
-  });
-
   // Shopping Lists endpoints - using BigCommerce API
   app.get("/api/shopping-lists", authenticateToken, sessionTimeout, async (req: AuthRequest, res) => {
     try {

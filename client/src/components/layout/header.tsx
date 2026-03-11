@@ -6,6 +6,8 @@ import { useToast } from "@/hooks/use-toast";
 import { ChevronDown } from "lucide-react";
 import femeLogo from "@assets/feme-logo.png";
 
+const STORE_URL = import.meta.env.VITE_STORE_URL || 'https://feme-limited-sandbox.mybigcommerce.com';
+
 function getInitials(name: string): string {
   if (!name) return 'U';
   const parts = name.trim().split(/\s+/);
@@ -34,14 +36,14 @@ export default function Header({ onLogout }: { onLogout?: () => void }) {
         if (data?.url) {
           window.top ? window.top.location.href = data.url : window.location.href = data.url;
         } else {
-          window.top ? window.top.location.href = 'https://feme-limited-sandbox.mybigcommerce.com/' : window.location.href = 'https://feme-limited-sandbox.mybigcommerce.com/';
+          window.top ? window.top.location.href = STORE_URL + '/' : window.location.href = STORE_URL + '/';
         }
       } else {
-        window.top ? window.top.location.href = 'https://feme-limited-sandbox.mybigcommerce.com/' : window.location.href = 'https://feme-limited-sandbox.mybigcommerce.com/';
+        window.top ? window.top.location.href = STORE_URL + '/' : window.location.href = STORE_URL + '/';
       }
     } catch (err) {
       console.error('SSO redirect error:', err);
-      window.top ? window.top.location.href = 'https://feme-limited-sandbox.mybigcommerce.com/' : window.location.href = 'https://feme-limited-sandbox.mybigcommerce.com/';
+      window.top ? window.top.location.href = STORE_URL + '/' : window.location.href = STORE_URL + '/';
     } finally {
       setSsoLoading(false);
     }
@@ -65,21 +67,21 @@ export default function Header({ onLogout }: { onLogout?: () => void }) {
       localStorage.removeItem('b2b_user');
 
       const logoutImg = new Image();
-      logoutImg.src = 'https://feme-limited-sandbox.mybigcommerce.com/login.php?action=logout&t=' + Date.now();
+      logoutImg.src = STORE_URL + '/login.php?action=logout&t=' + Date.now();
 
       await new Promise(resolve => setTimeout(resolve, 500));
 
       window.top
-        ? (window.top.location.href = 'https://feme-limited-sandbox.mybigcommerce.com/')
-        : (window.location.href = 'https://feme-limited-sandbox.mybigcommerce.com/');
+        ? (window.top.location.href = STORE_URL + '/')
+        : (window.location.href = STORE_URL + '/');
     } catch (err) {
       console.error('Logout error:', err);
       localStorage.removeItem('b2b_token');
       localStorage.removeItem('user');
       localStorage.removeItem('b2b_user');
       window.top
-        ? (window.top.location.href = 'https://feme-limited-sandbox.mybigcommerce.com/')
-        : (window.location.href = 'https://feme-limited-sandbox.mybigcommerce.com/');
+        ? (window.top.location.href = STORE_URL + '/')
+        : (window.location.href = STORE_URL + '/');
     }
   };
 
@@ -93,9 +95,8 @@ export default function Header({ onLogout }: { onLogout?: () => void }) {
         </Link>
 
         <div className="flex items-center gap-4 md:gap-6">
-          {/* SHOP link — desktop only */}
           <a
-            href="https://feme-limited-sandbox.mybigcommerce.com/"
+            href={STORE_URL + '/'}
             onClick={handleHomeClick}
             className="hidden md:inline text-sm font-medium text-gray-700 hover:text-black"
             data-testid="link-home"
@@ -103,14 +104,12 @@ export default function Header({ onLogout }: { onLogout?: () => void }) {
             {ssoLoading ? 'Loading...' : 'SHOP'}
           </a>
 
-          {/* User menu */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="h-auto p-1 hover:bg-transparent min-w-[44px] min-h-[44px] flex items-center justify-center" data-testid="header-user-menu">
                 <span className="md:hidden flex items-center justify-center w-8 h-8 rounded-full bg-black text-white text-xs font-medium">
                   {initials}
                 </span>
-                {/* Desktop: name + chevron */}
                 <span className="hidden md:flex items-center">
                   <span className="text-sm font-medium text-gray-700">{user.name || 'User'}</span>
                   <ChevronDown className="ml-1 h-4 w-4 text-gray-700" />

@@ -14,9 +14,13 @@
     <!-- BigCommerce B2B Configuration -->
     <script>
       // Initialize BigCommerce B2B settings (will be populated by app)
+      var portalUrl = '%VITE_PORTAL_URL%' !== '' && '%VITE_PORTAL_URL%'.indexOf('VITE_PORTAL_URL') === -1
+        ? '%VITE_PORTAL_URL%'
+        : window.location.origin;
+
       window.b3CheckoutConfig = {
         routes: {
-          dashboard: '/account.php?action=order_status',
+          dashboard: portalUrl + '/',
         },
       };
       
@@ -28,7 +32,7 @@
         'dom.checkoutRegisterParentElement': '#checkout-app',
         'dom.registerElement': '[href^="/login.php"], #checkout-customer-login',
         'dom.openB3Checkout': 'checkout-customer-continue',
-        before_login_goto_page: '/account.php?action=order_status',
+        before_login_goto_page: portalUrl + '/',
         checkout_super_clear_session: 'true',
         'dom.navUserLoginElement': '.navUser-item.navUser-item--account',
       };

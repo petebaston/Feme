@@ -18,24 +18,24 @@ export interface MoneyFormat {
 /**
  * Format a number as currency using BigCommerce money format
  */
-export function formatCurrency(amount: number | string, money?: MoneyFormat | any): string {
+export function formatCurrency(amount: number | string, money?: MoneyFormat | string | any): string {
   const numAmount = typeof amount === 'string' ? parseFloat(amount) : amount;
   
   if (isNaN(numAmount)) {
     return '£0.00';
   }
 
-  // Determine currency symbol from money object
   let currencySymbol = '£';
   let currencyLocation: 'left' | 'right' = 'left';
   
-  if (money) {
-    // B2B Edition GraphQL format: { currency: { code: "GBP" }, value: "10.00" }
+  if (typeof money === 'string') {
+    const code = money.toUpperCase();
+    currencySymbol = code === 'USD' ? '$' : code === 'EUR' ? '€' : '£';
+  } else if (money) {
     if (money.currency?.code) {
       const code = money.currency.code.toUpperCase();
       currencySymbol = code === 'USD' ? '$' : code === 'EUR' ? '€' : '£';
     }
-    // Standard format: { currency_token: "£" }
     else if (money.currency_token) {
       currencySymbol = money.currency_token;
       currencyLocation = money.currency_location || 'left';
@@ -43,7 +43,7 @@ export function formatCurrency(amount: number | string, money?: MoneyFormat | an
   }
 
   // Format the number with thousands separator and decimal places
-  const decimalPlaces = money?.decimal_places || 2;
+  const decimalPlaces = (typeof money !== 'string' && money?.decimal_places) || 2;
   const parts = numAmount.toFixed(decimalPlaces).split('.');
   parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
   const formattedNumber = parts.join('.');

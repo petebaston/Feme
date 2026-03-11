@@ -50,10 +50,13 @@ The backend is an Express.js server providing API endpoints and static file serv
 - **Backend Security:** Implements bearer token validation and role-permission mapping for authorization, securing all API routes.
 
 ### Docker & Azure Deployment
-- **Dockerfile:** Multi-stage build (Node 20 Alpine). Stage 1 installs all deps and runs `npm run build` with VITE_* build args. Stage 2 copies `dist/` output, installs production-only deps, and runs `node dist/index.js`.
+- **Dockerfile:** Multi-stage build (Node 20 Alpine). Stage 1 installs all deps and runs `npm run build` with VITE_* build args (including `VITE_STORE_URL` and `VITE_PORTAL_URL`). Stage 2 copies `dist/` output, installs production-only deps, and runs `node dist/index.js`.
 - **docker-compose.yml:** Local production testing with `.env` file for all environment variables.
 - **AZURE_DEPLOY.md:** Step-by-step guide for deploying to Azure Container Apps via ACR. Covers build-time vs runtime variable separation.
 - App listens on `0.0.0.0:5000` (PORT env var, default 5000).
+- **VITE_STORE_URL:** Configurable storefront URL used in logout redirect, SHOP links, login page links. Defaults to `https://feme-limited-sandbox.mybigcommerce.com`.
+- **VITE_PORTAL_URL:** Configurable portal URL used in `client/index.html` for B2B Edition SSO redirect. Falls back to `window.location.origin`.
+- **Cart Removal:** mini-cart.tsx, checkout.tsx, quick-order.tsx, products.tsx deleted; all cart API routes removed; no cart icon in header.
 
 ## External Dependencies
 

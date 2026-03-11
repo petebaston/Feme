@@ -43,9 +43,9 @@ export default function Analytics() {
   const quotes = filterByTimeRange(allQuotes || []);
   const invoices = filterByTimeRange(allInvoices || []);
 
-  // Calculate analytics using correct field names
+  const currencyCode = orders?.[0]?.currencyCode || orders?.[0]?.money?.currency?.code || allInvoices?.[0]?.openBalance?.code || 'GBP';
+
   const totalSpent = orders?.reduce((sum, order) => {
-    // Try different possible field names for total
     const total = parseFloat(order.total) || 
                   parseFloat(order.grandTotal) || 
                   parseFloat(order.money?.totalIncTax) || 
@@ -114,7 +114,7 @@ export default function Analytics() {
                   <DollarSign className="w-5 h-5 text-gray-400" />
                 </div>
                 <div className="text-2xl font-bold text-black" data-testid="metric-total-spent">
-                  {formatCurrency(totalSpent)}
+                  {formatCurrency(totalSpent, currencyCode)}
                 </div>
                 <p className="text-xs text-gray-500 mt-1">{totalOrders} orders</p>
               </>
@@ -133,7 +133,7 @@ export default function Analytics() {
                   <TrendingUp className="w-5 h-5 text-gray-400" />
                 </div>
                 <div className="text-2xl font-bold text-black" data-testid="metric-avg-order">
-                  {formatCurrency(avgOrderValue)}
+                  {formatCurrency(avgOrderValue, currencyCode)}
                 </div>
                 <p className="text-xs text-gray-500 mt-1">Per order average</p>
               </>
@@ -202,7 +202,7 @@ export default function Analytics() {
                     <div key={month} className="space-y-2">
                       <div className="flex items-center justify-between text-sm">
                         <span className="text-gray-600 font-medium">{monthName}</span>
-                        <span className="text-black font-semibold">{formatCurrency(amount)}</span>
+                        <span className="text-black font-semibold">{formatCurrency(amount, currencyCode)}</span>
                       </div>
                       <div className="w-full bg-gray-100 rounded-full h-2">
                         <div

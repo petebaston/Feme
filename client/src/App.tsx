@@ -113,6 +113,7 @@ function Router() {
   }, []);
 
   const handleLogout = useCallback(async () => {
+    const storeUrl = import.meta.env.VITE_STORE_URL || 'https://feme-limited-sandbox.mybigcommerce.com';
     try {
       const token = localStorage.getItem('b2b_token');
       await fetch('/api/auth/logout', {
@@ -124,11 +125,11 @@ function Router() {
     localStorage.removeItem('user');
     localStorage.removeItem('b2b_user');
     const logoutImg = new Image();
-    logoutImg.src = 'https://feme-limited-sandbox.mybigcommerce.com/login.php?action=logout&t=' + Date.now();
+    logoutImg.src = storeUrl + '/login.php?action=logout&t=' + Date.now();
     await new Promise(resolve => setTimeout(resolve, 500));
     window.top
-      ? (window.top.location.href = 'https://feme-limited-sandbox.mybigcommerce.com/')
-      : (window.location.href = 'https://feme-limited-sandbox.mybigcommerce.com/');
+      ? (window.top.location.href = storeUrl + '/')
+      : (window.location.href = storeUrl + '/');
   }, []);
 
   if (isLoading) {

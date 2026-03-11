@@ -8,6 +8,8 @@ interface ImportMetaEnv {
   readonly VITE_IS_LOCAL_ENVIRONMENT: string;
   readonly VITE_ASSETS_ABSOLUTE_PATH: string;
   readonly VITE_DISABLE_BUILD_HASH: string;
+  readonly VITE_STORE_URL: string;
+  readonly VITE_PORTAL_URL: string;
   readonly REPL_SLUG: string;
   readonly REPL_OWNER: string;
 }
