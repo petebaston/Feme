@@ -49,6 +49,12 @@ The backend is an Express.js server providing API endpoints and static file serv
 - **Address Management CRUD:** Comprehensive address book functionality including adding, editing, deleting, and setting a single default address per company.
 - **Backend Security:** Implements bearer token validation and role-permission mapping for authorization, securing all API routes.
 
+### Docker & Azure Deployment
+- **Dockerfile:** Multi-stage build (Node 20 Alpine). Stage 1 installs all deps and runs `npm run build` with VITE_* build args. Stage 2 copies `dist/` output, installs production-only deps, and runs `node dist/index.js`.
+- **docker-compose.yml:** Local production testing with `.env` file for all environment variables.
+- **AZURE_DEPLOY.md:** Step-by-step guide for deploying to Azure Container Apps via ACR. Covers build-time vs runtime variable separation.
+- App listens on `0.0.0.0:5000` (PORT env var, default 5000).
+
 ## External Dependencies
 
 -   **BigCommerce Integration:** BigCommerce B2B Edition API, requiring Store Hash and Channel ID. Custom checkout configuration via `window.b3CheckoutConfig` and `window.B3`.

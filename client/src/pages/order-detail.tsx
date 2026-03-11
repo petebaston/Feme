@@ -1,18 +1,15 @@
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useParams, useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowLeft, RefreshCw, Package, Truck, FileText } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { ArrowLeft, Package, Truck, FileText } from "lucide-react";
 import { formatCurrency } from "@/lib/currency";
 import { CustomFieldsDisplay } from "@/components/b2b/custom-fields-display";
 
 export default function OrderDetail() {
   const { id } = useParams();
   const [, setLocation] = useLocation();
-  const { toast } = useToast();
 
   // Server-side cache handles BigCommerce API reliability issues
   const { data: order, isLoading } = useQuery<any>({
@@ -52,25 +49,6 @@ export default function OrderDetail() {
     queryKey: [`/api/orders/${id}/invoice`],
     enabled: !!id,
     retry: false, // Don't retry if no invoice exists
-  });
-
-  const reorderMutation = useMutation({
-    mutationFn: async () => {
-      return new Promise((resolve) => setTimeout(resolve, 500));
-    },
-    onSuccess: () => {
-      toast({
-        title: "Items Added to Cart",
-        description: "Order items have been added to your cart for reorder",
-      });
-    },
-    onError: () => {
-      toast({
-        title: "Error",
-        description: "Failed to add items to cart",
-        variant: "destructive",
-      });
-    },
   });
 
   const getStatusColor = (status: string) => {
@@ -193,15 +171,6 @@ export default function OrderDetail() {
               View Invoice
             </Button>
           )}
-          <Button
-            onClick={() => reorderMutation.mutate()}
-            disabled={reorderMutation.isPending || order.status?.toLowerCase() === 'cancelled'}
-            className="bg-black text-white hover:bg-gray-800"
-            data-testid="button-reorder"
-          >
-            <RefreshCw className={`w-4 h-4 mr-2 ${reorderMutation.isPending ? 'animate-spin' : ''}`} />
-            {reorderMutation.isPending ? 'Adding...' : 'Reorder'}
-          </Button>
         </div>
       </div>
 
