@@ -64,18 +64,17 @@ export default function Header() {
 
       await new Promise(resolve => setTimeout(resolve, 500));
 
-      toast({
-        title: "Logged out",
-        description: "You have been signed out of the portal and the storefront.",
-      });
-
-      window.location.href = '/login';
+      window.top
+        ? (window.top.location.href = 'https://feme-limited-sandbox.mybigcommerce.com/')
+        : (window.location.href = 'https://feme-limited-sandbox.mybigcommerce.com/');
     } catch (err) {
       console.error('Logout error:', err);
       localStorage.removeItem('b2b_token');
       localStorage.removeItem('user');
       localStorage.removeItem('b2b_user');
-      window.location.href = '/login';
+      window.top
+        ? (window.top.location.href = 'https://feme-limited-sandbox.mybigcommerce.com/')
+        : (window.location.href = 'https://feme-limited-sandbox.mybigcommerce.com/');
     }
   };
 
@@ -95,10 +94,6 @@ export default function Header() {
           >
             {ssoLoading ? 'Loading...' : 'SHOP'}
           </a>
-          <Link href="/cart" className="text-sm font-medium text-gray-700 hover:text-black">
-            CART
-          </Link>
-          
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="h-auto p-0 hover:bg-transparent" data-testid="header-user-menu">

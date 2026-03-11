@@ -9,9 +9,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 export default function UserManagement() {
   const [searchTerm, setSearchTerm] = useState("");
 
-  const { data: users = [], isLoading } = useQuery<any[]>({
+  const { data: users = [], isLoading, error } = useQuery<any[]>({
     queryKey: ['/api/company/users'],
     staleTime: 300000,
+    retry: 1,
   });
 
   const filteredUsers = users.filter((user) => {
@@ -21,6 +22,17 @@ export default function UserManagement() {
       user.email?.toLowerCase().includes(searchTerm.toLowerCase());
     return matchesSearch;
   });
+
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <h1 className="text-3xl font-normal text-black">User management</h1>
+        <div className="border border-gray-200 bg-white p-12 text-center" data-testid="text-feature-disabled">
+          <p className="text-gray-500 text-base">This feature has not been enabled.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

@@ -154,7 +154,7 @@ function Router() {
         <Sidebar />
         <main className="flex-1 md:ml-44 px-8 py-6 bg-white min-h-[calc(100vh-4rem)]">
           <Switch>
-            <Route path="/" component={MyOrders} />
+            <Route path="/" component={Dashboard} />
             <Route path="/my-orders" component={MyOrders} />
             <Route path="/orders/:id" component={OrderDetail} />
             <Route path="/orders" component={Orders} />

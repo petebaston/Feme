@@ -1,236 +1,87 @@
 import { useQuery } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "wouter";
-import { DollarSign, Package, FileText, Clock } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Package, Building2, FileText, MapPin, Users, Settings } from "lucide-react";
+
+const navTiles = [
+  { name: 'My Orders', href: '/my-orders', icon: Package, description: 'View your personal order history' },
+  { name: 'Company Orders', href: '/orders', icon: Building2, description: 'View all company orders' },
+  { name: 'Invoices', href: '/invoices', icon: FileText, description: 'Manage and pay invoices' },
+  { name: 'Addresses', href: '/addresses', icon: MapPin, description: 'Manage delivery addresses' },
+  { name: 'User Management', href: '/user-management', icon: Users, description: 'Manage company users' },
+  { name: 'Account Settings', href: '/account-settings', icon: Settings, description: 'Update your account details' },
+];
 
 export default function Dashboard() {
-  const { data: stats, isLoading: statsLoading } = useQuery<any>({
-    queryKey: ['/api/dashboard/stats'],
+  const user = JSON.parse(localStorage.getItem('b2b_user') || localStorage.getItem('user') || '{}');
+
+  const { data: credit, isLoading: creditLoading } = useQuery<any>({
+    queryKey: ['/api/company/credit'],
     staleTime: 300000,
+    retry: 0,
   });
 
-  const { data: recentOrdersRaw, isLoading: ordersLoading } = useQuery<any>({
-    queryKey: ['/api/orders', { limit: 5, recent: true }],
-    staleTime: 300000,
-  });
-  
-  // Ensure recentOrders is always an array (handle error responses)
-  const recentOrders = Array.isArray(recentOrdersRaw) ? recentOrdersRaw : [];
+  const balance = credit?.balance ?? credit?.creditLimit ?? 0;
+  const dueNow = credit?.availableCredit ?? credit?.outstandingBalance ?? 0;
 
-  const { data: recentQuotesRaw, isLoading: quotesLoading } = useQuery<any>({
-    queryKey: ['/api/quotes', { limit: 5, recent: true }],
-    staleTime: 300000,
-  });
-  
-  // Ensure recentQuotes is always an array (handle error responses)
-  const recentQuotes = Array.isArray(recentQuotesRaw) ? recentQuotesRaw : [];
-
-  const user = JSON.parse(localStorage.getItem('b2b_user') || '{}');
-
-  const getStatusColor = (status: string) => {
-    const colors: Record<string, string> = {
-      pending: 'bg-yellow-100 text-yellow-800',
-      processing: 'bg-blue-100 text-blue-800',
-      completed: 'bg-green-100 text-green-800',
-      shipped: 'bg-purple-100 text-purple-800',
-      delivered: 'bg-green-100 text-green-800',
-      cancelled: 'bg-gray-100 text-gray-800',
-      draft: 'bg-gray-100 text-gray-800',
-      negotiating: 'bg-blue-100 text-blue-800',
-      approved: 'bg-green-100 text-green-800',
-      rejected: 'bg-red-100 text-red-800',
-    };
-    return colors[status?.toLowerCase()] || 'bg-gray-100 text-gray-800';
-  };
-
-  const getPaymentTermsColor = (terms: string) => {
-    if (terms?.includes('1-30')) return 'bg-green-50 text-green-700 border-green-200';
-    if (terms?.includes('30-60')) return 'bg-blue-50 text-blue-700 border-blue-200';
-    if (terms?.includes('60-90')) return 'bg-orange-50 text-orange-700 border-orange-200';
-    if (terms?.includes('90+')) return 'bg-red-50 text-red-700 border-red-200';
-    return 'bg-gray-50 text-gray-700 border-gray-200';
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('en-GB', {
+      style: 'currency',
+      currency: 'GBP',
+      minimumFractionDigits: 2,
+    }).format(value);
   };
 
   return (
-    <div className="space-y-6 md:space-y-8">
-      {/* Header */}
+    <div className="space-y-8">
+      {/* Welcome */}
       <div>
-        <h1 className="text-2xl md:text-3xl font-semibold text-black">Welcome back, {user.name || 'User'}</h1>
-        <p className="text-sm md:text-base text-gray-600 mt-1">Here's what's happening with your business</p>
+        <h1 className="text-3xl font-normal text-black">Welcome back, {user.name || user.firstName || 'User'}</h1>
+        <p className="text-sm text-gray-500 mt-1">{user.companyName || ''}</p>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-        <Card className="border border-gray-200">
-          <CardContent className="p-6">
-            {statsLoading ? (
-              <Skeleton className="h-20" />
-            ) : (
+      {/* Navigation Tiles */}
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+        {navTiles.map((tile) => {
+          const Icon = tile.icon;
+          return (
+            <Link
+              key={tile.href}
+              href={tile.href}
+              className="flex flex-col items-start gap-3 p-6 bg-white border border-gray-200 hover:border-black hover:shadow-sm transition-all group"
+              data-testid={`tile-${tile.name.toLowerCase().replace(/\s+/g, '-')}`}
+            >
+              <Icon className="w-6 h-6 text-gray-400 group-hover:text-black transition-colors" />
               <div>
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-sm font-medium text-gray-600">Total Orders</p>
-                  <Package className="w-4 h-4 text-gray-400" />
-                </div>
-                <p className="text-3xl font-semibold text-black" data-testid="stat-total-orders">{stats?.totalOrders || 0}</p>
-                <p className="text-xs text-gray-500 mt-1">{stats?.ordersThisMonth || 0} this month</p>
+                <p className="text-sm font-medium text-black">{tile.name}</p>
+                <p className="text-xs text-gray-500 mt-0.5 leading-snug">{tile.description}</p>
               </div>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card className="border border-gray-200">
-          <CardContent className="p-6">
-            {statsLoading ? (
-              <Skeleton className="h-20" />
-            ) : (
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-sm font-medium text-gray-600">Monthly Spend</p>
-                  <DollarSign className="w-4 h-4 text-gray-400" />
-                </div>
-                <p className="text-3xl font-semibold text-black" data-testid="stat-monthly-spend">£{stats?.monthlySpend?.toLocaleString() || 0}</p>
-                <p className="text-xs text-green-600 mt-1">↑ {stats?.spendChange || 0}% vs last month</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card className="border border-gray-200">
-          <CardContent className="p-6">
-            {statsLoading ? (
-              <Skeleton className="h-20" />
-            ) : (
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-sm font-medium text-gray-600">Pending Quotes</p>
-                  <FileText className="w-4 h-4 text-gray-400" />
-                </div>
-                <p className="text-3xl font-semibold text-black" data-testid="stat-pending-quotes">{stats?.pendingQuotes || 0}</p>
-                <p className="text-xs text-gray-500 mt-1">{stats?.quotesNeedingAttention || 0} need attention</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card className="border border-gray-200">
-          <CardContent className="p-6">
-            {statsLoading ? (
-              <Skeleton className="h-20" />
-            ) : (
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-sm font-medium text-gray-600">Active Credit</p>
-                  <Clock className="w-4 h-4 text-gray-400" />
-                </div>
-                <p className="text-3xl font-semibold text-black" data-testid="stat-active-credit">£{stats?.activeCredit?.toLocaleString() || 0}</p>
-                <p className="text-xs text-gray-500 mt-1">Available credit</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+            </Link>
+          );
+        })}
       </div>
 
-      {/* Recent Orders & Quotes */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8">
-        {/* Recent Orders */}
-        <Card className="border border-gray-200">
-          <CardHeader>
-            <CardTitle className="text-lg font-semibold">Recent Orders</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {ordersLoading ? (
-              <div className="space-y-3">
-                {[1, 2, 3].map(i => <Skeleton key={i} className="h-20" />)}
-              </div>
+      {/* Financial Summary */}
+      <div>
+        <h2 className="text-lg font-normal text-black mb-4">Financial Summary</h2>
+        <div className="grid grid-cols-2 gap-4">
+          <div className="bg-white border border-gray-200 p-6" data-testid="card-balance">
+            <p className="text-xs text-gray-500 uppercase tracking-wide mb-2">Balance</p>
+            {creditLoading ? (
+              <Skeleton className="h-8 w-24" />
             ) : (
-              <div className="space-y-3">
-                {recentOrders?.slice(0, 5).map((order: any) => (
-                  <div key={order.id} className="p-3 md:p-4 border border-gray-200 rounded-lg hover:border-gray-300 transition-colors" data-testid={`order-${order.id}`}>
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-sm truncate">{order.orderNumber}</p>
-                        <p className="text-xs text-gray-600 mt-0.5">{order.customerName}</p>
-                      </div>
-                      <div className="flex items-center gap-2 flex-wrap">
-                        {order.paymentTerms && (
-                          <span className={`text-xs px-2 py-0.5 rounded-md border font-medium ${getPaymentTermsColor(order.paymentTerms)}`}>
-                            {order.paymentTerms}
-                          </span>
-                        )}
-                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${getStatusColor(order.status)}`}>
-                          {order.status}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-between mt-2">
-                      <p className="text-sm font-semibold">£{parseFloat(order.total).toLocaleString()}</p>
-                      <p className="text-xs text-gray-500">{new Date(order.createdAt).toLocaleDateString()}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
+              <p className="text-3xl font-normal text-black" data-testid="text-balance">{formatCurrency(balance)}</p>
             )}
-
-            {(recentOrders?.length || 0) > 0 && (
-              <div className="mt-4 pt-4 border-t border-gray-200">
-                <Button variant="outline" size="sm" asChild className="w-full border-2 border-black text-black hover:bg-black hover:text-white" data-testid="button-view-all-orders">
-                  <Link href="/orders">View All Orders</Link>
-                </Button>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Recent Quotes */}
-        <Card className="border border-gray-200">
-          <CardHeader>
-            <CardTitle className="text-lg font-semibold">Recent Quotes</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {quotesLoading ? (
-              <div className="space-y-3">
-                {[1, 2, 3].map(i => <Skeleton key={i} className="h-20" />)}
-              </div>
+          </div>
+          <div className="bg-white border border-gray-200 p-6" data-testid="card-due-now">
+            <p className="text-xs text-gray-500 uppercase tracking-wide mb-2">Due Now</p>
+            {creditLoading ? (
+              <Skeleton className="h-8 w-24" />
             ) : (
-              <div className="space-y-3">
-                {recentQuotes?.slice(0, 5).map((quote: any) => (
-                  <div key={quote.id} className="p-3 md:p-4 border border-gray-200 rounded-lg hover:border-gray-300 transition-colors" data-testid={`quote-${quote.id}`}>
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-sm truncate">{quote.quoteNumber}</p>
-                        <p className="text-xs text-gray-600 mt-0.5 truncate">{quote.title}</p>
-                      </div>
-                      <div className="flex items-center gap-2 flex-wrap">
-                        {quote.paymentTerms && (
-                          <span className={`text-xs px-2 py-0.5 rounded-md border font-medium ${getPaymentTermsColor(quote.paymentTerms)}`}>
-                            {quote.paymentTerms}
-                          </span>
-                        )}
-                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${getStatusColor(quote.status)}`}>
-                          {quote.status}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-between mt-2">
-                      <p className="text-sm font-semibold">£{parseFloat(quote.total).toLocaleString()}</p>
-                      <p className="text-xs text-gray-500">{new Date(quote.createdAt).toLocaleDateString()}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
+              <p className="text-3xl font-normal text-black" data-testid="text-due-now">{formatCurrency(dueNow)}</p>
             )}
-
-            {(recentQuotes?.length || 0) > 0 && (
-              <div className="mt-4 pt-4 border-t border-gray-200">
-                <Button variant="outline" size="sm" asChild className="w-full border-2 border-black text-black hover:bg-black hover:text-white" data-testid="button-view-all-quotes">
-                  <Link href="/quotes">View All Quotes</Link>
-                </Button>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
     </div>
   );
