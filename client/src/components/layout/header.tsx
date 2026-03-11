@@ -83,10 +83,6 @@ export default function Header({ onLogout }: { onLogout?: () => void }) {
     }
   };
 
-  if (onLogout) {
-    // Register the logout handler for the bottom nav "More" sheet
-  }
-
   const initials = getInitials(user.name || '');
 
   return (
@@ -110,8 +106,7 @@ export default function Header({ onLogout }: { onLogout?: () => void }) {
           {/* User menu */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="h-auto p-0 hover:bg-transparent" data-testid="header-user-menu">
-                {/* Mobile: initials avatar */}
+              <Button variant="ghost" className="h-auto p-1 hover:bg-transparent min-w-[44px] min-h-[44px] flex items-center justify-center" data-testid="header-user-menu">
                 <span className="md:hidden flex items-center justify-center w-8 h-8 rounded-full bg-black text-white text-xs font-medium">
                   {initials}
                 </span>
