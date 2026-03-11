@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { formatCurrency } from "@/lib/currency";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 
 interface UserData {
   id: string;
@@ -68,11 +69,24 @@ export default function AccountSettings() {
     }
   }, [userData]);
 
+  const updateProfileMutation = useMutation({
+    mutationFn: (data: { firstName: string; lastName: string; phone: string }) =>
+      apiRequest('PATCH', '/api/auth/me', data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/auth/me'] });
+      toast({ title: "Saved", description: "Your profile has been updated successfully." });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to save your profile. Please try again.", variant: "destructive" });
+    },
+  });
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    toast({
-      title: "Settings Updated",
-      description: "Your account settings have been saved successfully.",
+    updateProfileMutation.mutate({
+      firstName: formData.firstName,
+      lastName: formData.lastName,
+      phone: formData.phone,
     });
   };
 
@@ -274,10 +288,11 @@ export default function AccountSettings() {
         {/* Submit Button */}
         <Button
           type="submit"
+          disabled={updateProfileMutation.isPending}
           className="w-full h-12 bg-black text-white hover:bg-black/90 font-normal text-base"
           data-testid="button-save"
         >
-          SAVE UPDATES
+          {updateProfileMutation.isPending ? 'SAVING...' : 'SAVE UPDATES'}
         </Button>
       </form>
     </div>

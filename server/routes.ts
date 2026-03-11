@@ -357,6 +357,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Update own profile (Account Settings save)
+  app.patch("/api/auth/me", authenticateToken, sessionTimeout, async (req: AuthRequest, res) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+      const { firstName, lastName, phone } = req.body;
+      const userId = req.user.userId;
+
+      console.log(`[UpdateMe] Updating profile for user ${userId}`);
+      await bigcommerce.updateB2BUser(userId, { firstName, lastName, phone });
+      res.json({ message: "Profile updated successfully" });
+    } catch (error: any) {
+      console.error("[UpdateMe] Error:", error);
+      res.status(500).json({ message: "Failed to update profile" });
+    }
+  });
+
   // Token refresh endpoint (Item 1)
   app.post("/api/auth/refresh", async (req, res) => {
     try {
@@ -1454,6 +1472,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
     }
   );
+
+  // Create / invite a new company user
+  app.post("/api/company/users", authenticateToken, sessionTimeout, async (req: AuthRequest, res) => {
+    try {
+      const { firstName, lastName, email, phone, role } = req.body;
+      if (!firstName || !lastName || !email) {
+        return res.status(400).json({ message: "firstName, lastName, and email are required" });
+      }
+      const companyId = req.user!.companyId;
+      const roleNum = role === 'Admin' ? 0 : role === 'Buyer' ? 1 : 2;
+      const result = await bigcommerce.createB2BUser({ firstName, lastName, email, phone, companyId, role: roleNum });
+      res.status(201).json(result);
+    } catch (error: any) {
+      console.error("[CreateUser] Error:", error);
+      res.status(500).json({ message: "Failed to create user" });
+    }
+  });
+
+  // Update a company user
+  app.patch("/api/company/users/:userId", authenticateToken, sessionTimeout, async (req: AuthRequest, res) => {
+    try {
+      const { userId } = req.params;
+      const { firstName, lastName, email, phone, role } = req.body;
+      const updateData: any = {};
+      if (firstName !== undefined) updateData.firstName = firstName;
+      if (lastName !== undefined) updateData.lastName = lastName;
+      if (email !== undefined) updateData.email = email;
+      if (phone !== undefined) updateData.phone = phone;
+      if (role !== undefined) updateData.role = role === 'Admin' ? 0 : role === 'Buyer' ? 1 : 2;
+      const result = await bigcommerce.updateB2BUser(userId, updateData);
+      res.json(result);
+    } catch (error: any) {
+      console.error("[UpdateUser] Error:", error);
+      res.status(500).json({ message: "Failed to update user" });
+    }
+  });
+
+  // Remove a company user
+  app.delete("/api/company/users/:userId", authenticateToken, sessionTimeout, async (req: AuthRequest, res) => {
+    try {
+      const { userId } = req.params;
+      await bigcommerce.deleteB2BUser(userId);
+      res.json({ message: "User removed successfully" });
+    } catch (error: any) {
+      console.error("[DeleteUser] Error:", error);
+      res.status(500).json({ message: "Failed to remove user" });
+    }
+  });
 
   app.get("/api/company/addresses",
     authenticateToken,

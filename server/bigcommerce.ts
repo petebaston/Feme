@@ -742,6 +742,42 @@ export class BigCommerceService {
     return { data: allUsers };
   }
 
+  async updateB2BUser(userId: string | number, data: {
+    firstName?: string;
+    lastName?: string;
+    email?: string;
+    phone?: string;
+    role?: number;
+  }): Promise<any> {
+    const response = await this.request<any>(`/api/v3/io/users/${userId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+    return response;
+  }
+
+  async deleteB2BUser(userId: string | number): Promise<any> {
+    const response = await this.request<any>(`/api/v3/io/users/${userId}`, {
+      method: 'DELETE',
+    });
+    return response;
+  }
+
+  async createB2BUser(data: {
+    firstName: string;
+    lastName: string;
+    email: string;
+    phone?: string;
+    companyId: string;
+    role: number;
+  }): Promise<any> {
+    const response = await this.request<any>(`/api/v3/io/users`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    return response;
+  }
+
   async getCompanyCustomerIds(userToken: string, companyId: string): Promise<number[]> {
     // ENHANCED: Fetch customer IDs from BOTH B2B users AND actual orders
     // This ensures we capture all customers who placed orders for this company,
