@@ -58,7 +58,8 @@
       "Bash(git restore:*)",
       "Bash(\"/c/Program Files/Microsoft SDKs/Azure/CLI2/wbin/az.cmd\" group create --name b2b-portal-rg --location uksouth --output table 2>&1)",
       "Bash(\"/c/Program Files/Microsoft SDKs/Azure/CLI2/wbin/az.cmd\" webapp config set --name feme-b2b-portal --resource-group b2b-portal-rg --startup-file \"npm run build && npm start\" --output table 2>&1)",
-      "Bash(cd:*)"
+      "Bash(cd:*)",
+      "Bash(sleep:*)"
     ],
     "deny": [],
     "ask": []
