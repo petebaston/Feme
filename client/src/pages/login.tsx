@@ -141,20 +141,29 @@ export default function Login() {
                 />
               </div>
 
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="remember"
-                  checked={rememberMe}
-                  onCheckedChange={(checked) => setRememberMe(checked as boolean)}
-                  className="border-gray-300 data-[state=checked]:bg-black data-[state=checked]:border-black"
-                  data-testid="checkbox-remember"
-                />
-                <Label
-                  htmlFor="remember"
-                  className="text-sm font-normal text-gray-700 cursor-pointer"
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="remember"
+                    checked={rememberMe}
+                    onCheckedChange={(checked) => setRememberMe(checked as boolean)}
+                    className="border-gray-300 data-[state=checked]:bg-black data-[state=checked]:border-black"
+                    data-testid="checkbox-remember"
+                  />
+                  <Label
+                    htmlFor="remember"
+                    className="text-sm font-normal text-gray-700 cursor-pointer"
+                  >
+                    Remember me
+                  </Label>
+                </div>
+                <a
+                  href="/forgot-password"
+                  className="text-sm text-gray-600 hover:text-black underline"
+                  onClick={(e) => { e.preventDefault(); setLocation("/forgot-password"); }}
                 >
-                  Remember me
-                </Label>
+                  Forgot password?
+                </a>
               </div>
 
               <Button

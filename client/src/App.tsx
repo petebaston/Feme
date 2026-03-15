@@ -10,6 +10,7 @@ import { useEffect, useState, useCallback } from "react";
 
 import NotFound from "@/pages/not-found";
 import Login from "@/pages/login";
+import ForgotPassword from "@/pages/forgot-password";
 import Dashboard from "@/pages/dashboard";
 import MyOrders from "@/pages/my-orders";
 import Orders from "@/pages/orders";
@@ -144,6 +145,7 @@ function Router() {
     return (
       <Switch>
         <Route path="/login" component={Login} />
+        <Route path="/forgot-password" component={ForgotPassword} />
         <Route>
           <Login />
         </Route>

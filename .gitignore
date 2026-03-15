@@ -30,3 +30,4 @@ credentials.json
 secrets.json
 *.zip
 .claude/settings.local.json
+publish-profile.xml

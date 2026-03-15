@@ -412,7 +412,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Password reset request (Items 3, 4)
+  // Password reset request - uses BigCommerce storefront password reset
   app.post("/api/auth/forgot-password", async (req, res) => {
     try {
       const { email } = req.body;
@@ -421,26 +421,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Email is required" });
       }
 
-      const user = await storage.getUserByEmail(email);
-      if (!user) {
-        // Don't reveal if user exists
-        return res.json({ message: "If an account exists, a password reset link will be sent" });
-      }
+      // Always return the same message to avoid revealing if user exists
+      const storeUrl = process.env.VITE_STORE_URL || 'https://feme-limited-sandbox.mybigcommerce.com';
+      const resetUrl = `${storeUrl}/login.php?action=reset_password&email=${encodeURIComponent(email)}`;
 
-      // Generate reset token (24 hour expiry)
-      const resetToken = generateAccessToken({
-        userId: user.id,
-        email: user.email,
-      });
-
-      // In production, send email with reset link
-      // For now, just return token (Item 4)
-      console.log(`[Password Reset] Token for ${email}: ${resetToken}`);
+      console.log(`[Password Reset] Directing ${email} to BigCommerce reset: ${resetUrl}`);
 
       res.json({
-        message: "If an account exists, a password reset link will be sent",
-        // Remove this in production - only for development
-        resetToken: process.env.NODE_ENV === 'development' ? resetToken : undefined
+        message: "If an account exists, a password reset email will be sent.",
+        resetUrl,
       });
     } catch (error) {
       console.error("[Forgot Password] Error:", error);
