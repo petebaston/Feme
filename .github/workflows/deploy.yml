@@ -25,9 +25,10 @@ jobs:
       - name: Build application
         run: npm run build
         env:
-          VITE_STORE_HASH: pyrenapwe2
-          VITE_CHANNEL_ID: '1'
-          VITE_LOCAL_APP_CLIENT_ID: demo_client_id
+          VITE_STORE_HASH: ${{ secrets.VITE_STORE_HASH }}
+          VITE_CHANNEL_ID: ${{ secrets.VITE_CHANNEL_ID || '1' }}
+          VITE_LOCAL_APP_CLIENT_ID: ${{ secrets.VITE_LOCAL_APP_CLIENT_ID }}
+          VITE_STORE_URL: ${{ secrets.VITE_STORE_URL }}
           VITE_IS_LOCAL_ENVIRONMENT: 'FALSE'
 
       - name: Deploy to Azure Web App
