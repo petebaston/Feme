@@ -30,9 +30,6 @@ jobs:
           VITE_LOCAL_APP_CLIENT_ID: demo_client_id
           VITE_IS_LOCAL_ENVIRONMENT: 'FALSE'
 
-      - name: Prune to production dependencies
-        run: npm ci --omit=dev
-
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v2
         with:
