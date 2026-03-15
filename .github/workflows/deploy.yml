@@ -1,4 +1,4 @@
-name: Deploy to Azure App Service
+name: Build and Deploy to Azure
 
 on:
   push:
@@ -19,16 +19,19 @@ jobs:
           node-version: '22'
           cache: 'npm'
 
-      - name: Install dependencies
+      - name: Install all dependencies
         run: npm ci
 
-      - name: Build
+      - name: Build application
         run: npm run build
         env:
           VITE_STORE_HASH: pyrenapwe2
           VITE_CHANNEL_ID: '1'
           VITE_LOCAL_APP_CLIENT_ID: demo_client_id
           VITE_IS_LOCAL_ENVIRONMENT: 'FALSE'
+
+      - name: Prune to production dependencies
+        run: npm ci --omit=dev
 
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v2
