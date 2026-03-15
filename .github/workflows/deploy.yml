@@ -31,7 +31,7 @@ jobs:
           VITE_IS_LOCAL_ENVIRONMENT: 'FALSE'
 
       - name: Deploy to Azure Web App
-        uses: azure/webapps-deploy@v3
+        uses: azure/webapps-deploy@v2
         with:
           app-name: feme-b2b-portal
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
