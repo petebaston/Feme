@@ -56,7 +56,9 @@
       "Bash(npx vite)",
       "Bash(powershell -Command \"(Get-Content App.tsx) -replace ''<ApolloProvider client=\\{graphqlClient\\}>'',''<QueryClientProvider client={queryClient}>'' -replace ''</ApolloProvider>'',''</QueryClientProvider>'' | Set-Content App.tsx.tmp && Move-Item -Force App.tsx.tmp App.tsx\")",
       "Bash(git restore:*)",
-      "Bash(powershell -Command \"Get-Process -Name node -ErrorAction SilentlyContinue | Stop-Process -Force; if ($? { Write-Output ''Node processes killed'' } else { Write-Output ''No node processes running'' }\")"
+      "Bash(\"/c/Program Files/Microsoft SDKs/Azure/CLI2/wbin/az.cmd\" group create --name b2b-portal-rg --location uksouth --output table 2>&1)",
+      "Bash(\"/c/Program Files/Microsoft SDKs/Azure/CLI2/wbin/az.cmd\" webapp config set --name feme-b2b-portal --resource-group b2b-portal-rg --startup-file \"npm run build && npm start\" --output table 2>&1)",
+      "Bash(cd:*)"
     ],
     "deny": [],
     "ask": []

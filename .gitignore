@@ -28,3 +28,5 @@ vite.config.ts.*
 *.pfx
 credentials.json
 secrets.json
+*.zip
+.claude/settings.local.json
