@@ -6,7 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 import { ChevronDown } from "lucide-react";
 import femeLogo from "@assets/feme-logo.png";
 
-const STORE_URL = import.meta.env.VITE_STORE_URL || 'https://feme-limited-sandbox.mybigcommerce.com';
+const STORE_URL = import.meta.env.VITE_STORE_URL || '';
 
 function getInitials(name: string): string {
   if (!name) return 'U';

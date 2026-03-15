@@ -114,7 +114,7 @@ function Router() {
   }, []);
 
   const handleLogout = useCallback(async () => {
-    const storeUrl = import.meta.env.VITE_STORE_URL || 'https://feme-limited-sandbox.mybigcommerce.com';
+    const storeUrl = import.meta.env.VITE_STORE_URL || '';
     try {
       const token = localStorage.getItem('b2b_token');
       await fetch('/api/auth/logout', {
