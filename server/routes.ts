@@ -422,7 +422,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Always return the same message to avoid revealing if user exists
-      const storeUrl = process.env.VITE_STORE_URL || 'https://feme-limited-sandbox.mybigcommerce.com';
+      const storeUrl = process.env.VITE_STORE_URL || '';
       const resetUrl = `${storeUrl}/login.php?action=reset_password&email=${encodeURIComponent(email)}`;
 
       console.log(`[Password Reset] Directing ${email} to BigCommerce reset: ${resetUrl}`);
